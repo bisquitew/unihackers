@@ -1,0 +1,105 @@
+# 🧠 Parkie Backend API Documentation
+
+This FastAPI service acts as the "glue" between the **AI Vision** component (detecting cars) and the **Mobile App** (displaying status). It manages data in **Supabase** and dynamically calculates parking availability and marker colors.
+
+---
+
+## 🚀 Quick Start
+
+1. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Setup Environment:**
+   Create a `.env` file in the `backend_api/` directory:
+   ```env
+   SUPABASE_URL=your_project_url
+   SUPABASE_SERVICE_KEY=your_service_role_key
+   ```
+
+3. **Run the Server:**
+   ```bash
+   uvicorn main:app --reload
+   ```
+   *The API will be available at: `http://localhost:8000`*
+   *Interactive Swagger docs: `http://localhost:8000/docs`*
+
+---
+
+## 📡 Endpoints
+
+### 1. Update Parking Data (`POST /update_lot`)
+**Used by:** `ai_vision` component.
+- **URL:** `/update_lot`
+- **Method:** `POST`
+- **Payload (JSON):**
+  ```json
+  {
+    "lot_id": "uuid-string",
+    "detected_cars": 15
+  }
+  ```
+- **Logic:**
+  1. Fetches the lot's `capacity` from Supabase.
+  2. Calculates `available_spots = capacity - detected_cars` (minimum 0).
+  3. Updates `available_spots` and `last_updated` in the database.
+  4. Returns the updated data and the calculated `status_color`.
+
+---
+
+### 2. Get All Lots (`GET /lots`)
+**Used by:** `mobile_app` (List view or initial map load).
+- **URL:** `/lots`
+- **Method:** `GET`
+- **Response:** A list of all parking lot objects, including `id`, `name`, `capacity`, `available_spots`, `last_updated`, and a dynamically calculated `status_color`.
+
+---
+
+### 3. Get Map Colors Only (`GET /lots/colors`)
+**Used by:** `mobile_app` (Efficient map marker updates).
+- **URL:** `/lots/colors`
+- **Method:** `GET`
+- **Response:** A lightweight list of markers for fast UI updates.
+  ```json
+  [
+    { "id": "uuid-1", "status_color": "green" },
+    { "id": "uuid-2", "status_color": "red" }
+  ]
+  ```
+
+---
+
+### 4. Get Single Lot Detail (`GET /lots/{lot_id}`)
+**Used by:** `mobile_app` (Detailed view when a lot is selected).
+- **URL:** `/lots/{lot_id}`
+- **Method:** `GET`
+- **Response:** Full details for a specific lot.
+
+---
+
+### 5. Health Check (`GET /`)
+- **URL:** `/`
+- **Method:** `GET`
+- **Response:** `{"message": "Parkie API is online!"}`
+
+---
+
+## 🎨 Color Logic (Calculated in Backend)
+
+The `status_color` is calculated based on the **occupancy rate** (`occupied / capacity`):
+- 🟢 **Green:** Below 70% occupied.
+- 🟡 **Yellow:** Between 70% and 85% occupied.
+- 🔴 **Red:** Above 85% occupied.
+- ⚪ **Gray:** Invalid capacity (0 or less).
+
+---
+
+## 🛠️ Database Schema (Supabase)
+
+The `parking_lots` table should have the following columns:
+- `id`: `uuid` (Primary Key)
+- `name`: `text`
+- `capacity`: `int`
+- `available_spots`: `int`
+- `last_updated`: `timestamptz`
