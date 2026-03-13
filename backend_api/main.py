@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client, Client
 from typing import List, Dict
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -30,9 +31,9 @@ if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
-# Pydantic Model for the incoming request payload
+# Pydantic Model for the incoming request payload from the AI component
 class DetectionPayload(BaseModel):
-    lot_id: str
+    lot_id: str  # This is the UUID
     detected_cars: int
 
 def get_status_color(capacity: int, available_spots: int) -> str:
@@ -58,25 +59,33 @@ def get_status_color(capacity: int, available_spots: int) -> str:
 @app.post("/update_lot")
 async def update_lot(payload: DetectionPayload):
     """
-    Accepts JSON with lot_id and detected_cars.
-    Calculates available_spots, updates Supabase, and returns the new status.
+    Accepts JSON with lot_id (UUID) and detected_cars.
+    Calculates available_spots, updates Supabase (including last_updated), 
+    and returns the new status with the calculated color.
     """
-    # Fetch capacity to calculate availability
-    response = supabase.table("parking_lots").select("capacity").eq("id", payload.lot_id).execute()
+    # Fetch capacity and name to calculate availability and return context
+    response = supabase.table("parking_lots").select("name", "capacity").eq("id", payload.lot_id).execute()
     
     # Check if lot exists
     if not response.data:
         raise HTTPException(status_code=404, detail=f"Parking lot with ID '{payload.lot_id}' not found.")
     
-    capacity = response.data[0]["capacity"]
+    lot_data = response.data[0]
+    capacity = lot_data["capacity"]
+    name = lot_data["name"]
 
     # Calculate available spots: capacity - detected_cars
     # Clamp the result at 0 to avoid negative values
     available_spots = max(0, capacity - payload.detected_cars)
 
-    # Update the available_spots column in the Supabase table
+    # Update the available_spots and last_updated columns in Supabase
+    # Note: Supabase/PostgreSQL usually handles 'last_updated' via triggers, 
+    # but we can explicitly set it here for clarity during the hackathon.
     update_response = supabase.table("parking_lots") \
-        .update({"available_spots": available_spots}) \
+        .update({
+            "available_spots": available_spots,
+            "last_updated": datetime.utcnow().isoformat()
+        }) \
         .eq("id", payload.lot_id) \
         .execute()
 
@@ -84,18 +93,21 @@ async def update_lot(payload: DetectionPayload):
     if not update_response.data:
         raise HTTPException(status_code=500, detail="Failed to update database record.")
 
-    # Return success message with the new color
+    # Return success message with the new color and name
     return {
         "status": "success",
         "lot_id": payload.lot_id,
+        "name": name,
         "available_spots": available_spots,
-        "status_color": get_status_color(capacity, available_spots)
+        "status_color": get_status_color(capacity, available_spots),
+        "last_updated": update_response.data[0].get("last_updated")
     }
 
 @app.get("/lots")
 async def get_all_lots():
     """
-    Returns all parking lots with full details and color coding.
+    Returns all parking lots with full details (id, name, capacity, available_spots, last_updated)
+    and the dynamically calculated status_color.
     """
     response = supabase.table("parking_lots").select("*").execute()
     lots = response.data
@@ -125,7 +137,7 @@ async def get_all_lot_colors() -> List[Dict[str, str]]:
 @app.get("/lots/{lot_id}")
 async def get_lot(lot_id: str):
     """
-    Returns full details for a single parking lot by ID.
+    Returns full details for a single parking lot by ID (UUID).
     """
     response = supabase.table("parking_lots").select("*").eq("id", lot_id).execute()
 
