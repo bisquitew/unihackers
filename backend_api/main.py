@@ -76,4 +76,4 @@ async def update_lot(payload: DetectionPayload):
 # Root endpoint for basic health check
 @app.get("/")
 def read_root():
-    return {"message": "Smart Parking API is online!"}
+    return {"message": "Parkie API is online!"}
