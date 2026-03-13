@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Initialize FastAPI app
-app = FastAPI(title="Smart Parking API")
+app = FastAPI(title="Parkie")
 
 # Setup CORS: Allow all origins for the React Native app
 app.add_middleware(
@@ -66,7 +66,7 @@ async def update_lot(payload: DetectionPayload):
         raise HTTPException(status_code=500, detail="Failed to update database record.")
 
     # 4. Return success message
-    return {
+    return {    
         "status": "success",
         "lot_id": payload.lot_id,
         "new_available_spots": available_spots,
