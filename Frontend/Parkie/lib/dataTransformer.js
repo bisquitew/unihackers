@@ -38,6 +38,7 @@ export const formatTimestamp = (isoString) => {
   try {
     // Append Z if missing and it looks like a UTC timestamp from Python without offset
     let formattedIso = isoString;
+    //regex checks if the string ends with 'Z' or has a timezone offset, and if it contains 'T' (indicating it's a datetime)
     if (typeof isoString === 'string' && !isoString.endsWith('Z') && !/[+-]\d{2}(?::?\d{2})?$/.test(isoString) && isoString.includes('T')) {
       formattedIso = `${isoString}Z`;
     }
