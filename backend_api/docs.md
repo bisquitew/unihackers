@@ -147,7 +147,6 @@ The `status_color` is calculated based on the **occupancy rate** (`occupied / ca
 
 ## 🛠️ Database Schema (Supabase)
 
-<<<<<<< HEAD
 users Table
 This table stores the account details for parking lot owners.
 id: uuid (Primary Key)
@@ -169,7 +168,6 @@ slots_data: jsonb (Array of 8-coordinate vectors [x1, y1, x2, y2, x3, y3, x4, y4
 latitude: float8 (GPS Latitude)
 longitude: float8 (GPS Longitude)
 is_verified: boolean (Default: false, for admin review)
-=======
 The `parking_lots` table should have the following columns:
 - `id`: `uuid` (Primary Key - Auto-generated on Insert)
 - `name`: `text`
@@ -181,4 +179,3 @@ The `parking_lots` table should have the following columns:
 - `latitude`: `float8` (GPS Latitude)
 - `longitude`: `float8` (GPS Longitude)
 - `is_verified`: `boolean` (Default: false, for admin review)
->>>>>>> b5161881b41bf913fc39289fd2ef5946b253f54a
