@@ -61,14 +61,25 @@ This FastAPI service acts as the "glue" between the **AI Vision** component (det
 - **Method:** `PUT`
 - **Logic:** Replaces the configuration of an existing lot and resets `is_verified` to `false`.
 
-### 8. Admin: Verify Parking Lot (`PATCH /lots/{lot_id}/verify`)
+### 8. Capture Camera Frame (`POST /capture_frame`)
+**Used by:** Admin Dashboard (Setup phase).
+- **Payload:** `{ "camera_url": "..." }`
+- **Logic:** Connects to the camera stream, grabs exactly one frame, and returns it as a base64-encoded JPEG.
+
+### 9. Lot Configuration Setup (`POST /lots/{lot_id}/setup`)
+**Used by:** Admin Dashboard (Setup phase).
+- **Payload:** `{ "camera_url": "...", "slots_data": [[...], [...]] }`
+- **Logic:** Updates the `camera_url` and `slots_data` for a specific lot and recalculates `capacity`.
+
+### 10. Admin: Verify Parking Lot (`PATCH /lots/{lot_id}/verify`)
 **Used by:** Admin Dashboard.
 - **Method:** `PATCH`
 - **Query Params:** `verified` (bool, default: true)
 - **Logic:** Partially updates the lot to set its verification status.
 
-### 9. Get Lot Configuration (`GET /lots/{lot_id}/config`)
+### 11. Get Lot Configuration (`GET /lots/{lot_id}/config`)
 **Used by:** `ai_vision` script.
+- **Response:** Returns `camera_url` and `slots_data`.
 
 ---
 

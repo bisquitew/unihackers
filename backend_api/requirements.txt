@@ -5,3 +5,4 @@ pydantic[email]
 python-dotenv
 passlib[bcrypt]
 requests
+opencv-python-headless

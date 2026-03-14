@@ -1,4 +1,6 @@
 import os
+import cv2
+import base64
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, EmailStr
@@ -59,6 +61,13 @@ class LotSetupPayload(BaseModel):
     camera_url: str
     slots_data: List[List[int]]  # List of 8-value vectors: [x1, y1, x2, y2, x3, y3, x4, y4]
     capacity: Optional[int] = None # Optional, will default to len(slots_data) if not provided
+
+class CaptureFramePayload(BaseModel):
+    camera_url: str
+
+class LotAdminSetupPayload(BaseModel):
+    camera_url: str
+    slots_data: List[List[int]]
 
 def get_status_color(capacity: int, available_spots: int) -> str:
     """
@@ -312,6 +321,55 @@ async def setup_lot(lot_id: str, payload: LotSetupPayload):
         "status": "success",
         "lot_id": lot_id,
         "message": "Lot configuration updated. Pending admin re-verification."
+    }
+
+@app.post("/capture_frame")
+async def capture_frame(payload: CaptureFramePayload):
+    """
+    Connects to the camera_url, grabs one frame, and returns it as a base64 JPEG.
+    """
+    cap = cv2.VideoCapture(payload.camera_url)
+    if not cap.isOpened():
+        raise HTTPException(status_code=400, detail="Could not open camera stream.")
+    
+    success, frame = cap.read()
+    cap.release()
+    
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to capture frame from camera.")
+    
+    # Encode as JPEG
+    _, buffer = cv2.imencode('.jpg', frame)
+    base64_image = base64.b64encode(buffer).decode('utf-8')
+    
+    return {"image": f"data:image/jpeg;base64,{base64_image}"}
+
+@app.post("/lots/{lot_id}/setup")
+async def setup_lot_post(lot_id: str, payload: LotAdminSetupPayload):
+    """
+    Updates the camera_url and slots_data for a specific lot.
+    Also updates the capacity based on the number of slots.
+    """
+    capacity = len(payload.slots_data)
+    
+    update_response = supabase.table("parking_lots") \
+        .update({
+            "camera_url": payload.camera_url,
+            "slots_data": payload.slots_data,
+            "capacity": capacity,
+            "available_spots": capacity, 
+            "last_updated": datetime.now(timezone.utc).isoformat()
+        }) \
+        .eq("id", lot_id) \
+        .execute()
+
+    if not update_response.data:
+        raise HTTPException(status_code=404, detail=f"Parking lot with ID '{lot_id}' not found.")
+
+    return {
+        "status": "success",
+        "lot_id": lot_id,
+        "message": "Lot configuration updated successfully."
     }
 
 @app.patch("/lots/{lot_id}/verify")
