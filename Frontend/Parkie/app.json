@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "config": {
-        "googleMapsApiKey": "AIzaSyDG7Au-rsRkmO0L-r8T3F6Yz2xePuC7gKI"
+        "googleMapsApiKey": "AIzaSyA8D34j8YwXlwWqw_K9IlPHQuCvRFdhAVc"
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Parkie needs your location to find parking spots near you."
@@ -26,7 +26,7 @@
     "android": {
       "config": {
         "googleMaps": {
-          "apiKey": "AIzaSyDG7Au-rsRkmO0L-r8T3F6Yz2xePuC7gKI"
+          "apiKey": "AIzaSyA8D34j8YwXlwWqw_K9IlPHQuCvRFdhAVc"
         }
       },
       "adaptiveIcon": {
@@ -43,6 +43,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "react-native-maps",
+        {
+          "androidGoogleMapsApiKey": "AIzaSyA8D34j8YwXlwWqw_K9IlPHQuCvRFdhAVc"
+        }
+      ]
+    ]
   }
 }

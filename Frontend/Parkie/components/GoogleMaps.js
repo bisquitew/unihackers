@@ -81,15 +81,20 @@ export default function GoogleMaps({ parkingLots, onMarkerPress }) {
     <View style={styles.container}>
       <MapView
         style={styles.map}
-        initialRegion={initialRegion}
-        showsUserLocation={true}
-        showsMyLocationButton={true}
+        initialRegion={{
+          latitude: 37.78825,
+          longitude: -122.4324,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        }}
+        // showsUserLocation={true}
+        // showsMyLocationButton={true}
         // customMapStyle={darkMapStyle} // Temporarily disabled to check for rendering issues
         onMapReady={() => console.log('✅ GoogleMap Component: Map is Ready!')}
         onMapLoaded={() => console.log('✅ GoogleMap Component: Map Tiles Loaded Successfully!')}
         onError={(error) => console.error('❌ GoogleMap Component Error:', error.nativeEvent)}
       >
-        {parkingLots.map((lot) => (
+        {/* {parkingLots.map((lot) => (
           <Marker
             key={lot.id}
             coordinate={{
@@ -108,7 +113,7 @@ export default function GoogleMaps({ parkingLots, onMarkerPress }) {
               </View>
             </Callout>
           </Marker>
-        ))}
+        ))} */}
       </MapView>
       {errorMsg && (
         <View style={styles.errorOverlay}>
