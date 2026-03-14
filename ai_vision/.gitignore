@@ -10,6 +10,7 @@ CNR-EXT_FULL_IMAGE_1000x750/
 *.png
 *.gif
 *.avi
+*.MOV
 
 # ML Training Runs
 runs/

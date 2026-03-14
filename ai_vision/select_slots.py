@@ -39,7 +39,10 @@ def main():
 
     H, W, _ = frame.shape
     clone = frame.copy()
-    cv2.namedWindow("Select Slots")
+    cv2.namedWindow("Select Slots", cv2.WINDOW_NORMAL)
+    # Set a reasonable initial size if the image is too large
+    if W > 1280 or H > 720:
+        cv2.resizeWindow("Select Slots", 1280, 720)
     cv2.setMouseCallback("Select Slots", mouse_callback)
 
     print("\n--- Parking Slot Selector (Polygon Mode) ---")
