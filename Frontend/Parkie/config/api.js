@@ -1,7 +1,7 @@
 export const API_CONFIG = {
-  BASE_URL: process.env.API_BASE_URL || 'http://localhost:3000',
-  POLLING_INTERVAL: parseInt(process.env.POLLING_INTERVAL, 10) || 5000,
-  MAX_RETRY_ATTEMPTS: parseInt(process.env.MAX_RETRY_ATTEMPTS, 10) || 5,
-  RETRY_DELAY: parseInt(process.env.RETRY_DELAY, 10) || 1000,
-  TIMEOUT: parseInt(process.env.TIMEOUT, 10) || 5000,
+  BASE_URL: 'https://roderick-potbellied-margherita.ngrok-free.dev',
+  POLLING_INTERVAL: 5000, // in milliseconds
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 2000, // in milliseconds
+  TIMEOUT: 10000, // in milliseconds
 };

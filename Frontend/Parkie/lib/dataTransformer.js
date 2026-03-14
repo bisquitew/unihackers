@@ -36,9 +36,27 @@ export const formatTimestamp = (isoString) => {
   if (!isoString) return 'Unknown';
 
   try {
-    const date = new Date(isoString);
+    // Append Z if missing and it looks like a UTC timestamp from Python without offset
+    let formattedIso = isoString;
+    if (typeof isoString === 'string' && !isoString.endsWith('Z') && !/[+-]\d{2}(?::?\d{2})?$/.test(isoString) && isoString.includes('T')) {
+      formattedIso = `${isoString}Z`;
+    }
+
+    const date = new Date(formattedIso);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      console.warn('Invalid date:', isoString);
+      return 'Unknown';
+    }
+
     const now = new Date();
     const diffInSeconds = Math.floor((now - date) / 1000);
+
+    // If timestamp is in the future (can happen due to clock skew)
+    if (diffInSeconds < 0) {
+      return 'Just now';
+    }
 
     // Less than 1 minute
     if (diffInSeconds < 60) {
