@@ -138,7 +138,6 @@ The `status_color` is calculated based on the **occupancy rate** (`occupied / ca
 
 ## 🛠️ Database Schema (Supabase)
 
-🛠️ Database Schema (Supabase)
 users Table
 This table stores the account details for parking lot owners.
 id: uuid (Primary Key)
