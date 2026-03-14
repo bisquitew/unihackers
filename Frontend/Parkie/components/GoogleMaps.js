@@ -48,12 +48,13 @@ function DestinationPin() {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-export default function GoogleMaps({ parkingLots = [], onMarkerPress, destinationCoord }) {
+export default function GoogleMaps({ parkingLots = [], onMarkerPress, destinationCoord, onClearDestination }) {
   const [userLocation, setUserLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedLotId, setSelectedLotId] = useState(null);
   const mapRef = useRef(null);
+  const hasFittedRef = useRef(false);
 
   // ── Determine initial region ──────────────────────────────────────────────
   const getInitialRegion = () => {
@@ -102,20 +103,21 @@ export default function GoogleMaps({ parkingLots = [], onMarkerPress, destinatio
     })();
   }, []);
 
-  // ── When lots load, fit map to show all of them ───────────────────────────
+  // ── Fit map once on initial data load (not on every update) ───────────────
   useEffect(() => {
+    if (hasFittedRef.current) return;
     if (!mapRef.current || parkingLots.length === 0) return;
     const validLots = parkingLots.filter(l => l.latitude && l.longitude);
     if (validLots.length === 0) return;
 
     const coords = validLots.map(l => ({ latitude: l.latitude, longitude: l.longitude }));
-    // Add user location to the fit if available
     if (userLocation) coords.push({ latitude: userLocation.latitude, longitude: userLocation.longitude });
 
     mapRef.current.fitToCoordinates(coords, {
       edgePadding: { top: 80, right: 60, bottom: 80, left: 60 },
       animated: true,
     });
+    hasFittedRef.current = true;
   }, [parkingLots, userLocation]);
 
   // ── Re-fit when destination changes ──────────────────────────────────────
@@ -212,6 +214,16 @@ export default function GoogleMaps({ parkingLots = [], onMarkerPress, destinatio
           }
         >
           <Text style={styles.recenterIcon}>◎</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Clear destination button */}
+      {destinationCoord && onClearDestination && (
+        <TouchableOpacity
+          style={styles.clearDestBtn}
+          onPress={onClearDestination}
+        >
+          <Text style={styles.clearDestText}>✕ Clear</Text>
         </TouchableOpacity>
       )}
 
@@ -361,6 +373,31 @@ const styles = StyleSheet.create({
   recenterIcon: {
     color: colors.primary,
     fontSize: 22,
+  },
+
+  // Clear destination button
+  clearDestBtn: {
+    position: 'absolute',
+    bottom: 68,
+    right: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 22,
+    backgroundColor: colors.glassBackground,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  clearDestText: {
+    color: '#ef4444',
+    fontSize: 12,
+    fontWeight: '700',
   },
 
   // Lot count badge

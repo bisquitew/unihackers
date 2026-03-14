@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, StatusBar, SafeAreaView } from 'react-native';
+import { View, StyleSheet, StatusBar, SafeAreaView } from 'react-native';
 import TopBar from '../components/TopBar';
 import GoogleMaps from '../components/GoogleMaps';
 import ParkingCard from '../components/ParkingCard';
@@ -116,9 +116,7 @@ export default function HomeScreen() {
   };
 
   const handleCardClose = () => setCardVisible(false);
-  const handleSettingsPress = () => Alert.alert('Settings', 'Coming soon!');
   const handleNavigationPress = () => setSearchVisible(true);
-  const handleTalkPress = () => Alert.alert('Talk', 'Voice feature coming soon!');
 
   const handleSearchComplete = (coord) => {
     setDestinationCoord(coord);
@@ -135,7 +133,7 @@ export default function HomeScreen() {
       <View style={styles.container}>
         {/* Top Bar */}
         <View style={styles.topBarWrapper}>
-          <TopBar onSettingsPress={handleSettingsPress} />
+          <TopBar />
         </View>
 
         {/* Map in the middle */}
@@ -144,6 +142,7 @@ export default function HomeScreen() {
             parkingLots={parkingLots} 
             onMarkerPress={handleMarkerPress}
             destinationCoord={destinationCoord}
+            onClearDestination={() => setDestinationCoord(null)}
           />
         </View>
 
@@ -151,7 +150,6 @@ export default function HomeScreen() {
         <View style={styles.bottomNavWrapper}>
           <BottomNavBar 
             onNavigationPress={handleNavigationPress}
-            onTalkPress={handleTalkPress}
           />
         </View>
 
