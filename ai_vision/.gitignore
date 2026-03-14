@@ -17,7 +17,8 @@ __pycache__/
 *.pyc
 .env
 .ipynb_checkpoints/
+venv/
 
 # Assets
 # If you want to include specific models, you can un-ignore them like this:
-# !assets/parking_detector.pt
+!assets/parking_detector.pt
