@@ -15,7 +15,9 @@ export const transformLotData = (backendLot) => {
     occupied: Math.max(0, occupied), // Ensure non-negative
     status: backendLot.status_color,
     capacity: backendLot.capacity,
-    lastUpdated: backendLot.last_updated
+    lastUpdated: backendLot.last_updated,
+    latitude: backendLot.latitude,
+    longitude: backendLot.longitude
   };
 };
 

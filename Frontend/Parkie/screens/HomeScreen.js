@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Alert, StatusBar, SafeAreaView } from 'react-native';
 import TopBar from '../components/TopBar';
-import MapPlaceholder from '../components/MapPlaceholder';
+import GoogleMaps from '../components/GoogleMaps';
 import ParkingCard from '../components/ParkingCard';
 import BottomNavBar from '../components/BottomNavBar';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ErrorMessage from '../components/ErrorMessage';
 import { colors } from '../theme/colors';
 import { apiService } from '../lib/api';
-import { transformLotsData } from '../lib/dataTransformer';
+import { transformLotsData, transformLotData } from '../lib/dataTransformer';
 import { API_CONFIG } from '../config/api';
+import { supabase } from '../lib/supabase';
 
 export default function HomeScreen() {
   const [parkingLots, setParkingLots] = useState([]);
@@ -17,7 +18,6 @@ export default function HomeScreen() {
   const [cardVisible, setCardVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
 
   const fetchParkingLots = async () => {
     try {
@@ -26,52 +26,68 @@ export default function HomeScreen() {
         const transformedLots = transformLotsData(response);
         setParkingLots(transformedLots);
         setError(null);
-        setRetryCount(0);
       } else {
         throw new Error('Invalid response format');
       }
     } catch (err) {
-      const newRetryCount = retryCount + 1;
-      setRetryCount(newRetryCount);
-      if (newRetryCount >= (API_CONFIG.MAX_RETRIES || 3)) {
-        setError(err?.message || 'Failed to load parking data.');
-        setLoading(false);
-      }
+      setError(err?.message || 'Failed to load parking data.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    const initiate = async () => {
-      setLoading(true);
-      await fetchParkingLots();
-      setLoading(false);
-    };
-    initiate();
-  }, []);
+    fetchParkingLots();
 
-  useEffect(() => {
-    const pollingInterval = setInterval(() => {
-      if (!loading && !error) {
-        fetchParkingLots();
-      }
-    }, API_CONFIG.POLLING_INTERVAL);
-    return () => clearInterval(pollingInterval);
-  }, [loading, error, retryCount]);
+    // Subscribe to realtime updates for the parking_lots table
+    const subscription = supabase
+      .channel('parking-lots-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to INSERT, UPDATE, DELETE
+          schema: 'public',
+          table: 'parking_lots',
+        },
+        (payload) => {
+          if (payload.eventType === 'UPDATE') {
+            const updatedLot = transformLotData(payload.new);
+            setParkingLots((prevLots) =>
+              prevLots.map((lot) => (lot.id === updatedLot.id ? updatedLot : lot))
+            );
+            
+            // If the selected lot was updated, update its state too
+            setSelectedParking((prevSelected) => {
+              if (prevSelected && prevSelected.id === updatedLot.id) {
+                return updatedLot;
+              }
+              return prevSelected;
+            });
+          } else if (payload.eventType === 'INSERT') {
+            const newLot = transformLotData(payload.new);
+            setParkingLots((prevLots) => [...prevLots, newLot]);
+          } else if (payload.eventType === 'DELETE') {
+            setParkingLots((prevLots) =>
+              prevLots.filter((lot) => lot.id !== payload.old.id)
+            );
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
 
   const handleManualRetry = () => {
     setError(null);
-    setRetryCount(0);
     setLoading(true);
-    fetchParkingLots().then(() => setLoading(false));
+    fetchParkingLots();
   };
 
-  const handleMapPress = () => {
-    if (parkingLots.length === 0) {
-      Alert.alert('No Data', 'Parking data not loaded yet.');
-      return;
-    }
-    const randomIndex = Math.floor(Math.random() * parkingLots.length);
-    setSelectedParking(parkingLots[randomIndex]);
+  const handleMarkerPress = (lot) => {
+    setSelectedParking(lot);
     setCardVisible(true);
   };
 
@@ -85,7 +101,10 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         {/* Map is at the bottom layer */}
-        <MapPlaceholder onMapPress={handleMapPress} />
+        <GoogleMaps 
+          parkingLots={parkingLots} 
+          onMarkerPress={handleMarkerPress} 
+        />
 
         {/* Floating Top Bar */}
         <View style={styles.topBarWrapper}>
@@ -117,8 +136,6 @@ export default function HomeScreen() {
           <View style={styles.overlayContainer}>
             <ErrorMessage 
               error={error}
-              retryCount={retryCount}
-              maxRetries={API_CONFIG.MAX_RETRIES || 3}
               onRetry={handleManualRetry}
             />
           </View>

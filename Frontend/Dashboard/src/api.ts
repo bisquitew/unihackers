@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:8000';
+const API_BASE_URL = 'https://undateable-lashawnda-unnectareous.ngrok-free.dev';
 
 export const api = {
   async post(endpoint: string, data: any) {
