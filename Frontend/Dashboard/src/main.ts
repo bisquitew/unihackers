@@ -17,6 +17,7 @@ interface ParkingLot {
   status_color: string;
   capacity: number;
   available_spots: number;
+  slots_data?: number[][];
 }
 
 // --- State ---
@@ -303,11 +304,21 @@ function renderLotView() {
 
 let points: { x: number, y: number }[] = [];
 let img: HTMLImageElement;
+let draggingPointIndex: number | null = null;
 
 function initCanvas(base64Image: string, cameraUrl: string) {
   const canvas = document.querySelector('#detection-canvas') as HTMLCanvasElement;
   const ctx = canvas.getContext('2d')!;
   const saveBtn = document.querySelector('#save-config') as HTMLButtonElement;
+
+  // Initialize from existing slots if available and not already initialized
+  if (points.length === 0 && currentLot?.slots_data) {
+    currentLot.slots_data.forEach(slot => {
+        for (let i = 0; i < 8; i += 2) {
+            points.push({ x: slot[i], y: slot[i+1] });
+        }
+    });
+  }
 
   img = new Image();
   img.src = base64Image;
@@ -318,16 +329,41 @@ function initCanvas(base64Image: string, cameraUrl: string) {
     draw();
   };
 
-  canvas.addEventListener('click', (e) => {
-    if (!img.complete || !img.src) return;
+  const getMousePos = (e: MouseEvent) => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    const x = Math.round((e.clientX - rect.left) * scaleX);
-    const y = Math.round((e.clientY - rect.top) * scaleY);
-    
-    points.push({ x, y });
+    return {
+        x: Math.round((e.clientX - rect.left) * scaleX),
+        y: Math.round((e.clientY - rect.top) * scaleY)
+    };
+  };
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (!img.complete || !img.src) return;
+    const { x, y } = getMousePos(e);
+
+    // Check if clicking near an existing point to drag
+    const hitRadius = 10;
+    const hitIndex = points.findIndex(p => Math.hypot(p.x - x, p.y - y) < hitRadius);
+
+    if (hitIndex !== -1) {
+      draggingPointIndex = hitIndex;
+    } else {
+      points.push({ x, y });
+      draw();
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (draggingPointIndex === null) return;
+    const { x, y } = getMousePos(e);
+    points[draggingPointIndex] = { x, y };
     draw();
+  });
+
+  window.addEventListener('mouseup', () => {
+    draggingPointIndex = null;
   });
 
   document.querySelector('#undo-point')?.addEventListener('click', () => {
@@ -376,9 +412,9 @@ function initCanvas(base64Image: string, cameraUrl: string) {
     ctx.drawImage(img, 0, 0);
 
     ctx.lineWidth = 2;
-    ctx.strokeStyle = '#aa3bff';
     
     for (let i = 0; i < points.length; i += 4) {
+      ctx.strokeStyle = '#aa3bff';
       ctx.beginPath();
       ctx.moveTo(points[i].x, points[i].y);
       if (points[i+1]) ctx.lineTo(points[i+1].x, points[i+1].y);
@@ -388,7 +424,7 @@ function initCanvas(base64Image: string, cameraUrl: string) {
       ctx.stroke();
       
       for (let j = 0; j < 4 && i+j < points.length; j++) {
-        ctx.fillStyle = '#aa3bff';
+        ctx.fillStyle = i+j === draggingPointIndex ? '#ff00ff' : '#aa3bff';
         ctx.beginPath();
         ctx.arc(points[i+j].x, points[i+j].y, 5, 0, Math.PI * 2);
         ctx.fill();
@@ -398,6 +434,7 @@ function initCanvas(base64Image: string, cameraUrl: string) {
     const remaining = points.length % 4;
     if (remaining > 0) {
       const start = points.length - remaining;
+      ctx.strokeStyle = '#ff3b3b';
       ctx.beginPath();
       ctx.moveTo(points[start].x, points[start].y);
       for (let j = 1; j < remaining; j++) {
@@ -406,7 +443,7 @@ function initCanvas(base64Image: string, cameraUrl: string) {
       ctx.stroke();
       
       for (let j = 0; j < remaining; j++) {
-        ctx.fillStyle = '#ff3b3b';
+        ctx.fillStyle = start+j === draggingPointIndex ? '#ff00ff' : '#ff3b3b';
         ctx.beginPath();
         ctx.arc(points[start+j].x, points[start+j].y, 5, 0, Math.PI * 2);
         ctx.fill();
