@@ -4,7 +4,7 @@ import { API_CONFIG } from '../config/api';
  * Retry wrapper for API calls
  * Automatically retries up to MAX_RETRY_ATTEMPTS times
  */
-const retryFetch = async (fetchFn, maxAttempts = API_CONFIG.MAX_RETRY_ATTEMPTS) => {
+const retryFetch = async (fetchFn, maxAttempts = API_CONFIG.MAX_RETRIES || 3) => {
   let lastError;
   
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -15,13 +15,13 @@ const retryFetch = async (fetchFn, maxAttempts = API_CONFIG.MAX_RETRY_ATTEMPTS) 
       }
       return await response.json();
     } catch (error) {
-      lastError = error;
-      console.warn(`Attempt ${attempt}/${maxAttempts} failed:`, error.message);
+      lastError = error || new Error('Unknown error during fetch');
+      console.warn(`Attempt ${attempt}/${maxAttempts} failed:`, lastError.message);
       
       if (attempt < maxAttempts) {
         // Wait before retrying (with exponential backoff)
         await new Promise(resolve => 
-          setTimeout(resolve, API_CONFIG.RETRY_DELAY * attempt)
+          setTimeout(resolve, (API_CONFIG.RETRY_DELAY || 2000) * attempt)
         );
       }
     }
@@ -43,7 +43,7 @@ export const apiService = {
         })
       );
     } catch (error) {
-      throw new Error(`Health check failed: ${error.message}`);
+      throw new Error(`Health check failed: ${error?.message || 'Unknown error'}`);
     }
   },
 
@@ -63,7 +63,7 @@ export const apiService = {
         })
       );
     } catch (error) {
-      throw new Error(`Failed to fetch lots: ${error.message}`);
+      throw new Error(`Failed to fetch lots: ${error?.message || 'Unknown error'}`);
     }
   },
 
@@ -83,7 +83,7 @@ export const apiService = {
         })
       );
     } catch (error) {
-      throw new Error(`Failed to fetch lot colors: ${error.message}`);
+      throw new Error(`Failed to fetch lot colors: ${error?.message || 'Unknown error'}`);
     }
   },
 
@@ -103,7 +103,7 @@ export const apiService = {
         })
       );
     } catch (error) {
-      throw new Error(`Failed to fetch lot details: ${error.message}`);
+      throw new Error(`Failed to fetch lot details: ${error?.message || 'Unknown error'}`);
     }
   },
 
@@ -128,7 +128,7 @@ export const apiService = {
         })
       );
     } catch (error) {
-      throw new Error(`Failed to update lot: ${error.message}`);
+      throw new Error(`Failed to update lot: ${error?.message || 'Unknown error'}`);
     }
   }
 };

@@ -84,7 +84,7 @@ async def update_lot(payload: DetectionPayload):
     update_response = supabase.table("parking_lots") \
         .update({
             "available_spots": available_spots,
-            "last_updated": datetime.utcnow().isoformat()
+            "last_updated": datetime.utcnow().isoformat() + "Z"
         }) \
         .eq("id", payload.lot_id) \
         .execute()

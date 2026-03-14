@@ -1,7 +1,7 @@
 export const API_CONFIG = {
-  BASE_URL: 'http://127.0.0.1:8000',
-  POLLING_INTERVAL: 5000,        // 5 seconds
-  MAX_RETRY_ATTEMPTS: 5,
-  RETRY_DELAY: 1000,             // 1s between retries
-  TIMEOUT: 5000
+  BASE_URL: 'https://roderick-potbellied-margherita.ngrok-free.dev',
+  POLLING_INTERVAL: 5000, // in milliseconds
+  MAX_RETRIES: 3,
+  RETRY_DELAY: 2000, // in milliseconds
+  TIMEOUT: 10000, // in milliseconds
 };

@@ -41,9 +41,9 @@ export default function HomeScreen() {
       const newRetryCount = retryCount + 1;
       setRetryCount(newRetryCount);
       
-      // After 5 failed attempts, show error message
-      if (newRetryCount >= API_CONFIG.MAX_RETRY_ATTEMPTS) {
-        setError(err.message || 'Failed to load parking data. Check your connection.');
+      // After max failed attempts, show error message
+      if (newRetryCount >= (API_CONFIG.MAX_RETRIES || 3)) {
+        setError(err?.message || 'Failed to load parking data. Check your connection.');
         setLoading(false);
       }
     }
@@ -142,7 +142,7 @@ export default function HomeScreen() {
         <ErrorMessage 
           error={error}
           retryCount={retryCount}
-          maxRetries={API_CONFIG.MAX_RETRY_ATTEMPTS}
+          maxRetries={API_CONFIG.MAX_RETRIES || 3}
           onRetry={handleManualRetry}
         />
         <BottomNavBar 
