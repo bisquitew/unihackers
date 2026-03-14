@@ -16,11 +16,19 @@
     },
     "ios": {
       "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "AIzaSyDG7Au-rsRkmO0L-r8T3F6Yz2xePuC7gKI"
+      },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Parkie needs your location to find parking spots near you."
       }
     },
     "android": {
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDG7Au-rsRkmO0L-r8T3F6Yz2xePuC7gKI"
+        }
+      },
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -29,7 +37,8 @@
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "INTERNET"
       ]
     },
     "web": {

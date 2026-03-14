@@ -100,23 +100,18 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" />
       <View style={styles.container}>
-        {/* Map is at the bottom layer */}
-        <GoogleMaps 
-          parkingLots={parkingLots} 
-          onMarkerPress={handleMarkerPress} 
-        />
-
-        {/* Floating Top Bar */}
+        {/* Top Bar */}
         <View style={styles.topBarWrapper}>
           <TopBar onSettingsPress={handleSettingsPress} />
         </View>
 
-        {/* Parking Card Overlay */}
-        <ParkingCard 
-          visible={cardVisible}
-          parking={selectedParking}
-          onClose={handleCardClose}
-        />
+        {/* Map in the middle */}
+        <View style={styles.mapWrapper}>
+          <GoogleMaps 
+            parkingLots={parkingLots} 
+            onMarkerPress={handleMarkerPress} 
+          />
+        </View>
 
         {/* Floating Bottom Nav */}
         <View style={styles.bottomNavWrapper}>
@@ -125,6 +120,13 @@ export default function HomeScreen() {
             onTalkPress={handleTalkPress}
           />
         </View>
+
+        {/* Parking Card Overlay */}
+        <ParkingCard 
+          visible={cardVisible}
+          parking={selectedParking}
+          onClose={handleCardClose}
+        />
 
         {loading && parkingLots.length === 0 && (
           <View style={styles.overlayContainer}>
@@ -155,18 +157,18 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   topBarWrapper: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    right: 20,
+    marginTop: 10,
+    marginHorizontal: 16,
     zIndex: 10,
   },
   bottomNavWrapper: {
-    position: 'absolute',
-    bottom: 30,
-    left: 40,
-    right: 40,
+    marginBottom: 20,
+    marginHorizontal: 16,
     zIndex: 10,
+  },
+  mapWrapper: {
+    flex: 1,
+    zIndex: 1,
   },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,

@@ -85,7 +85,10 @@ export default function GoogleMaps({ parkingLots, onMarkerPress }) {
         initialRegion={initialRegion}
         showsUserLocation={true}
         showsMyLocationButton={true}
-        customMapStyle={darkMapStyle}
+        // customMapStyle={darkMapStyle} // Temporarily disabled to check for rendering issues
+        onMapReady={() => console.log('✅ GoogleMap Component: Map is Ready!')}
+        onMapLoaded={() => console.log('✅ GoogleMap Component: Map Tiles Loaded Successfully!')}
+        onError={(error) => console.error('❌ GoogleMap Component Error:', error.nativeEvent)}
       >
         {parkingLots.map((lot) => (
           <Marker
@@ -119,10 +122,15 @@ export default function GoogleMaps({ parkingLots, onMarkerPress }) {
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
+    marginHorizontal: 16,
+    marginVertical: 16,
+    borderRadius: 16,
+    overflow: 'hidden', // Ensures the map respects the borderRadius
+    backgroundColor: colors.secondary,
   },
   map: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
   },
   loadingContainer: {
     flex: 1,
