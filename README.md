@@ -1,3 +1,6 @@
+#todo list for the team, check
+
+
 # UNIHACK – Timișoara City Hub: Project Brief
 
 Nov 13, 2026
