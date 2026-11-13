@@ -1,4 +1,4 @@
-import { z } from './zod-shim';
+import { z } from './zod-shim.ts';
 
 // Roles required by Auth0 & System (Section 3 & 4)
 export const UserRoleSchema = z.enum([
