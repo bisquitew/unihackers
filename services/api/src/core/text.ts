@@ -9,8 +9,9 @@ export function normalizePlace(s: string): string {
 // Generic words that would make every street or square match each other.
 const GENERIC = new Set(['strada', 'str', 'calea', 'bulevardul', 'bd', 'bdul', 'piata', 'aleea', 'zona', 'cartierul', 'de', 'din', 'la', 'si', 'nr', 'timisoara']);
 
-// "complex" ~ "complexul", "piata" ~ "pietei": one word is a prefix of the other (min 4 letters).
-const sameWord = (a: string, b: string) => Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a));
+// Equal words ("700"), or "complex" ~ "complexul": one word is a prefix of the other (min 4 letters).
+const sameWord = (a: string, b: string) =>
+  a === b || (Math.min(a.length, b.length) >= 4 && (a.startsWith(b) || b.startsWith(a)));
 
 /** True if a stored place name (area, street, stop) and a user query refer to the same place. */
 export function placeMatches(stored: string, query: string): boolean {
