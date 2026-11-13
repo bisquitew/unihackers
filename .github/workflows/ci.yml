@@ -1,0 +1,39 @@
+name: UNIHACK 2026 CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verify-platform:
+    name: Verify P2 Platform, Contracts & API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify Contracts Barrel Export
+        run: |
+          node --experimental-strip-types -e 'import * as contracts from "./packages/contracts/src/index.ts"; console.log("Contracts loaded:", Object.keys(contracts).length, "exports");'
+
+      - name: Run API Server in Background
+        run: |
+          node --experimental-strip-types services/api/src/server.ts &
+          sleep 3
+
+      - name: Run P2 Automated Verification Suite
+        run: |
+          python3 scripts/test_p2.py

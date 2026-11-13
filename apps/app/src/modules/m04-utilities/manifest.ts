@@ -1,4 +1,4 @@
-import { ModuleManifest } from '@hub/contracts';
+import type { ModuleManifest } from '@hub/contracts';
 
 export const utilitiesManifest: ModuleManifest = {
   id: 'm04-utilities',
