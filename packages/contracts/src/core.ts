@@ -1,4 +1,4 @@
-import { z } from './zod-shim';
+import { z } from './zod-shim.ts';
 
 // Roles required by Auth0 & System (Section 3 & 4)
 export const UserRoleSchema = z.enum([
@@ -141,4 +141,29 @@ export interface CoreEvent {
   topic: string;
   payload: Record<string, any>;
   created_at: string;
+}
+
+// Photo Upload Service (Vultr Object Storage / S3 signed URLs)
+export const UploadRequestSchema = z.object({
+  filename: z.string(),
+  content_type: z.string(),
+  module_id: z.string().default('general')
+});
+export interface UploadRequestPayload {
+  filename: string;
+  content_type: string;
+  module_id?: string;
+}
+
+export const UploadSignedUrlResponseSchema = z.object({
+  upload_url: z.string(),
+  public_url: z.string(),
+  key: z.string(),
+  expires_in: z.number()
+});
+export interface UploadSignedUrlResponse {
+  upload_url: string;
+  public_url: string;
+  key: string;
+  expires_in: number;
 }

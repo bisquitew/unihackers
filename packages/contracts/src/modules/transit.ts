@@ -1,4 +1,4 @@
-import { z } from '../zod-shim';
+import { z } from '../zod-shim.ts';
 
 export const TransitVehicleTypeSchema = z.enum(['tram', 'bus', 'trolleybus'] as const);
 export type TransitVehicleType = 'tram' | 'bus' | 'trolleybus';

@@ -10,7 +10,11 @@ import { getUserNotifications, markNotificationAsRead } from './core/notificatio
 import { getAllFlags } from './core/flags';
 import { registeredModules } from './modules/index';
 
-const app = new Hono();
+type AppVariables = {
+  user?: any;
+};
+
+const app = new Hono<{ Variables: AppVariables }>();
 
 // Middlewares
 app.use('*', logger());
@@ -39,7 +43,7 @@ app.get('/', (c) => c.json({
 // ==========================================
 // CORE ROUTES (/v1/core/...)
 // ==========================================
-const core = new Hono();
+const core = new Hono<{ Variables: AppVariables }>();
 
 // Areas in Timișoara
 core.get('/areas', (c) => c.json(TIMISOARA_AREAS));

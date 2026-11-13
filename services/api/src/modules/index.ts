@@ -1,12 +1,13 @@
 import { Hono } from 'hono';
-import m01Events from './m01-events';
-import m07Buddy from './m07-buddy';
-import m08Forum from './m08-forum';
-import m09Wallet from './m09-wallet';
-import m11Feedback from './m11-feedback';
-import { utilitiesApiModule } from './m04-utilities/index';
-import { transitApiModule } from './m05-transit/index';
-import type { ApiModule } from '../types';
+import m01Events from './m01-events/index.ts';
+import m07Buddy from './m07-buddy/index.ts';
+import m08Forum from './m08-forum/index.ts';
+import m09Wallet from './m09-wallet/index.ts';
+import m11Feedback from './m11-feedback/index.ts';
+import { utilitiesApiModule } from './m04-utilities/index.ts';
+import { transitApiModule } from './m05-transit/index.ts';
+import { parkieApiModule } from './parkie/index.ts';
+import type { ApiModule } from '../types.ts';
 
 // Helper to create empty stub module so all routes exist without merge conflicts
 function createStubModule(id: string): ApiModule {
@@ -32,7 +33,7 @@ export const registeredModules: ApiModule[] = [
   createStubModule('m10-assistant'),
   m11Feedback,                                 // [M11_FEEDBACK] - P4
   createStubModule('m12-dashboard'),
-  createStubModule('parkie')
+  parkieApiModule      // [PARKIE] - P2 & P1
 ];
 
 export const registeredApiModules = registeredModules;
@@ -44,4 +45,5 @@ export {
   m09Wallet,
   utilitiesApiModule,
   transitApiModule,
+  parkieApiModule,
 };

@@ -8,7 +8,7 @@ CREATE EXTENSION IF NOT EXISTS "postgis";
 
 -- 1. Users Table (Auth0 mapped)
 CREATE TABLE IF NOT EXISTS core_users (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     auth0_id VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255) NOT NULL,
@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS core_areas (
 
 -- 3. Saved Places (Addresses saved by residents)
 CREATE TABLE IF NOT EXISTS core_saved_places (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES core_users(id) ON DELETE CASCADE,
     label VARCHAR(100) NOT NULL, -- 'Home', 'Work', 'Dorm'
     address TEXT NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS core_saved_places (
 
 -- 4. In-App Notifications
 CREATE TABLE IF NOT EXISTS core_notifications (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES core_users(id) ON DELETE CASCADE,
     module_id VARCHAR(50) NOT NULL,
     title VARCHAR(255) NOT NULL,
@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS core_feature_flags (
 
 -- 6. Events Outbox (for decoupled event bus)
 CREATE TABLE IF NOT EXISTS core_events_outbox (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     topic VARCHAR(100) NOT NULL,
     payload JSONB NOT NULL,
     processed BOOLEAN NOT NULL DEFAULT FALSE,

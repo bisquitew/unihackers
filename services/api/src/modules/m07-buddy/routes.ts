@@ -39,6 +39,27 @@ buddyRoutes.post('/match', async (c) => {
   }
 });
 
+// Create or get group chat
+buddyRoutes.post('/chats', async (c) => {
+  try {
+    const body = await c.req.json<{
+      eventId: string;
+      eventTitle: string;
+      participantIds: string[];
+      participantNames: string[];
+    }>();
+    const chat = await buddyService.getOrCreateChat(
+      body.eventId,
+      body.eventTitle,
+      body.participantIds || [],
+      body.participantNames || []
+    );
+    return c.json({ chat });
+  } catch {
+    return c.json({ error: 'Failed to create chat' }, 400);
+  }
+});
+
 // Get chats for an event
 buddyRoutes.get('/chats/:eventId', async (c) => {
   const eventId = c.req.param('eventId');

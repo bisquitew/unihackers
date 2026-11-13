@@ -4,7 +4,7 @@
 -- ===================================================
 
 CREATE TABLE IF NOT EXISTS m04_utilities_outages (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     provider VARCHAR(50) NOT NULL, -- 'colterm', 'aquatim', etc.
     type VARCHAR(50) NOT NULL, -- 'heating_and_hot_water', 'cold_water', etc.
     status VARCHAR(50) NOT NULL DEFAULT 'unplanned_breakdown', -- 'unplanned_breakdown', 'scheduled_maintenance', 'resolved'
@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_m04_outages_status ON m04_utilities_outages(statu
 
 -- Crowd Confirmations
 CREATE TABLE IF NOT EXISTS m04_outage_confirmations (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     outage_id UUID NOT NULL REFERENCES m04_utilities_outages(id) ON DELETE CASCADE,
     user_id UUID,
     note TEXT,

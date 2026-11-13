@@ -4,8 +4,19 @@ import { userService } from './core/users.ts';
 import { getAllFlags } from './core/flags.ts';
 import { utilitiesService } from './modules/m04-utilities/service.ts';
 import { transitService } from './modules/m05-transit/service.ts';
+import { parkieService } from './modules/parkie/service.ts';
+import { storageService } from './core/storage.ts';
 
 const PORT = parseInt(process.env.PORT || '8000', 10);
+
+// Raw buffer parser for uploads
+async function parseRawBuffer(req: http.IncomingMessage): Promise<Buffer> {
+  return new Promise((resolve) => {
+    const chunks: Buffer[] = [];
+    req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+  });
+}
 
 // Simple body parser
 async function parseBody(req: http.IncomingMessage): Promise<any> {
@@ -96,6 +107,36 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, getAllFlags());
     }
 
+    // 4b. Photo Upload Service (Vultr Object Storage / signed URLs)
+    if (pathname === '/v1/core/upload/signed-url' && method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.filename || !body.content_type) {
+        return sendJson(res, 400, { error: 'Missing filename or content_type in upload request' });
+      }
+      const signed = storageService.createSignedUploadUrl(body, req.headers.host || `localhost:${PORT}`);
+      return sendJson(res, 200, signed);
+    }
+
+    if (pathname.startsWith('/v1/core/upload/raw/') && method === 'PUT') {
+      const key = decodeURIComponent(pathname.replace('/v1/core/upload/raw/', ''));
+      const buffer = await parseRawBuffer(req);
+      await storageService.saveLocalFile(key, buffer);
+      return sendJson(res, 200, { ok: true, key, size: buffer.length });
+    }
+
+    if (pathname.startsWith('/uploads/') && method === 'GET') {
+      const key = decodeURIComponent(pathname.replace('/uploads/', ''));
+      const file = storageService.getLocalFile(key);
+      if (!file) return sendJson(res, 404, { error: 'Uploaded file not found', key });
+      res.writeHead(200, {
+        'Content-Type': file.contentType,
+        'Content-Length': file.data.length,
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.end(file.data);
+      return;
+    }
+
     // 5. [M04_UTILITIES] Outages
     if ((pathname === '/v1/m/utilities/outages' || pathname === '/v1/m/m04-utilities/outages') && method === 'GET') {
       const provider = url.searchParams.get('provider') || undefined;
@@ -138,7 +179,8 @@ const server = http.createServer(async (req, res) => {
         affected_stops: body.affected_stops || [],
         alternative_instructions: body.alternative_instructions,
         replacement_line: body.replacement_line,
-        valid_from: body.valid_from || new Date().toISOString()
+        valid_from: body.valid_from || new Date().toISOString(),
+        created_at: new Date().toISOString()
       });
       return sendJson(res, 201, created);
     }
@@ -150,6 +192,59 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, result);
     }
 
+    // 7. [PARKIE] Real-time Parking Lots & CV Detections
+    if (pathname === '/v1/m/parkie/lots' && method === 'GET') {
+      const statusColor = url.searchParams.get('status_color') || undefined;
+      const minAvailable = url.searchParams.get('min_available') ? parseInt(url.searchParams.get('min_available')!, 10) : undefined;
+      const lots = parkieService.getAllLots({ status_color: statusColor, min_available: minAvailable });
+      return sendJson(res, 200, lots);
+    }
+
+    if (pathname === '/v1/m/parkie/lots/colors' && method === 'GET') {
+      return sendJson(res, 200, parkieService.getLotColorsOnly());
+    }
+
+    if (pathname === '/v1/m/parkie/nearest' && method === 'GET') {
+      const lat = parseFloat(url.searchParams.get('lat') || '45.7578');
+      const lng = parseFloat(url.searchParams.get('lng') || '21.2290');
+      const limit = parseInt(url.searchParams.get('limit') || '5', 10);
+      const nearest = parkieService.findNearestLots(lat, lng, limit);
+      return sendJson(res, 200, nearest);
+    }
+
+    if (pathname.startsWith('/v1/m/parkie/lots/') && method === 'GET') {
+      const id = pathname.replace('/v1/m/parkie/lots/', '');
+      const lot = parkieService.getLotById(id);
+      if (!lot) return sendJson(res, 404, { error: 'Parking lot not found', id });
+      return sendJson(res, 200, lot);
+    }
+
+    if (pathname === '/v1/m/parkie/detections' && method === 'POST') {
+      const body = await parseBody(req);
+      const lotId = body.lot_id;
+      const detectedCars = parseInt(body.detected_cars ?? '0', 10);
+
+      if (!lotId) {
+        return sendJson(res, 400, { error: 'Missing lot_id in detection payload' });
+      }
+
+      const updated = await parkieService.updateDetections(lotId, detectedCars);
+      if (!updated) {
+        return sendJson(res, 404, { error: 'Parking lot not found for detection update', lotId });
+      }
+
+      return sendJson(res, 200, updated);
+    }
+
+    if (pathname === '/v1/m/parkie/lots' && method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.name || body.latitude === undefined || body.longitude === undefined || body.capacity === undefined) {
+        return sendJson(res, 400, { error: 'Missing required lot fields: name, latitude, longitude, capacity' });
+      }
+      const created = await parkieService.createLot(body);
+      return sendJson(res, 201, created);
+    }
+
     // 404
     return sendJson(res, 404, { error: 'Route not found', path: pathname });
   } catch (err: any) {
@@ -157,9 +252,23 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Timișoara City Hub API running on http://localhost:${PORT}`);
-  console.log(`   Health: http://localhost:${PORT}/health`);
-  console.log(`   Utilities: http://localhost:${PORT}/v1/m/utilities/outages`);
-  console.log(`   Transit: http://localhost:${PORT}/v1/m/transit/lines`);
-});
+function startServer(port: number) {
+  server.once('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.warn(`⚠️ Port ${port} is in use, falling back to port ${port + 1}...`);
+      startServer(port + 1);
+    } else {
+      console.error('Server error:', err);
+    }
+  });
+
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`🚀 Timișoara City Hub API running on http://localhost:${port}`);
+    console.log(`   Health: http://localhost:${port}/health`);
+    console.log(`   Utilities: http://localhost:${port}/v1/m/utilities/outages`);
+    console.log(`   Transit: http://localhost:${port}/v1/m/transit/lines`);
+    console.log(`   Parkie: http://localhost:${port}/v1/m/parkie/lots`);
+  });
+}
+
+startServer(PORT);

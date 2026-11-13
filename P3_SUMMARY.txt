@@ -166,7 +166,8 @@ E. FRONTEND SCREENS & COMPONENTS (apps/app/src/modules/ & app/)
        Module manifest (id: 'm08-forum', title: 'Comunitate & Forum', icon: 'message-square').
    - apps/app/src/modules/m08-forum/ForumScreen.tsx
        Interactive React Native screen: Category filter pills, post cards with 
-       photos and neighbourhood tags, comment drawer, upvoting, and post-creation modal.
+       photos and neighbourhood tags, comment drawer, upvoting, post-creation modal,
+        and MODERATOR VIEW (panou de moderare cu coadă de raportări, aprobare și ștergere postări).
    - apps/app/src/modules/m08-forum/index.ts
        Exports manifest and ForumScreen.
 
@@ -187,8 +188,12 @@ E. FRONTEND SCREENS & COMPONENTS (apps/app/src/modules/ & app/)
    - apps/app/src/modules/m07-buddy/manifest.ts
        Module manifest (id: 'm07-buddy', title: 'Cu Cine?', icon: 'users').
    - apps/app/src/modules/m07-buddy/BuddyModal.tsx
-       Bottom sheet modal listing companion requests, university info, bio, 
-       interest tags (#film, #techno), icebreaker prompts, and a "Post Request" form.
+        Modal component cu 3 moduri de vizualizare:
+        * 'list': Listă cereri parteneri, bio, taguri (#film, #techno), icebreaker
+        * 'chat': ECRAN DE CHAT INTERACTIV cu mesaje tip bule, prompturi icebreaker,
+          butoane de răspuns rapid (quick replies), trimitere mesaje și răspuns
+          automat simulat după 1.1s (perfect pentru pitch live la hackathon)
+        * 'post': Formular dedicat pentru postarea unei cereri noi de companion
    - apps/app/src/modules/m07-buddy/index.ts
        Exports manifest and BuddyModal.
 

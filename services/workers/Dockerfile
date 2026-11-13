@@ -1,24 +1,14 @@
-FROM node:20-alpine AS builder
+FROM node:22-alpine
 
 WORKDIR /app
+ENV NODE_ENV=production
 
 COPY package.json pnpm-workspace.yaml ./
 COPY packages/contracts ./packages/contracts
 COPY services/workers ./services/workers
 
-RUN npm install -g pnpm && pnpm install --filter @hub/workers...
-RUN pnpm --filter @hub/contracts build
-RUN pnpm --filter @hub/workers build
+# Link @hub/contracts
+RUN mkdir -p services/workers/node_modules/@hub && \
+    ln -sf ../../../packages/contracts services/workers/node_modules/@hub/contracts
 
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-ENV NODE_ENV=production
-
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/packages/contracts ./packages/contracts
-COPY --from=builder /app/services/workers/dist ./services/workers/dist
-COPY --from=builder /app/services/workers/node_modules ./services/workers/node_modules
-COPY --from=builder /app/services/workers/package.json ./services/workers/package.json
-
-CMD ["node", "services/workers/dist/index.js"]
+CMD ["node", "--experimental-strip-types", "services/workers/src/index.ts"]

@@ -1,7 +1,19 @@
-const API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+let API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
+
+async function resolveApiUrl(): Promise<string> {
+  if (process.env.API_BASE_URL) return process.env.API_BASE_URL;
+  for (const port of [8000, 8001, 8080]) {
+    try {
+      const res = await fetch(`http://localhost:${port}/health`, { signal: AbortSignal.timeout(400) });
+      if (res.ok) return `http://localhost:${port}`;
+    } catch {}
+  }
+  return 'http://localhost:8000';
+}
 
 export async function runTransitIngestion() {
-  console.log('[NETROM GLUE] 🔄 Running STPT Transit Roadworks Ingestion...');
+  API_BASE_URL = await resolveApiUrl();
+  console.log(`[NETROM GLUE] 🔄 Running STPT Transit Roadworks Ingestion against ${API_BASE_URL}...`);
 
   const detourUpdate = {
     line_number: '5',
