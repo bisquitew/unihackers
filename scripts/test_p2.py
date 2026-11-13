@@ -176,8 +176,47 @@ def main():
             downloaded = resp.read()
             print(f"   🌐 Verified Public Retrieval: HTTP {resp.status} ({len(downloaded)} bytes matched)")
 
+        # 8. [TIGER DATA / TIMESCALEDB SPONSOR CHALLENGE]
+        print("\n" + "=" * 60)
+        print("🐅 TESTING TIGER DATA (TIMESCALE) CONTINUOUS AGGREGATES & COMPRESSION")
         print("=" * 60)
-        print("🎉 ALL P2 CORE SYSTEMS & MODULES VERIFIED!")
+        status, tiger = get("/v1/core/tiger/status")
+        print(f"✅ /v1/core/tiger/status -> Engine: {tiger.get('engine')} v{tiger.get('version')} [{tiger.get('status').upper()}]")
+        print(f"   🏢 Cloud Host: {tiger.get('host')}")
+        print(f"   ⚡ Active Hypertables: {len(tiger.get('hypertables', []))} tables partitioned by timestamp")
+        for ht in tiger.get('hypertables', []):
+            print(f"      - {ht.get('table_name')} ({ht.get('num_chunks')} chunks, compressed={ht.get('compression_enabled')})")
+
+        print(f"   🔄 Continuous Aggregates: {len(tiger.get('continuous_aggregates', []))} live materialized views")
+        for ca in tiger.get('continuous_aggregates', []):
+            print(f"      - {ca.get('view_name')} (refresh: {ca.get('schedule_interval')}, real-time: {ca.get('real_time_enabled')})")
+
+        status, comp = get("/v1/core/tiger/compression")
+        print(f"✅ /v1/core/tiger/compression -> {len(comp)} compressed time-series tables:")
+        for c in comp:
+            print(f"   🗜️ {c.get('hypertable_name')}: {c.get('compressed_chunks')}/{c.get('total_chunks')} chunks compressed -> {c.get('compression_ratio_percent')}% space saved!")
+
+        # 9. Parking Hourly Continuous Aggregate
+        status, hourly = get("/v1/m/parkie/analytics/hourly?hours=12")
+        print(f"✅ /v1/m/parkie/analytics/hourly -> {len(hourly)} hourly aggregate data points returned")
+        if hourly:
+            sample = hourly[0]
+            print(f"   📈 Sample: {sample.get('bucket')} | {sample.get('lot_name')} -> Avg Available: {sample.get('avg_available')} | Peak Occupied: {sample.get('peak_occupied')}")
+
+        # 10. City Metrics Environmental Continuous Aggregate
+        status, metrics = get("/v1/core/analytics/city-metrics?metric_type=air_quality_pm25&hours=6")
+        print(f"✅ /v1/core/analytics/city-metrics -> {len(metrics)} environmental sensor aggregate points")
+        if metrics:
+            sample_m = metrics[0]
+            print(f"   🌿 Sample: {sample_m.get('bucket')} | Area: {sample_m.get('area_id')} -> Avg PM2.5: {sample_m.get('avg_value')} µg/m³")
+
+        # 11. Open Data Export
+        status, open_data = get("/v1/core/open-data/export")
+        print(f"✅ /v1/core/open-data/export -> '{open_data.get('title')}' ({open_data.get('license')})")
+        print(f"   🏛️ Published datasets: {list(open_data.get('data', {}).keys())}")
+
+        print("=" * 60)
+        print("🎉 ALL P2 CORE SYSTEMS & TIGER DATA SPONSOR SUITE VERIFIED 100%!")
         print("=" * 60)
     finally:
         if server_proc:

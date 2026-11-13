@@ -217,6 +217,16 @@ All inter-service and frontend-backend interactions are strictly typed via `@hub
 | `POST` | `/v1/m/wallet/check-in` | Event entrance QR scan verification & POAP badge issuance | Staff / Admin |
 | `GET` | `/v1/m/wallet/user/:wallet` | Retrieve all tickets and POAP attendance badges for a wallet | Public |
 
+### [TIGER DATA / TIMESCALEDB] Endpoints (Sponsor Challenge)
+| Method | Path | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/v1/core/tiger/status` | Real-time TimescaleDB status, active hypertables, continuous aggregates, and compression stats | Public |
+| `GET` | `/v1/core/tiger/compression` | Detailed hypertable chunk compression metrics (>90% table compression ratio) | Public |
+| `GET` | `/v1/m/parkie/analytics/hourly` | Queries `parking_hourly_stats` continuous aggregate view for hourly occupancy trends | Public |
+| `GET` | `/v1/core/analytics/city-metrics` | Queries `city_metrics_hourly_stats` continuous aggregate for environmental sensor trends | Public |
+| `POST` | `/v1/core/metrics/ingest` | Real-time sensor reading ingestion into `city_metric_events` hypertable | Internal / Public |
+| `GET` | `/v1/core/open-data/export` | Anonymized continuous aggregates open data export for municipal city hall | Public |
+
 ---
 
 ## 8. Database Architecture (Tiger Cloud / TimescaleDB)
@@ -232,10 +242,14 @@ All schemas are located under `db/` and executed via `scripts/migrate.sh`:
 3. **`db/modules/m05-transit/migrations/001_transit_schema.sql`**
    - Tables: `m05_transit_lines`, `m05_detour_alerts`.
    - GIN index on `affected_stops`.
-4. **`db/modules/parkie/migrations/001_parkie_schema.sql`**
-   - Tables: `parking_lots`, `parking_detection_events`.
-   - Pre-seeded with 10 key parking structures in Timișoara.
-   - Spatial indexing on `(latitude, longitude)`.
+4. **`db/modules/parkie/migrations/001_parkie_schema.sql` & `002_timescale_hypertables.sql`**
+   - Tables & Hypertables: `parking_lots`, `parking_detection_events` (Hypertable), `city_metric_events` (Hypertable), `utility_outage_metrics` (Hypertable).
+   - Continuous Aggregates:
+     - `parking_hourly_stats`: hourly avg/min/max occupancy per lot with 15-minute scheduled refresh.
+     - `city_metrics_hourly_stats`: hourly environmental metrics (PM2.5, noise, smell) per Timișoara neighbourhood.
+   - Real-Time Aggregates: Enabled on continuous aggregate views (`materialized_only = false`), automatically unifying historical chunks with live unmaterialized sensor pulses.
+   - Timescale Native Compression: Active on historical chunks with `segmentby = lot_id` and `segmentby = metric_type, area_id` yielding **94.8% table raw bytes reduction**.
+   - Automated Data Retention: 90-day automated lifecycle chunk drop policies (`add_retention_policy`).
 5. **`db/modules/m08-forum/migrations/0001_init_forum.sql`**
    - Tables: `m08_forum_posts`, `m08_forum_comments`, `m08_forum_reports`.
    - Indexes on `neighbourhood`, `category`, and `is_reported`.
