@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#F8F6FB">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hop brand board v0.6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/duotone/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+:root{
+  --bg:#F8F6FB; --surface:#fff; --ink:#1A1033; --muted:#5A5070; --hair:rgba(26,16,51,.07);
+  --pink:#FF3D7F; --pink-tint:#FFE9F1; --pink-deep:#C8004F;
+  --blue:#3D5BFF; --blue-tint:#E9EDFF; --blue-deep:#2438C9;
+  --mint:#12C99B; --mint-tint:#DFFAF1; --mint-deep:#00704F;
+  --red-tint:#FDE8E8; --red-deep:#B3261E; --neutral-tint:#EFEDF5;
+  --apricot:#FF7A2F; --apricot-tint:#FFEDE0; --apricot-deep:#A84300;
+  --display:"Nunito",system-ui,sans-serif;
+  --ui:"Figtree",system-ui,sans-serif;
+  --ring:0 0 0 1px rgba(26,16,51,.05);
+  --lift:0 1px 2px rgba(26,16,51,.04),0 6px 16px -10px rgba(26,16,51,.14);
+  --float:0 2px 4px rgba(26,16,51,.06),0 20px 40px -16px rgba(26,16,51,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/24px var(--ui)}
+.wrap{max-width:1160px;margin:0 auto;padding:40px 20px 120px}
+h1,h2,h3,h4{font-family:var(--display);margin:0;text-wrap:balance}
+.sq{corner-shape:squircle}
+.sec{margin:56px 0 0}
+.sec>h2{font:800 22px/28px var(--display)}
+.sec>p{color:var(--muted);margin:4px 0 20px;max-width:62ch}
+.cap{font:600 13px/18px var(--ui);color:var(--muted);margin:0 0 10px}
+
+/* header */
+.top{display:flex;align-items:center;gap:16px}
+.mark{width:56px;height:56px;flex:none}
+.word{font:800 64px/1 var(--display);margin:0}
+.tag{font:500 18px/26px var(--ui);color:var(--muted);margin:10px 0 0}
+
+/* grouped list: the main surface pattern */
+.group{background:none;box-shadow:none;border-radius:0}
+.item{display:flex;align-items:flex-start;gap:14px;padding:16px 2px;position:relative}
+.item+.item::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;background:var(--hair)}
+.ico{flex:none;width:28px;height:28px;display:grid;place-items:center;font-size:24px}
+.ico.neutral{background:none;color:var(--ink)}
+.ico.red{background:none;color:var(--red-deep)}
+.ico.blue{background:none;color:var(--blue-deep)}
+.ico.mint{background:none;color:var(--mint-deep)}
+.ico.apricot{background:none;color:var(--apricot-deep)}
+.item .tx{flex:1;min-width:0}
+.item>.sp{margin-top:0}
+.item b{display:block;font:700 16px/22px var(--ui)}
+.item small{display:block;font:500 14px/20px var(--ui);color:var(--muted);margin-top:1px}
+.item .end{flex:none;color:var(--muted);font-size:16px}
+.pill-live{margin-top:2px;display:inline-flex;align-items:center;gap:6px;font:700 12px/1 var(--ui);color:var(--mint-deep)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--mint)}
+.dot.pulse{position:relative}
+.dot.pulse::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--mint);animation:ping 2s ease-out infinite}
+@keyframes ping{0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(2.6);opacity:0}}
+.meter{margin-top:9px;width:44px;height:5px;border-radius:3px;background:rgba(36,56,201,.16);overflow:hidden}
+.meter i{display:block;height:100%;width:34%;background:var(--blue-deep);border-radius:3px}
+
+/* colour tokens: small dots, text-first */
+.tok{display:grid;grid-template-columns:auto 1fr;gap:10px 16px;align-items:center}
+.tok .dots{display:flex;gap:6px}
+.tok .dots i{width:28px;height:28px;border-radius:50%;display:block;box-shadow:inset 0 0 0 1px rgba(26,16,51,.08)}
+.tok p{margin:0;font:500 14px/20px var(--ui);color:var(--muted)}
+.tok p b{color:var(--ink);font-weight:700}
+
+/* controls */
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.btn{border:0;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-family:var(--ui);transition:transform .16s cubic-bezier(.3,1.5,.5,1)}
+.btn:active{transform:scale(.97)}
+/* buttons: 3 variants x 2 sizes. The label is always ink (the on-primary token). */
+.btn{border-radius:999px;font-weight:700;line-height:1;color:var(--ink);white-space:nowrap}
+.btn.lg{height:52px;padding:0 28px;font-size:17px}
+.btn.md{height:44px;padding:0 20px;font-size:15px}
+.btn.block{width:100%}
+.btn-primary{background:var(--pink);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 6px 12px -8px rgba(255,61,127,.5)}
+.btn-primary:active{filter:brightness(.94)}
+.btn-secondary{background:rgba(26,16,51,.07)}
+.btn-secondary:active{background:rgba(26,16,51,.12)}
+.btn-text{background:none}
+.btn-text:active{background:rgba(26,16,51,.06)}
+.sheet .btn{width:100%;margin-top:10px}
+.actions .btn+.btn{margin-top:10px}
+.btn:focus-visible,.seg button:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.chip{border:0;font-family:var(--ui);cursor:pointer;display:inline-flex;align-items:center;gap:7px;height:40px;padding:0 14px;border-radius:999px;font:600 14px/1 var(--ui);background:#fff;color:var(--ink);box-shadow:var(--ring),var(--lift)}
+.chip.on{background:var(--ink);color:#fff;box-shadow:none}
+.field{display:flex;align-items:center;gap:12px;min-height:60px;border-radius:18px;background:#fff;padding:0 16px;box-shadow:inset 0 1px 2px rgba(26,16,51,.06),var(--ring)}
+.field i{font-size:21px}
+.field small{display:block;font:600 12px/14px var(--ui);color:var(--muted)}
+.field span{display:block;font:600 16px/22px var(--ui)}
+.field:focus-within,.field.focus{box-shadow:0 0 0 2.5px var(--ink)}
+.field .fl{display:block;flex:1;min-width:0}
+.field input{border:0;outline:0;background:none;font:600 16px/22px var(--ui);color:var(--ink);width:100%;padding:0}
+.field input::placeholder{color:var(--muted);font-weight:500}
+.stack{display:flex}
+.av{position:relative;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font:700 12px/1 var(--ui);box-shadow:0 0 0 2px #fff;margin-left:-3px}
+.av:first-child{margin-left:0}
+.seg{display:inline-flex;background:rgba(26,16,51,.06);border-radius:999px;padding:4px}
+.seg button{border:0;background:transparent;height:40px;padding:0 18px;border-radius:999px;font:600 14px/1 var(--ui);color:var(--muted);cursor:pointer}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(26,16,51,.12),0 3px 8px -3px rgba(26,16,51,.2)}
+.toggle{border:0;padding:0;cursor:pointer;width:52px;height:32px;border-radius:999px;background:var(--ink);position:relative}
+.toggle::after{content:"";position:absolute;right:3px;top:3px;width:26px;height:26px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(26,16,51,.25)}
+.glass{background:rgba(255,255,255,.6);-webkit-backdrop-filter:blur(22px) saturate(1.8);backdrop-filter:blur(22px) saturate(1.8);box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 0 1px rgba(255,255,255,.55),var(--float)}
+@media(prefers-reduced-transparency:reduce){.glass{background:rgba(255,255,255,.96);-webkit-backdrop-filter:none;backdrop-filter:none}}
+@media(prefers-reduced-motion:reduce){.dot.pulse::after{animation:none}.btn{transition:none}}
+
+/* notices: one calm line, small icon, no big fill */
+.notice{display:flex;gap:10px;align-items:flex-start;font:500 15px/22px var(--ui);padding:2px 0}
+.notice .ico{width:24px;height:24px;font-size:22px}
+.notice b{font-weight:700}
+
+/* module shortcuts: small round icons with labels */
+.shortcuts{display:flex;flex-wrap:wrap;gap:18px 14px}
+.sc{width:68px;text-align:center;font:600 12px/16px var(--ui);color:var(--ink)}
+.sc .ico{width:52px;height:52px;font-size:26px;margin:0 auto 6px}
+
+/* toast + sheet */
+.scene{position:relative;border-radius:24px;overflow:hidden;min-height:150px;background:#fff;box-shadow:var(--ring),var(--lift);padding:16px;display:flex;flex-direction:column;justify-content:flex-end;gap:10px}
+.scene::before{content:"";position:absolute;width:180px;height:100px;right:-30px;top:-30px;border-radius:50%;filter:blur(28px);background:rgba(61,91,255,.20)}
+.scene>*{position:relative}
+.toast{display:flex;align-items:center;gap:12px;border-radius:999px;padding:8px 10px 8px 8px;font:600 15px/20px var(--ui);max-width:360px}
+.toast .ico{width:24px;height:24px;font-size:22px}
+.toast a{margin-left:auto;color:var(--pink-deep);font-weight:700;padding:0 10px;text-decoration:none}
+.sheetscene{position:relative;border-radius:24px;overflow:hidden;height:330px;background:var(--bg);padding:16px}
+.sheetscene .behind{display:grid;gap:8px}
+.sheetscene .behind div{height:48px;border-radius:16px;background:#fff;box-shadow:var(--lift)}
+.scrim{position:absolute;inset:0;background:rgba(26,16,51,.34)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:28px 28px 0 0;padding:10px 18px 18px;box-shadow:0 -10px 30px -12px rgba(26,16,51,.3)}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:rgba(26,16,51,.16);margin:0 auto 12px}
+.sheet h3{font:800 20px/26px var(--display);margin-bottom:4px}
+.sheet .item{padding:12px 0}
+
+/* phones */
+.phones{display:flex;flex-wrap:wrap;gap:40px;align-items:flex-start}
+.phone{position:relative;width:340px;height:940px;border-radius:46px;background:#fff;box-shadow:0 0 0 6px #2B2140,0 30px 60px -24px rgba(26,16,51,.4);overflow:hidden;flex:none;isolation:isolate}
+.phone.page{background:#fff}
+.scroll{padding:22px 16px 110px;height:100%;overflow:hidden}
+.status{display:flex;justify-content:space-between;font:700 14px/1 var(--ui);padding:0 8px 16px}
+.topbar{display:flex;align-items:center;justify-content:space-between;margin:0 0 16px}
+.greet{font:800 30px/34px var(--display);margin:0 4px}
+.greet small{display:block;font:500 15px/20px var(--ui);color:var(--muted)}
+.bell{position:relative;flex:none;width:44px;height:44px;border:0;background:none;border-radius:50%;font-size:26px;color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.bell:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.dot-new{position:absolute;top:9px;right:10px;width:10px;height:10px;border-radius:50%;background:var(--apricot);box-shadow:0 0 0 2px #fff}
+.ask{display:flex;align-items:center;gap:10px;height:52px;border-radius:999px;padding:0 20px;background:var(--ink);color:#fff;font-weight:600;font-size:15px;margin-bottom:22px;box-shadow:0 10px 18px -12px rgba(26,16,51,.6)}
+.ask i{color:#fff;font-size:21px}
+.h{font:800 19px/24px var(--display);margin:0 4px 10px}
+.shead .h{margin:0}
+.shead{display:flex;justify-content:space-between;align-items:center;margin:26px 0 6px;padding:0 4px;min-height:28px}
+.seeall{font:600 14px/20px var(--ui);color:var(--muted);text-decoration:none;padding:4px 4px 4px 12px}
+.strip{display:flex;gap:8px;overflow:hidden;padding:8px 2px 4px;margin-right:-16px}
+.pick{flex:none;width:64px;text-align:center;font:600 13px/17px var(--ui)}
+.pick .sp{margin:0 auto 6px}
+.feature{padding:2px 2px 6px}
+.feature .head{display:flex;gap:16px;align-items:center}
+.feature h4{font:800 20px/26px var(--display);margin:0 0 2px}
+.feature p{margin:0;font:500 14px/20px var(--ui);color:var(--muted)}
+.feature .foot{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.feature .going{display:flex;align-items:center;gap:10px;font:600 13px/18px var(--ui)}
+.nav-bar{position:absolute;left:12px;right:12px;bottom:14px;height:68px;border-radius:999px;display:flex;align-items:center;justify-content:space-around;padding:0 8px;z-index:3}
+.nav-bar a{text-decoration:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:54px;min-width:56px;padding:0 4px;border-radius:22px;color:var(--ink);font:600 11px/1 var(--ui)}
+.nav-bar a i{font-size:22px}
+.nav-bar a.on{background:rgba(26,16,51,.08);color:var(--ink)}
+.nav-bar a.on i{color:var(--ink)}
+.back{display:flex;align-items:center;gap:6px;font:600 15px/1 var(--ui);margin:0 0 18px}
+.page h3.t{font:800 26px/32px var(--display);margin:0 0 8px}
+.page .lead{color:var(--muted);margin:0 0 16px;font-size:16px;line-height:24px}
+.eta{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.eta b{font:800 22px/28px var(--display)}
+.eta div span{font:500 14px/20px var(--ui);color:var(--muted);display:block}
+.steps{list-style:none;margin:6px 0 18px;padding:0 0 0 4px}
+.steps li{position:relative;padding:0 0 16px 24px;font:500 15px/20px var(--ui)}
+.steps li::before{content:"";position:absolute;left:0;top:5px;width:10px;height:10px;border-radius:50%;background:var(--hair);box-shadow:inset 0 0 0 2px rgba(26,16,51,.25)}
+.steps li::after{content:"";position:absolute;left:4px;top:18px;bottom:0;width:2px;background:var(--hair)}
+.steps li:last-child::after{display:none}
+.steps li.done::before{background:var(--mint);box-shadow:none}
+.steps li.now::before{background:var(--apricot);box-shadow:0 0 0 4px var(--apricot-tint)}
+.steps small{display:block;color:var(--muted);font-weight:500;font-size:13px;line-height:18px}
+.confirm{display:flex;align-items:center;gap:10px;margin:2px 0 16px;font:500 15px/20px var(--ui)}
+.page .actions{position:absolute;left:16px;right:16px;bottom:22px}
+
+.rowbadge{flex:none;width:46px;display:block;font:800 26px/1 var(--display);letter-spacing:0}
+.rowbadge.apricot{color:var(--apricot-deep)}
+.rowbadge.mint{color:var(--mint-deep);font-size:20px}
+.rowbadge.blue{color:var(--blue-deep)}
+.sc svg{display:block;margin:0 auto 6px}
+.mods{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px 28px}
+.mod{display:flex;align-items:center;gap:12px;font:600 15px/20px var(--ui)}
+.sp{flex:none;display:block}
+.mk{flex:none;width:44px;height:44px;border-radius:14px;display:grid;place-items:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.7)}
+.mods.two{grid-template-columns:1fr 1fr;gap:14px 10px;padding:4px 2px}
+.mods.two .mod{font-size:14px;padding:4px 0}
+.date{flex:none;width:40px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 12px/1 var(--ui);color:var(--muted)}
+.date b{font:800 26px/1 var(--display);color:var(--ink)}
+.new-dot{flex:none;width:9px;height:9px;border-radius:50%;background:var(--apricot);margin:7px 4px 0 0}
+.when-t{flex:none;font:500 13px/22px var(--ui);color:var(--muted)}
+.page .shead{margin-top:20px}
+a:focus-visible,button:focus-visible,[role="switch"]:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+button,a{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.when-t,.date b{font-variant-numeric:tabular-nums}
+/* type + voice */
+.type div{margin:10px 0}
+.type small{color:var(--muted);font:500 12px/16px var(--ui);margin-left:12px}
+.say{display:grid;grid-template-columns:1fr 1fr;gap:28px}
+.say b{display:block;font:700 14px/20px var(--ui);margin-bottom:8px}
+.say .y b{color:var(--mint-deep)} .say .n b{color:var(--pink-deep)}
+.say p{margin:0 0 12px}
+@media(max-width:640px){.say{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main class="wrap">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><g id="f-events"><rect x="5" y="7" width="22" height="20" rx="5"/></g><g id="l-events"><rect x="5" y="7" width="22" height="20" rx="5"/><path d="M5 13.5h22"/><path d="M11 4.5v5M21 4.5v5"/><path d="M11 19.5h.01M16 19.5h.01M21 19.5h.01"/></g><g id="f-buddy"><circle cx="11" cy="11" r="4.5"/><circle cx="21.5" cy="12" r="4"/></g><g id="l-buddy"><circle cx="11" cy="11" r="4.5"/><circle cx="21.5" cy="12" r="4"/><path d="M3.5 26a7.5 7.5 0 0 1 15 0"/><path d="M17.5 21.5a6.5 6.5 0 0 1 11 4.5"/></g><g id="f-forum"><path d="M5 8a3 3 0 0 1 3-3h16a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H15l-6 5v-5H8a3 3 0 0 1-3-3Z"/></g><g id="l-forum"><path d="M5 8a3 3 0 0 1 3-3h16a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H15l-6 5v-5H8a3 3 0 0 1-3-3Z"/><path d="M11.5 13.5h.01M16 13.5h.01M20.5 13.5h.01"/></g><g id="f-transit"><rect x="6" y="7" width="20" height="17" rx="4"/></g><g id="l-transit"><rect x="6" y="7" width="20" height="17" rx="4"/><rect x="9.5" y="10" width="13" height="6" rx="1.5"/><path d="M11 20.5h.01M21 20.5h.01"/><path d="M12 3.5h8M16 3.5V7"/><path d="M9 28l2-4M23 28l-2-4"/></g><g id="f-parkie"><rect x="5" y="5" width="22" height="22" rx="7"/></g><g id="l-parkie"><rect x="5" y="5" width="22" height="22" rx="7"/><path d="M13 22V10.5h4.2a3.6 3.6 0 0 1 0 7.2H13"/></g><g id="f-visitor"><circle cx="16" cy="16" r="11"/></g><g id="l-visitor"><circle cx="16" cy="16" r="11"/><path d="M16 15v7M16 10.5h.01"/></g><g id="f-assistant"><path d="M16 4c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12Z"/></g><g id="l-assistant"><path d="M16 4c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12 7-1 11-5 12-12Z"/></g><g id="f-utilities"><path d="M16 4s-9 10-9 16a9 9 0 0 0 18 0c0-6-9-16-9-16Z"/></g><g id="l-utilities"><path d="M16 4s-9 10-9 16a9 9 0 0 0 18 0c0-6-9-16-9-16Z"/><path d="M11.5 20a4.5 4.5 0 0 0 4 4.5"/></g><g id="f-wallet"><rect x="4.5" y="8" width="23" height="18" rx="4.5"/></g><g id="l-wallet"><rect x="4.5" y="8" width="23" height="18" rx="4.5"/><path d="M21.5 17h6v6h-6a3 3 0 0 1 0-6Z"/><path d="M22.5 20h.01"/></g><g id="f-feedback"><path d="M16 26.5C7 20 5.5 13.5 9.5 10.3c3-2.3 5.3-.6 6.5 1.7 1.2-2.3 3.5-4 6.5-1.7 4 3.2 2.5 9.7-6.5 16.2Z"/></g><g id="l-feedback"><path d="M16 26.5C7 20 5.5 13.5 9.5 10.3c3-2.3 5.3-.6 6.5 1.7 1.2-2.3 3.5-4 6.5-1.7 4 3.2 2.5 9.7-6.5 16.2Z"/></g><g id="f-safety"><path d="M11 10h10l-1.5 9h-7Z"/></g><g id="l-safety"><path d="M11 10h10l-1.5 9h-7Z"/><path d="M12 10l4-4.5 4 4.5"/><path d="M16 19v9M12 28h8"/><path d="M5.5 13h3M23.5 13h3"/></g><g id="f-smell"><circle cx="16" cy="16" r="10"/></g><g id="l-smell"><path d="M5 12h13a3.2 3.2 0 1 0-3.2-3.2"/><path d="M5 18h19a3.5 3.5 0 1 1-3.5 3.5"/><path d="M5 24h9"/></g><g id="f-dashboard"><rect x="5" y="16" width="6" height="11" rx="2"/><rect x="13" y="6" width="6" height="21" rx="2"/><rect x="21" y="11" width="6" height="16" rx="2"/></g><g id="l-dashboard"><rect x="5" y="16" width="6" height="11" rx="2"/><rect x="13" y="6" width="6" height="21" rx="2"/><rect x="21" y="11" width="6" height="16" rx="2"/></g></defs></svg>
+
+<header>
+  <div class="top">
+    <svg class="mark" viewBox="0 0 64 64" role="img" aria-label="hop mark"><rect width="64" height="64" rx="18" fill="#FF3D7F"/><path d="M13 53V33Q13 27 19 25Q25 23 27 17Q29 11 32 11Q35 11 37 17Q39 23 45 25Q51 27 51 33V53Z" fill="#fff"/><path d="M26.5 53V41a5.5 5.5 0 0 1 11 0V53Z" fill="#FF3D7F"/></svg>
+    <h1 class="word">hop</h1>
+  </div>
+  <p class="tag">Everything in Timișoara, one tap away.</p>
+</header>
+
+<section class="sec">
+  <h2>Colour</h2>
+  <p>Pink is rare: the logo and the one main button on a screen. Everything else is white and ink. Blue, mint and apricot appear only inside illustrations, as small dots, on avatars and as status glyphs.</p>
+  <div class="tok">
+    <div class="dots"><i style="background:#FF3D7F"></i></div>
+    <p><b>Pink</b> FF3D7F. Logo and main button only. Always an ink label (5.3:1); white would only reach 3.4:1</p>
+    <div class="dots"><i style="background:#3D5BFF"></i><i style="background:#2438C9"></i></div>
+    <p><b>Blue</b> 3D5BFF solid, 2438C9 deep (8.5:1 on white). Transit, parking, information</p>
+    <div class="dots"><i style="background:#12C99B"></i><i style="background:#00704F"></i></div>
+    <p><b>Mint</b> 12C99B solid, 00704F deep (6.1:1). Utilities, success, "live"</p>
+    <div class="dots"><i style="background:#FF7A2F"></i><i style="background:#A84300"></i></div>
+    <p><b>Apricot</b> FF7A2F solid, A84300 deep (6.1:1). Safety, warnings, avatars</p>
+    <div class="dots"><i style="background:#B3261E"></i></div>
+    <p><b>Red</b> B3261E (6.5:1 on white). Errors only</p>
+    <div class="dots"><i style="background:#F8F6FB"></i><i style="background:#fff"></i><i style="background:#1A1033"></i><i style="background:#5A5070"></i></div>
+    <p><b>Neutrals</b> F8F6FB board background, white phone surface, 1A1033 ink (16.6:1), 5A5070 muted (6.9:1)</p>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>Modules</h2>
+  <p>Small flat illustrations, not pictograms: little scenes built from simple filled shapes in the palette, with no outlines, on a 56 px grid. Bunting for events, a tram with its pantograph, a lamp with its glow, a folded map with a pin. Each stands free on the page with its label beside it. Community modules are neutral; the rest follow blue, mint and apricot. Used for module shortcuts only. Rows, controls and navigation use Phosphor.</p>
+  <div class="mods">
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><path d="M6 16Q28 30 50 16" fill="none" stroke="#3A2F5C" stroke-width="2" stroke-linecap="round"/>
+<path d="M8 18L16 21L12 30Z" fill="#3D5BFF"/><path d="M19 22.2L27 23L23 32Z" fill="#12C99B"/><path d="M29 23L37 22.2L33 32Z" fill="#FF7A2F"/><path d="M40 21L48 18L44 30Z" fill="#8FA3FF"/>
+<circle cx="14" cy="44" r="2.5" fill="#FF7A2F"/><circle cx="28" cy="46" r="2" fill="#3D5BFF"/><circle cx="42" cy="43" r="2.5" fill="#12C99B"/></svg>Events</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><circle cx="37" cy="23" r="6" fill="#FF7A2F"/><path d="M26 46a11 11 0 0 1 22 0Z" fill="#FF7A2F"/>
+<circle cx="20" cy="22" r="6" fill="#3D5BFF" stroke="#EFEDF5" stroke-width="2"/><path d="M9 46a11 11 0 0 1 22 0Z" fill="#3D5BFF" stroke="#EFEDF5" stroke-width="2"/></svg>Buddy</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><rect x="22" y="10" width="26" height="20" rx="8" fill="#FFB88A"/><path d="M40 28l6 6v-8Z" fill="#FFB88A"/>
+<rect x="8" y="22" width="30" height="22" rx="9" fill="#3D5BFF"/><path d="M16 42l-4 7 10-5Z" fill="#3D5BFF"/>
+<circle cx="17" cy="33" r="2.2" fill="#fff"/><circle cx="23" cy="33" r="2.2" fill="#fff"/><circle cx="29" cy="33" r="2.2" fill="#fff"/></svg>Forum</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><path d="M22 8h12M28 8v6" fill="none" stroke="#3A2F5C" stroke-width="2.4" stroke-linecap="round"/>
+<rect x="13" y="14" width="30" height="26" rx="8" fill="#3D5BFF"/><rect x="18" y="18" width="20" height="11" rx="4" fill="#8FA3FF"/>
+<circle cx="21" cy="35" r="2.6" fill="#FF7A2F"/><circle cx="35" cy="35" r="2.6" fill="#FF7A2F"/>
+<path d="M16 49l4-9M40 49l-4-9M10 49h36" fill="none" stroke="#3A2F5C" stroke-width="2.4" stroke-linecap="round"/></svg>Transit</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><ellipse cx="28" cy="50" rx="13" ry="2.4" fill="#8FA3FF"/><rect x="26" y="38" width="4" height="12" rx="2" fill="#3A2F5C"/>
+<rect x="11" y="8" width="34" height="32" rx="10" fill="#3D5BFF"/>
+<path d="M22 32V16h6.500a5 5 0 0 1 0 10H22" fill="none" stroke="#fff" stroke-width="4.500" stroke-linecap="round" stroke-linejoin="round"/></svg>Parkie</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><path d="M8 24l13-4v26L8 50Z" fill="#8FA3FF"/><path d="M21 20l14 4v26l-14-4Z" fill="#6C84FF"/><path d="M35 24l13-4v26l-13 4Z" fill="#8FA3FF"/>
+<path d="M28 10a8 8 0 0 0-8 8c0 6 8 13 8 13s8-7 8-13a8 8 0 0 0-8-8Z" fill="#FF7A2F"/><circle cx="28" cy="18" r="3" fill="#fff"/></svg>Visitor info</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><path d="M24 8c1.500 10 7 16 17 17-10 1-15.500 7-17 17-1.500-10-7-16-17-17 10-1 15.500-7 17-17Z" fill="#3D5BFF"/>
+<path d="M43 6c.6 4 2.500 6 6.500 6.500-4 .5-5.900 2.500-6.500 6.500-.6-4-2.500-6-6.500-6.500 4-.5 5.900-2.500 6.500-6.500Z" fill="#FF7A2F"/><circle cx="44" cy="40" r="3" fill="#12C99B"/><circle cx="12" cy="46" r="2" fill="#8FA3FF"/></svg>Assistant</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><ellipse cx="28" cy="50" rx="14" ry="2.500" fill="#7EE6C8"/>
+<path d="M28 7S14 23 14 33a14 14 0 0 0 28 0C42 23 28 7 28 7Z" fill="#12C99B"/>
+<path d="M20 34a8 8 0 0 0 6 7" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/></svg>Utilities</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><circle cx="36" cy="14" r="7" fill="#FF7A2F"/><circle cx="36" cy="14" r="3.500" fill="#FFB88A"/>
+<rect x="8" y="20" width="40" height="28" rx="9" fill="#12C99B"/><path d="M8 29a9 9 0 0 1 9-9h22a9 9 0 0 1 9 9Z" fill="#0BB58C"/>
+<rect x="33" y="31" width="15" height="10" rx="5" fill="#00704F"/><circle cx="39" cy="36" r="2" fill="#fff"/></svg>Wallet</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><path d="M28 47C12 36 9 25 15 18c4.500-4.500 10-2 13 3 3-5 8.500-7.500 13-3 6 7 3 18-13 29Z" fill="#12C99B"/>
+<path d="M17 24a6 6 0 0 1 5-4" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+<circle cx="46" cy="12" r="3" fill="#FF7A2F"/><circle cx="10" cy="10" r="2" fill="#3D5BFF"/></svg>Feedback</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><circle cx="28" cy="20" r="15" fill="#FFB88A"/><path d="M19.500 15.500L28 8l8.500 7.500Z" fill="#3A2F5C"/>
+<rect x="20.500" y="15" width="15" height="14" rx="5" fill="#FF7A2F"/><rect x="26.500" y="27" width="3" height="19" fill="#3A2F5C"/><rect x="20" y="45" width="16" height="4" rx="2" fill="#3A2F5C"/></svg>Safety</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><path d="M16 33a8 8 0 0 1 1.500-15.800A10 10 0 0 1 36 15a9 9 0 0 1 2 18Z" fill="#FFB88A"/>
+<path d="M8 41h24a4.500 4.500 0 1 0-4.500-4.500" fill="none" stroke="#A84300" stroke-width="3" stroke-linecap="round"/>
+<path d="M16 48h20a3.500 3.500 0 1 1-3.500 3.500" fill="none" stroke="#A84300" stroke-width="3" stroke-linecap="round"/></svg>Smell</div>
+    <div class="mod"><svg class="sp" viewBox="0 0 56 56" width="52" height="52" aria-hidden="true"><rect x="10" y="28" width="10" height="18" rx="4" fill="#3D5BFF"/><rect x="23" y="12" width="10" height="34" rx="4" fill="#12C99B"/><rect x="36" y="21" width="10" height="25" rx="4" fill="#FF7A2F"/>
+<rect x="7" y="48" width="42" height="3" rx="1.500" fill="#3A2F5C"/></svg>Dashboard</div>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>Components</h2>
+  <p>The page is plain white with hairline lists: no cards, no tinted boxes. A row leads with the small free-standing illustration of the module it comes from, then a bold title that already says the fact, one muted detail line, and a trailing time or dot.</p>
+  <div class="group sq" style="max-width:520px">
+    <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><rect x="22" y="10" width="26" height="20" rx="8" fill="#FFB88A"/><path d="M40 28l6 6v-8Z" fill="#FFB88A"/>
+<rect x="8" y="22" width="30" height="22" rx="9" fill="#3D5BFF"/><path d="M16 42l-4 7 10-5Z" fill="#3D5BFF"/>
+<circle cx="17" cy="33" r="2.2" fill="#fff"/><circle cx="23" cy="33" r="2.2" fill="#fff"/><circle cx="29" cy="33" r="2.2" fill="#fff"/></svg><div class="tx"><b>Missing cat near Piața Maria</b><small>3 neighbours replied.</small></div><span class="when-t">20m</span></div>
+    <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><circle cx="37" cy="23" r="6" fill="#FF7A2F"/><path d="M26 46a11 11 0 0 1 22 0Z" fill="#FF7A2F"/>
+<circle cx="20" cy="22" r="6" fill="#3D5BFF" stroke="#EFEDF5" stroke-width="2"/><path d="M9 46a11 11 0 0 1 22 0Z" fill="#3D5BFF" stroke="#EFEDF5" stroke-width="2"/></svg><div class="tx"><b>Dan asked to join you</b><small>Cinema under the stars, Faber.</small></div><span class="new-dot" role="img" aria-label="New"></span></div>
+    <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><circle cx="36" cy="14" r="7" fill="#FF7A2F"/><circle cx="36" cy="14" r="3.500" fill="#FFB88A"/>
+<rect x="8" y="20" width="40" height="28" rx="9" fill="#12C99B"/><path d="M8 29a9 9 0 0 1 9-9h22a9 9 0 0 1 9 9Z" fill="#0BB58C"/>
+<rect x="33" y="31" width="15" height="10" rx="5" fill="#00704F"/><circle cx="39" cy="36" r="2" fill="#fff"/></svg><div class="tx"><b>Your ticket is ready</b><small>Jazz in Parcul Rozelor, Saturday 18:00.</small></div><span class="when-t">QR</span></div>
+  </div>
+
+  <div class="row" style="margin-top:28px"><button class="btn btn-primary lg">Find an event</button><button class="btn btn-secondary md">Save</button><button class="btn btn-text md">Not now</button></div>
+  <div class="row" style="margin-top:20px"><button type="button" class="chip on" aria-pressed="true">Tonight</button><button type="button" class="chip">This week</button><button type="button" class="chip"><i aria-hidden="true" class="ph-bold ph-tree"></i>Outdoors</button><div class="seg"><button class="on">List</button><button>Map</button></div><button type="button" class="toggle" role="switch" aria-checked="true" aria-label="Alerts on"></button></div>
+
+  <div class="cols" style="display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));max-width:560px;margin-top:20px">
+    <label class="field"><i aria-hidden="true" class="ph-bold ph-magnifying-glass"></i><span class="fl"><small>Search</small><input type="search" name="q" placeholder="Events, places, people…" autocomplete="off"></span></label>
+    <label class="field focus"><i aria-hidden="true" class="ph-bold ph-map-pin"></i><span class="fl"><small>Your building</small><input type="text" name="address" autocomplete="street-address" value="Strada Gării 2"></span></label>
+  </div>
+
+  <div class="row" style="margin-top:20px"><div class="stack"><span class="av" style="background:var(--apricot);color:var(--ink)">MA</span><span class="av" style="background:var(--blue);color:#fff">DR</span><span class="av" style="background:var(--mint);color:var(--ink)">IO</span><span class="av" style="background:var(--ink);color:#fff">+9</span></div><span style="font-weight:600">12 going</span></div>
+
+  <p class="cap" style="margin-top:28px">Notices: one calm line, a small icon, no big fill</p>
+  <div style="display:grid;gap:12px;max-width:520px">
+    <div class="notice"><span class="ico mint"><i aria-hidden="true" class="ph-bold ph-check-circle"></i></span><div><b>Hot water is back.</b> Your building is on again.</div></div>
+    <div class="notice"><span class="ico apricot"><i aria-hidden="true" class="ph-bold ph-warning"></i></span><div><b>Heating is off.</b> Back on about 18:00. We’ll tell you when it’s back.</div></div>
+    <div class="notice"><span class="ico red"><i aria-hidden="true" class="ph-bold ph-warning-octagon"></i></span><div><b>Couldn’t send.</b> Check your connection and try again.</div></div>
+  </div>
+
+  <div class="cols" style="display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));margin-top:28px">
+    <div class="scene sq">
+      <div class="glass toast"><span class="ico mint"><i aria-hidden="true" class="ph-bold ph-check"></i></span>Request sent<a href="#">Undo</a></div>
+    </div>
+    <div class="sheetscene sq">
+      <div class="behind"><div></div><div></div></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <h3>Find a buddy</h3>
+        <div class="group" style="box-shadow:none;border-radius:0">
+          <div class="item" style="padding-left:0"><span class="ico neutral"><i aria-hidden="true" class="ph-bold ph-users-three"></i></span><div class="tx"><b>Go with a small group</b></div></div>
+          <div class="item" style="padding-left:0"><span class="ico blue"><i aria-hidden="true" class="ph-bold ph-user-plus"></i></span><div class="tx"><b>Meet one person first</b></div></div>
+        </div>
+        <button class="btn btn-primary lg">Send request</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>In use</h2>
+  <p>Left: a lively moment. The alerts bell sits top-right, as people expect; each section has a quiet "See all"; Explore is one row that scrolls sideways and only shows modules not already on the screen. No boxes: plain hairline lists led by free-standing illustrations. Pink appears only in the logo and the one main button. Middle: the alerts list behind the bell, grouped into what affects you and what is happening around the city. Right: one alert, with the answer in the headline, a short status, and one primary action. No glass, no glow.</p>
+  <div class="phones">
+
+    <div class="phone home" role="group" aria-label="Home screen">
+      <div class="scroll">
+        <div class="status"><span>9:41</span><span><i aria-hidden="true" class="ph-bold ph-cell-signal-full"></i> <i aria-hidden="true" class="ph-bold ph-battery-full"></i></span></div>
+        <div class="topbar"><div class="greet"><small>Good evening</small>Maria</div><button class="bell" aria-label="Alerts, 2 new"><i aria-hidden="true" class="ph-bold ph-bell"></i><span class="dot-new"></span></button></div>
+        <div class="ask"><i aria-hidden="true" class="ph-fill ph-sparkle"></i>Ask hop about Timișoara</div>
+
+        <h3 class="h">Tonight</h3>
+        <div class="group feature sq">
+          <div class="head">
+            <svg width="92" height="108" viewBox="0 0 72 84" aria-hidden="true" style="flex:none"><path d="M0 84V36a36 36 0 0 1 72 0v48Z" fill="#1A1033"/><path d="M36 4l1.2 3.300 3.300 1.200-3.300 1.200L36 13l-1.200-3.300-3.300-1.200 3.300-1.200Z" fill="#fff" opacity=".9"/><circle cx="14" cy="22" r="1.400" fill="#fff" opacity=".8"/><circle cx="58" cy="20" r="1.200" fill="#fff" opacity=".7"/><circle cx="52" cy="30" r="1" fill="#fff" opacity=".6"/><rect x="12" y="28" width="48" height="28" rx="4" fill="#fff"/><path d="M0 84v-10a7 7 0 0 1 13-3.500A7 7 0 0 1 24 69a7 7 0 0 1 12-2 7 7 0 0 1 12 2 7 7 0 0 1 11 2.500A7 7 0 0 1 72 74v10Z" fill="#4B3F7A"/></svg>
+            <div><h4>Cinema under the stars</h4><p>Tonight at 19:30, Faber. Free. Bring a blanket.</p></div>
+          </div>
+          <div class="foot">
+            <div class="going"><div class="stack"><span class="av" style="background:var(--apricot);color:var(--ink)">MA</span><span class="av" style="background:var(--blue);color:#fff">DR</span><span class="av" style="background:var(--mint);color:var(--ink)">IO</span></div>12 going</div>
+            <button class="btn btn-primary md">Find a buddy</button>
+          </div>
+        </div>
+
+        <div class="shead"><h3 class="h">Right now</h3><a class="seeall" href="#">See all</a></div>
+        <div class="group sq">
+          <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><ellipse cx="28" cy="50" rx="14" ry="2.500" fill="#7EE6C8"/>
+<path d="M28 7S14 23 14 33a14 14 0 0 0 28 0C42 23 28 7 28 7Z" fill="#12C99B"/>
+<path d="M20 34a8 8 0 0 0 6 7" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/></svg><div class="tx"><b>Hot water is off</b><small>Strada Gării 2. Back about 18:00.</small></div><span class="new-dot" role="img" aria-label="New"></span></div>
+          <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><path d="M22 8h12M28 8v6" fill="none" stroke="#3A2F5C" stroke-width="2.4" stroke-linecap="round"/>
+<rect x="13" y="14" width="30" height="26" rx="8" fill="#3D5BFF"/><rect x="18" y="18" width="20" height="11" rx="4" fill="#8FA3FF"/>
+<circle cx="21" cy="35" r="2.6" fill="#FF7A2F"/><circle cx="35" cy="35" r="2.6" fill="#FF7A2F"/>
+<path d="M16 49l4-9M40 49l-4-9M10 49h36" fill="none" stroke="#3A2F5C" stroke-width="2.4" stroke-linecap="round"/></svg><div class="tx"><b>Tram 5 isn’t running</b><small>Take 5C instead.</small></div><span class="when-t">Until Dec</span></div>
+          <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><ellipse cx="28" cy="50" rx="13" ry="2.4" fill="#8FA3FF"/><rect x="26" y="38" width="4" height="12" rx="2" fill="#3A2F5C"/>
+<rect x="11" y="8" width="34" height="32" rx="10" fill="#3D5BFF"/>
+<path d="M22 32V16h6.500a5 5 0 0 1 0 10H22" fill="none" stroke="#fff" stroke-width="4.500" stroke-linecap="round" stroke-linejoin="round"/></svg><div class="tx"><b>42 free spots</b><small>Iulius Town parking.</small></div><span class="meter" role="img" aria-label="34 percent free"><i></i></span></div>
+        </div>
+
+        <div class="shead"><h3 class="h">Explore</h3><a class="seeall" href="#">See all</a></div>
+        <div class="strip">
+          <div class="pick"><svg class="sp" viewBox="0 0 56 56" width="60" height="60" aria-hidden="true"><path d="M6 16Q28 30 50 16" fill="none" stroke="#3A2F5C" stroke-width="2" stroke-linecap="round"/>
+<path d="M8 18L16 21L12 30Z" fill="#3D5BFF"/><path d="M19 22.2L27 23L23 32Z" fill="#12C99B"/><path d="M29 23L37 22.2L33 32Z" fill="#FF7A2F"/><path d="M40 21L48 18L44 30Z" fill="#8FA3FF"/>
+<circle cx="14" cy="44" r="2.5" fill="#FF7A2F"/><circle cx="28" cy="46" r="2" fill="#3D5BFF"/><circle cx="42" cy="43" r="2.5" fill="#12C99B"/></svg>Events</div>
+          <div class="pick"><svg class="sp" viewBox="0 0 56 56" width="60" height="60" aria-hidden="true"><circle cx="37" cy="23" r="6" fill="#FF7A2F"/><path d="M26 46a11 11 0 0 1 22 0Z" fill="#FF7A2F"/>
+<circle cx="20" cy="22" r="6" fill="#3D5BFF" stroke="#EFEDF5" stroke-width="2"/><path d="M9 46a11 11 0 0 1 22 0Z" fill="#3D5BFF" stroke="#EFEDF5" stroke-width="2"/></svg>Buddy</div>
+          <div class="pick"><svg class="sp" viewBox="0 0 56 56" width="60" height="60" aria-hidden="true"><rect x="22" y="10" width="26" height="20" rx="8" fill="#FFB88A"/><path d="M40 28l6 6v-8Z" fill="#FFB88A"/>
+<rect x="8" y="22" width="30" height="22" rx="9" fill="#3D5BFF"/><path d="M16 42l-4 7 10-5Z" fill="#3D5BFF"/>
+<circle cx="17" cy="33" r="2.2" fill="#fff"/><circle cx="23" cy="33" r="2.2" fill="#fff"/><circle cx="29" cy="33" r="2.2" fill="#fff"/></svg>Forum</div>
+          <div class="pick"><svg class="sp" viewBox="0 0 56 56" width="60" height="60" aria-hidden="true"><path d="M24 8c1.500 10 7 16 17 17-10 1-15.500 7-17 17-1.500-10-7-16-17-17 10-1 15.500-7 17-17Z" fill="#3D5BFF"/>
+<path d="M43 6c.6 4 2.500 6 6.500 6.500-4 .5-5.900 2.500-6.500 6.500-.6-4-2.500-6-6.500-6.500 4-.5 5.900-2.500 6.500-6.500Z" fill="#FF7A2F"/><circle cx="44" cy="40" r="3" fill="#12C99B"/><circle cx="12" cy="46" r="2" fill="#8FA3FF"/></svg>Assistant</div>
+          <div class="pick"><svg class="sp" viewBox="0 0 56 56" width="60" height="60" aria-hidden="true"><circle cx="36" cy="14" r="7" fill="#FF7A2F"/><circle cx="36" cy="14" r="3.500" fill="#FFB88A"/>
+<rect x="8" y="20" width="40" height="28" rx="9" fill="#12C99B"/><path d="M8 29a9 9 0 0 1 9-9h22a9 9 0 0 1 9 9Z" fill="#0BB58C"/>
+<rect x="33" y="31" width="15" height="10" rx="5" fill="#00704F"/><circle cx="39" cy="36" r="2" fill="#fff"/></svg>Wallet</div>
+        </div>
+
+        <div class="shead"><h3 class="h">This week</h3><a class="seeall" href="#">See all</a></div>
+        <div class="group sq">
+          <div class="item"><span class="date"><span>Sat</span><b>18</b></span><div class="tx"><b>Jazz in Parcul Rozelor</b><small>Saturday 18:00, free</small></div></div>
+          <div class="item"><span class="date"><span>Sun</span><b>19</b></span><div class="tx"><b>Pottery night</b><small>Sunday 17:00, 8 spots left</small></div></div>
+        </div>
+      </div>
+      <nav class="nav-bar glass" aria-label="Main, home screen">
+        <a href="#" class="on" aria-current="page"><i aria-hidden="true" class="ph-fill ph-house"></i>Home</a>
+        <a href="#"><i aria-hidden="true" class="ph-bold ph-map-trifold"></i>Map</a>
+        <a href="#"><i aria-hidden="true" class="ph-bold ph-chats-circle"></i>Community</a>
+        <a href="#"><i aria-hidden="true" class="ph-bold ph-user-circle"></i>Profile</a>
+      </nav>
+    </div>
+
+    <div class="phone page" role="group" aria-label="Alerts list">
+      <div class="scroll">
+        <div class="status"><span>9:41</span><span><i aria-hidden="true" class="ph-bold ph-cell-signal-full"></i> <i aria-hidden="true" class="ph-bold ph-battery-full"></i></span></div>
+        <div class="topbar"><h3 class="t" style="margin:0 4px">Alerts</h3><button class="bell" aria-label="Alert settings"><i aria-hidden="true" class="ph-bold ph-sliders-horizontal"></i></button></div>
+        <div class="shead"><h4 class="h">For your places</h4></div>
+        <div class="group">
+          <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><ellipse cx="28" cy="50" rx="14" ry="2.500" fill="#7EE6C8"/>
+<path d="M28 7S14 23 14 33a14 14 0 0 0 28 0C42 23 28 7 28 7Z" fill="#12C99B"/>
+<path d="M20 34a8 8 0 0 0 6 7" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" opacity=".85"/></svg><div class="tx"><b>Hot water is off</b><small>Strada Gării 2. Back about 18:00.</small></div><span class="new-dot" role="img" aria-label="New"></span></div>
+          <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><path d="M22 8h12M28 8v6" fill="none" stroke="#3A2F5C" stroke-width="2.4" stroke-linecap="round"/>
+<rect x="13" y="14" width="30" height="26" rx="8" fill="#3D5BFF"/><rect x="18" y="18" width="20" height="11" rx="4" fill="#8FA3FF"/>
+<circle cx="21" cy="35" r="2.6" fill="#FF7A2F"/><circle cx="35" cy="35" r="2.6" fill="#FF7A2F"/>
+<path d="M16 49l4-9M40 49l-4-9M10 49h36" fill="none" stroke="#3A2F5C" stroke-width="2.4" stroke-linecap="round"/></svg><div class="tx"><b>Tram 5 isn’t running</b><small>Take 5C instead.</small></div><span class="when-t">Until Dec</span></div>
+        </div>
+        <div class="shead"><h4 class="h">Around the city</h4></div>
+        <div class="group">
+          <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><path d="M16 33a8 8 0 0 1 1.500-15.800A10 10 0 0 1 36 15a9 9 0 0 1 2 18Z" fill="#FFB88A"/>
+<path d="M8 41h24a4.500 4.500 0 1 0-4.500-4.500" fill="none" stroke="#A84300" stroke-width="3" stroke-linecap="round"/>
+<path d="M16 48h20a3.500 3.500 0 1 1-3.500 3.500" fill="none" stroke="#A84300" stroke-width="3" stroke-linecap="round"/></svg><div class="tx"><b>Burnt smell in the east</b><small>12 reports in the last hour.</small></div><span class="when-t">1h</span></div>
+          <div class="item"><svg class="sp" viewBox="0 0 56 56" width="44" height="44" aria-hidden="true"><circle cx="28" cy="20" r="15" fill="#FFB88A"/><path d="M19.500 15.500L28 8l8.500 7.500Z" fill="#3A2F5C"/>
+<rect x="20.500" y="15" width="15" height="14" rx="5" fill="#FF7A2F"/><rect x="26.500" y="27" width="3" height="19" fill="#3A2F5C"/><rect x="20" y="45" width="16" height="4" rx="2" fill="#3A2F5C"/></svg><div class="tx"><b>Streetlights out</b><small>Near Gara de Nord. 3 reports.</small></div><span class="when-t">Today</span></div>
+        </div>
+      </div>
+      <nav class="nav-bar" aria-label="Main, alerts screen" style="background:rgba(248,246,251,.94);box-shadow:var(--float)">
+        <a href="#"><i aria-hidden="true" class="ph-bold ph-house"></i>Home</a>
+        <a href="#"><i aria-hidden="true" class="ph-bold ph-map-trifold"></i>Map</a>
+        <a href="#"><i aria-hidden="true" class="ph-bold ph-chats-circle"></i>Community</a>
+        <a href="#"><i aria-hidden="true" class="ph-bold ph-user-circle"></i>Profile</a>
+      </nav>
+    </div>
+
+    <div class="phone page" role="group" aria-label="Alert detail">
+      <div class="scroll">
+        <div class="status"><span>9:41</span><span><i aria-hidden="true" class="ph-bold ph-cell-signal-full"></i> <i aria-hidden="true" class="ph-bold ph-battery-full"></i></span></div>
+        <div class="back"><i aria-hidden="true" class="ph-bold ph-caret-left"></i>Alerts</div>
+        <h3 class="t">No hot water until about 18:00</h3>
+        <p class="lead">Strada Gării 2. Colterm is repairing a pipe.</p>
+        <ul class="steps">
+          <li class="done">Confirmed by Colterm<small>15:05</small></li>
+          <li class="now">Repair in progress<small>Crew on site</small></li>
+          <li>Hot water back<small>Expected about 18:00</small></li>
+        </ul>
+        <div class="confirm"><div class="stack"><span class="av" style="background:var(--apricot);color:var(--ink)">MA</span><span class="av" style="background:var(--blue);color:#fff">DR</span><span class="av" style="background:var(--mint);color:var(--ink)">IO</span></div>14 neighbours confirmed this</div>
+        <div class="actions"><button class="btn btn-primary lg block">Tell me when it’s back</button>
+        <button class="btn btn-text lg block">My building has it too</button></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<section class="sec">
+  <h2>Type</h2>
+  <p>Nunito for headlines: rounded, relaxed, easy to read at any size. Figtree for the interface. Both carry the Romanian comma-below ș and ț.</p>
+  <div class="type">
+    <div style="font:800 52px/58px var(--display)">Display 52<small>Nunito 800</small></div>
+    <div style="font:800 36px/42px var(--display)">Title 36<small>Nunito 800</small></div>
+    <div style="font:800 26px/32px var(--display)">Heading 26<small>Nunito 800</small></div>
+    <div style="font:700 20px/26px var(--display)">Subheading 20<small>Nunito 700</small></div>
+    <div style="font:500 18px/26px var(--ui)">Body large 18<small>Figtree 500</small></div>
+    <div>Body 16<small>Figtree 400</small></div>
+    <div style="font:600 14px/20px var(--ui)">Label 14<small>Figtree 600</small></div>
+    <div style="font:500 12px/16px var(--ui)">Caption 12<small>Figtree 500</small></div>
+    <div style="font:800 30px/38px var(--display);margin-top:22px">Șezătoare, țărm, Împărat, băiat, încă, őrült, űr</div>
+  </div>
+</section>
+
+<section class="sec">
+  <h2>Voice</h2>
+  <p>Playful where little is at stake. Calm and factual for outages, safety and disruptions.</p>
+  <div class="say">
+    <div class="y"><b>Write</b><p>Nothing on tonight. Be the first to plan something.</p><p>Maria is going too. Say hi?</p><p>Hot water is off in your building until about 18:00. We’ll tell you when it’s back.</p></div>
+    <div class="n"><b>Avoid</b><p>No data found.</p><p>A user matched your criteria.</p><p>ATTENTION!! Service disruption!!!</p></div>
+  </div>
+</section>
+
+</main>
+</body>
+</html>

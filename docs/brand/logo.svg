@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="hop">
+  <rect width="64" height="64" rx="18" fill="#FF3D7F"/>
+  <!-- baroque gable, like the facades on Piata Unirii -->
+  <path d="M13 53V33Q13 27 19 25Q25 23 27 17Q29 11 32 11Q35 11 37 17Q39 23 45 25Q51 27 51 33V53Z" fill="#fff"/>
+  <!-- arched window -->
+  <path d="M26.500 53V41a5.500 5.500 0 0 1 11 0V53Z" fill="#FF3D7F"/>
+</svg>

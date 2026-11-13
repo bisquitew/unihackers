@@ -2,20 +2,38 @@
 node_modules/
 .pnpm-store/
 .pnpm-task-run-state-v1/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
 # Build artifacts
 dist/
 build/
 uploads/
+out/
+.turbo/
 .expo/
+.expo-shared/
 .next/
 
-# Environment files
+# Expo certificates & keys
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Environment files & secrets
 .env
 .env.local
 .env.*.local
 *.env
 *-credentials.env
+.env.*
+!.env.example
+*.local
 
 # Python
 __pycache__/
@@ -29,9 +47,13 @@ venv/
 .DS_Store
 Thumbs.db
 .idea/
-.vscode/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
+
+# Database & temporary
+*.sqlite
+*.sqlite3
