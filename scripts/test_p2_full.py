@@ -21,6 +21,9 @@ import subprocess
 import time
 import ssl
 
+# Windows consoles default to cp1252, which can't print the emoji below.
+sys.stdout.reconfigure(encoding="utf-8")
+
 BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 server_proc = None
 
@@ -239,7 +242,7 @@ def main():
 
         # Colterm Worker
         cmd_c = [node_bin, "--experimental-strip-types", "services/workers/src/ingestion/coltermIngestion.ts"]
-        res_c = subprocess.run(cmd_c, cwd=root_dir, capture_output=True, text=True)
+        res_c = subprocess.run(cmd_c, cwd=root_dir, capture_output=True, text=True, encoding="utf-8")
         if "✅ Ingested new outage" in res_c.stdout:
             print("   ✅ Colterm Ingestion Worker: Ingested press release notice into API")
         else:
@@ -247,7 +250,7 @@ def main():
 
         # Transit Worker
         cmd_t = [node_bin, "--experimental-strip-types", "services/workers/src/ingestion/transitIngestion.ts"]
-        res_t = subprocess.run(cmd_t, cwd=root_dir, capture_output=True, text=True)
+        res_t = subprocess.run(cmd_t, cwd=root_dir, capture_output=True, text=True, encoding="utf-8")
         if "✅ Transit detour alert published" in res_t.stdout:
             print("   ✅ STPT Transit Ingestion Worker: Published 2026 roadwork detour alert")
         else:
