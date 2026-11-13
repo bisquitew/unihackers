@@ -1,0 +1,22 @@
+{
+  "name": "@hub/workers",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --experimental-strip-types src/index.ts",
+    "dev": "node --experimental-strip-types src/index.ts",
+    "ingest:utilities": "node --experimental-strip-types src/ingestion/coltermIngestion.ts",
+    "ingest:transit": "node --experimental-strip-types src/ingestion/transitIngestion.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^0.1.0",
+    "@hub/contracts": "workspace:*",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.11",
+    "tsx": "^4.9.3",
+    "typescript": "^5.4.5"
+  }
+}
