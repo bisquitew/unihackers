@@ -27,9 +27,7 @@
     "react-native-safe-area-context": "*",
     "react-native-screens": "*",
     "@hub/contracts": "*",
-    "@hub/ui": "*",
-    "@unihack/contracts": "*",
-    "@unihack/solana": "*"
+    "@hub/ui": "*"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
