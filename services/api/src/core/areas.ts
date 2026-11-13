@@ -1,4 +1,5 @@
 import type { Area } from '@hub/contracts';
+import { placeMatches } from './text.ts';
 
 export const TIMISOARA_AREAS: Area[] = [
   { id: 'area-cetate', name: 'Cetate (Centru)', slug: 'cetate', center_lat: 45.7578, center_lng: 21.2290, radius_meters: 1200 },
@@ -18,7 +19,11 @@ export const TIMISOARA_AREAS: Area[] = [
 
 export function getAreaBySlugOrName(query: string): Area | undefined {
   const q = query.toLowerCase().trim();
-  return TIMISOARA_AREAS.find((a) => a.slug === q || a.name.toLowerCase().includes(q));
+  // Exact slug first; then names/slugs regardless of diacritics, case and articles.
+  return (
+    TIMISOARA_AREAS.find((a) => a.slug === q) ??
+    TIMISOARA_AREAS.find((a) => placeMatches(a.name, query) || placeMatches(a.slug.replace(/-/g, ' '), query))
+  );
 }
 
 // Simple Haversine distance in meters
