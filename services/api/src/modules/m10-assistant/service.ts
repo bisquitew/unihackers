@@ -45,6 +45,9 @@ async function callModel(ai: GoogleGenAI, contents: Content[], config: GenerateC
   } catch (err) {
     const status = (err as { status?: number }).status;
     console.error(`[m10-assistant] Gemini request failed${status ? ` (HTTP ${status})` : ''}: ${safeMessage(err)}`);
+    if (status === 429) {
+      throw new AssistantUnavailableError('The assistant is getting too many questions right now. Please wait a few seconds and try again.');
+    }
     throw new AssistantUnavailableError('The AI service is unavailable right now. Please try again in a moment.');
   }
 }
