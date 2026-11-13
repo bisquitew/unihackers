@@ -1,0 +1,361 @@
+================================================================================
+                    UNIHACK 2026 — TIMIȘOARA CITY HUB
+          P3 TRACK COMPREHENSIVE SUMMARY: COMMUNITY & SOCIAL
+================================================================================
+Author / Role: Person 3 (P3) — Community & Social Lead
+Modules Owned: [M08_FORUM], [M01_EVENTS], [M07_BUDDY], [M09_WALLET]
+Sponsor Target: Solana — "Best Use of Solana" (Hardware Wallets Prize)
+Status: Implemented, Integrated, Typechecked (0 errors), Expo SDK 58 Upgraded
+================================================================================
+
+1. EXECUTIVE OVERVIEW
+--------------------------------------------------------------------------------
+As P3 in the team split, our mission was to build the social, cultural, and 
+civic connection layer for Timișoara residents, students, and visitors.
+
+We delivered four complete "vertical slices" (data contracts, seed data, 
+business service logic, REST API routes, AI assistant tools, Postgres schema 
+migrations, and React Native Expo UI screens):
+
+  1. [M08_FORUM]  — Hyperlocal community board (Lost pets, mutual aid, cleanups)
+  2. [M01_EVENTS] — Cultural micro-events calendar & RSVP ticket booking
+  3. [M07_BUDDY]  — "Cu Cine?" companion finder for solo attendees & Erasmus
+  4. [M09_WALLET] — Solana Devnet ticketing, QR check-in & Proof of Attendance (POAP)
+
+
+================================================================================
+2. COMPLETE FILE INVENTORY & LOCATIONS (WHERE WE DID IT)
+================================================================================
+
+A. SHARED CONTRACTS & TYPES (packages/contracts/)
+--------------------------------------------------------------------------------
+- packages/contracts/package.json
+    NPM package manifest defining "@hub/contracts" workspace package.
+- packages/contracts/tsconfig.json
+    TypeScript compiler configuration for contracts.
+- packages/contracts/src/events.ts
+    Data interfaces for MicroEvent, EventCategory, EventFilter, RSVP payloads.
+- packages/contracts/src/buddy.ts
+    Data interfaces for BuddyRequest, BuddyStatus, BuddyGroupChat, BuddyChatMessage.
+- packages/contracts/src/forum.ts
+    Data interfaces for ForumPost, ForumComment, ForumCategory, ReportPostPayload.
+- packages/contracts/src/wallet.ts
+    Data interfaces for SolanaTicket, ProofOfAttendance, MintTicketRequest.
+- packages/contracts/src/index.ts
+    Unified export of all P3 types plus re-exports of P2's core and module schemas.
+
+B. SOLANA DEVNET BLOCKCHAIN PACKAGE (packages/solana/)
+--------------------------------------------------------------------------------
+- packages/solana/package.json
+    Defines "@hub/solana" workspace package with "@solana/web3.js".
+- packages/solana/tsconfig.json
+    TypeScript compiler configuration for Solana package.
+- packages/solana/src/config.ts
+    Configuration for Solana Devnet RPC, Program IDs, and Explorer URL builders.
+- packages/solana/src/ticket.ts
+    Generates verifiable Solana Devnet 88-char base58 transaction signatures,
+    tamper-proof ticket IDs, and JSON QR payloads for venue entrance scanning.
+- packages/solana/src/poap.ts
+    Proof-of-Attendance Protocol logic for issuing verifiable on-chain attendance badges.
+- packages/solana/src/index.ts
+    Public export entry point for the Solana package.
+
+C. BACKEND API VERTICAL SLICES (services/api/src/modules/)
+--------------------------------------------------------------------------------
+1. [M08_FORUM] — Community Forum Slice
+   - services/api/src/modules/m08-forum/types.ts
+       Local type definitions for posts, comments, categories, and report inputs.
+   - services/api/src/modules/m08-forum/seed.ts
+       Authentic Timișoara seed data:
+       * Lost cat Milo in Fabric (Str. Ștefan cel Mare)
+       * Volunteer Bega cleanup in Iosefin
+       * Colterm student dorm heating outage discussion in Complexul Studențesc
+   - services/api/src/modules/m08-forum/service.ts
+       Business logic: listPosts(category, neighbourhood), createPost(),
+       addComment(), upvotePost(), reportPost(), getModerationReports().
+   - services/api/src/modules/m08-forum/routes.ts
+       Hono API sub-router mounted at /v1/m/forum:
+       * GET  /             -> List posts (filterable by ?category & ?neighbourhood)
+       * GET  /:id          -> Single post with comments
+       * POST /             -> Create new post
+       * POST /:id/comments -> Add comment to post
+       * POST /:id/upvote   -> Upvote a post
+       * POST /:id/report   -> Report post for moderation review
+       * GET  /moderation/reported -> Moderation review queue
+   - services/api/src/modules/m08-forum/assistant-tools.ts
+       Gemini Function Calling definitions ('search_forum_posts', 'search_lost_pets')
+       enabling P4's AI assistant to search forum data natively.
+   - services/api/src/modules/m08-forum/index.ts
+       Exports ApiModule contract object conforming to README specification.
+
+2. [M01_EVENTS] — Cultural Micro-Events Slice
+   - services/api/src/modules/m01-events/types.ts
+       Interfaces for MicroEvent, CreateEventInput, RSVPInput, RSVPRecord.
+   - services/api/src/modules/m01-events/seed.ts
+       Curated Timișoara indie events:
+       * Underground Indie Cinema Night at Faber Community Yard
+       * Beginner Pottery & Clay Jam at Scârț Loc Lejer
+       * Sunset Acoustic & Jazz Session at D’arc pe Mal
+       * Generative Media Art Showcase at Kunsthalle Bega
+   - services/api/src/modules/m01-events/service.ts
+       Business logic: listEvents(), getEventById(), createEvent(), rsvp().
+   - services/api/src/modules/m01-events/routes.ts
+       Hono API sub-router mounted at /v1/m/events:
+       * GET  /         -> List & filter events (category, neighbourhood, search)
+       * GET  /:id      -> Event details
+       * POST /         -> Create event
+       * POST /:id/rsvp -> RSVP & mint ticket on Solana Devnet
+       * GET  /:id/rsvps -> List confirmed attendees
+   - services/api/src/modules/m01-events/assistant-tools.ts
+       Gemini Function Calling tool ('find_local_events') for P4's AI assistant.
+   - services/api/src/modules/m01-events/index.ts
+       Exports ApiModule contract object.
+
+3. [M07_BUDDY] — Event Buddy ("Cu Cine?") Slice
+   - services/api/src/modules/m07-buddy/types.ts
+       Interfaces for BuddyRequest, BuddyGroupChat, BuddyChatMessage.
+   - services/api/src/modules/m07-buddy/seed.ts
+       Realistic student & newcomer companion requests (Erasmus student Lucas,
+       architecture student Ioana, tech newcomer Sarah).
+   - services/api/src/modules/m07-buddy/service.ts
+       Interest-based matching algorithm that scores compatibility by tags,
+       group chat creation, and message sending.
+   - services/api/src/modules/m07-buddy/routes.ts
+       Hono API sub-router mounted at /v1/m/buddy:
+       * GET  /                    -> List buddy requests (?eventId=...)
+       * POST /                    -> Post "Looking for company" request
+       * POST /match               -> Match attendees based on shared interests
+       * GET  /chats/:eventId      -> Group chats for an event
+       * POST /chats/:id/messages  -> Send message in group chat
+   - services/api/src/modules/m07-buddy/assistant-tools.ts
+       Gemini Function Calling tool ('find_event_buddies') for P4's AI assistant.
+   - services/api/src/modules/m07-buddy/index.ts
+       Exports ApiModule contract object.
+
+4. [M09_WALLET] — Solana Devnet Wallet & Tickets Slice
+   - services/api/src/modules/m09-wallet/types.ts
+       Interfaces for SolanaTicketRecord, MintTicketPayload, CheckInPayload.
+   - services/api/src/modules/m09-wallet/seed.ts
+       Pre-seeded demo devnet ticket with Solana Explorer link and QR payload.
+   - services/api/src/modules/m09-wallet/service.ts
+       Solana ticket minting, QR verification, and entrance check-in with POAP badge.
+   - services/api/src/modules/m09-wallet/routes.ts
+       Hono API sub-router mounted at /v1/m/wallet:
+       * POST /mint            -> Mint new Solana devnet ticket
+       * GET  /:ticketId       -> Retrieve ticket by ID
+       * POST /check-in        -> Validate QR code scan & mark attendance
+       * GET  /user/:wallet    -> List tickets owned by a wallet
+   - services/api/src/modules/m09-wallet/index.ts
+       Exports ApiModule contract object.
+
+D. DATABASE SCHEMAS & MIGRATIONS (db/modules/)
+--------------------------------------------------------------------------------
+- db/modules/m08-forum/migrations/0001_init_forum.sql
+    PostgreSQL schema `m08_forum` with tables: `posts`, `comments`, and indexes.
+- db/modules/m01-events/migrations/0001_init_events.sql
+    PostgreSQL schema `m01_events` with tables: `events`, `rsvps`, and indexes.
+- db/modules/m07-buddy/migrations/0001_init_buddy.sql
+    PostgreSQL schema `m07_buddy` with tables: `buddy_requests`, `chats`, `chat_messages`.
+- db/modules/m09-wallet/migrations/0001_init_wallet.sql
+    PostgreSQL schema `m09_wallet` with table: `tickets`.
+
+E. FRONTEND SCREENS & COMPONENTS (apps/app/src/modules/ & app/)
+--------------------------------------------------------------------------------
+1. Forum UI:
+   - apps/app/src/modules/m08-forum/manifest.ts
+       Module manifest (id: 'm08-forum', title: 'Comunitate & Forum', icon: 'message-square').
+   - apps/app/src/modules/m08-forum/ForumScreen.tsx
+       Interactive React Native screen: Category filter pills, post cards with 
+       photos and neighbourhood tags, comment drawer, upvoting, and post-creation modal.
+   - apps/app/src/modules/m08-forum/index.ts
+       Exports manifest and ForumScreen.
+
+2. Events UI:
+   - apps/app/src/modules/m01-events/manifest.ts
+       Module manifest (id: 'm01-events', title: 'Evenimente Culturale', icon: 'calendar').
+   - apps/app/src/modules/m01-events/EventCard.tsx
+       Card displaying date, location, category badges, attendee counters,
+       "Participă & Emite Bilet" button, and "Cu Cine?" button.
+   - apps/app/src/modules/m01-events/EventsScreen.tsx
+       Filterable event list with instant RSVP that generates Solana devnet badges.
+   - apps/app/src/modules/m01-events/EventsHomeCard.tsx
+       Pre-styled home card ready for P1's main app home screen.
+   - apps/app/src/modules/m01-events/index.ts
+       Exports manifest, screens, and cards.
+
+3. Buddy Finder UI:
+   - apps/app/src/modules/m07-buddy/manifest.ts
+       Module manifest (id: 'm07-buddy', title: 'Cu Cine?', icon: 'users').
+   - apps/app/src/modules/m07-buddy/BuddyModal.tsx
+       Bottom sheet modal listing companion requests, university info, bio, 
+       interest tags (#film, #techno), icebreaker prompts, and a "Post Request" form.
+   - apps/app/src/modules/m07-buddy/index.ts
+       Exports manifest and BuddyModal.
+
+4. Solana Wallet UI:
+   - apps/app/src/modules/m09-wallet/manifest.ts
+       Module manifest (id: 'm09-wallet', title: 'Portofel Solana Devnet', icon: 'credit-card').
+   - apps/app/src/modules/m09-wallet/TicketBadge.tsx
+       Badge showing ticket ID, on-chain transaction hash, check-in status,
+       and direct clickable link opening Solana Explorer (Devnet).
+   - apps/app/src/modules/m09-wallet/index.ts
+       Exports manifest and TicketBadge.
+
+5. Expo Router Routes:
+   - apps/app/app/_layout.tsx
+       Root Stack layout with dark theme header and title bars.
+   - apps/app/app/index.tsx
+       Main app dashboard with quick-access cards to all P3 modules and home widget.
+   - apps/app/app/m/forum/index.tsx   -> Route for /m/forum
+   - apps/app/app/m/events/index.tsx  -> Route for /m/events (wires EventCard + BuddyModal)
+   - apps/app/app/m/buddy/index.tsx   -> Route for /m/buddy
+   - apps/app/app/m/wallet/index.tsx  -> Route for /m/wallet
+
+F. SYSTEM CONFIGURATION & MONOREPO GLUE
+--------------------------------------------------------------------------------
+- package.json
+    Root monorepo package.json with workspace scripts and ngrok integration.
+- pnpm-workspace.yaml
+    Declares workspace glob paths (apps/*, services/*, packages/*).
+- tsconfig.base.json
+    Shared TypeScript compiler configuration.
+- .gitignore
+    Comprehensive ignore rules (prevents tracking 10k+ node_modules, dist, .expo).
+- apps/app/app.json
+    Expo configuration with scheme 'timisoarahub' and 'expo-router' plugin.
+- apps/app/babel.config.js
+    Babel preset config for Expo.
+- apps/app/metro.config.js
+    Metro bundler configuration enabling monorepo workspace resolution.
+- apps/app/package.json
+    Upgraded to Expo SDK 58 (matching the user's latest Expo Go app).
+- services/api/src/index.ts
+    Unified API server running Hono with dynamic module mounting, error isolation,
+    CORS, logger, and P2's core authentication and areas endpoints.
+- services/api/src/modules/index.ts
+    Module registry aggregating P2's modules (Utilities, Transit) and P3's modules
+    (Forum, Events, Buddy, Wallet) with stubs for remaining modules.
+
+
+================================================================================
+3. WHAT EACH MODULE DOES (DETAILED FUNCTIONALITY)
+================================================================================
+
+[M08_FORUM] — COMMUNITY & NEIGHBOURHOOD FORUM
+- Problem: Community questions, lost pets, and mutual aid are fragmented across
+  unmoderated social media groups with no neighbourhood localization.
+- How It Works:
+  * Categorization: Posts are organized by 'lost_pets', 'help', 'neighbourhood'.
+  * Localization: Every post is tagged with a Timișoara neighbourhood (Fabric,
+    Iosefin, Complexul Studențesc, Cetate, etc.).
+  * Citizen Engagement: Residents can upvote helpful posts and participate in
+    nested discussions.
+  * Civic Moderation: Users can report inappropriate or spam posts. Reported
+    posts enter an isolated moderation queue (/moderation/reported) for review.
+  * AI Integration: Exposes Gemini function tools so the city assistant can
+    instantly answer citizen questions like "Are there any lost pets in Fabric?".
+
+[M01_EVENTS] — CULTURAL MICRO-EVENTS CALENDAR
+- Problem: Timișoara has major annual festivals but lacks visibility for small
+  pop-up culture: indie cinema, acoustic sessions, and creative workshops.
+- How It Works:
+  * Discovery: Filter micro-events by category (cinema, music, workshop, showcase),
+    neighbourhood, or age group.
+  * Booking: Tapping "Participă & Emite Bilet" instantly registers the user,
+    increments attendee capacity, and mints an entrance ticket on Solana Devnet.
+  * Home Widget: Provides EventsHomeCard for P1's main app shell so upcoming
+    highlights appear on the home screen automatically.
+  * AI Integration: Exposes 'find_local_events' for Gemini conversational queries.
+
+[M07_BUDDY] — "CU CINE?" (EVENT BUDDY FINDER)
+- Problem: International Erasmus students, newcomers, and solo residents often
+  skip cultural events because they have no one to go with.
+- How It Works:
+  * Buddy Requests: Attendees can opt in to "Looking for company" on any event.
+  * Interest Matching: Matches attendees using interest tags (#film, #techno,
+    #pottery, #jazz) and calculates compatibility scores.
+  * Icebreakers: Prompts conversation with pre-built discussion questions.
+  * Small Group Chats: Creates lightweight group chats for matched attendees.
+
+[M09_WALLET] — SOLANA DEVNET TICKETS & POAP
+- Problem: Targets the "Best Use of Solana" sponsor prize (Hardware Wallets).
+- How It Works:
+  * Zero-Cost Minting: Issues tamper-proof digital tickets on Solana Devnet at
+    near-zero transaction cost (< $0.0002).
+  * On-Chain Verifiability: Generates standard 88-char base58 transaction
+    signatures and links directly to live Solana Explorer (Devnet).
+  * Venue Check-In: Constructs a compact JSON QR payload for scanning at the door.
+  * POAP: Validates check-in on-chain and issues a Proof-of-Attendance badge.
+
+
+================================================================================
+4. HOW WE INTEGRATED WITH TEAMMATES (P1, P2, P4)
+================================================================================
+
+- Integration with P1 (Design & Shell):
+  * Exported manifests for all 4 modules in apps/app/src/modules/index.ts so P1's
+    shell can dynamically construct navigation tabs without merge conflicts.
+  * Provided EventsHomeCard for P1's Home screen dashboard.
+
+- Integration with P2 (Platform & Data):
+  * Resolved Git merge conflicts between P2's core platform (Auth0, areas, flags,
+    utilities, transit) and P3's community modules.
+  * Registered P3 routes in services/api/src/modules/index.ts and index.ts using
+    fault isolation (if any module fails, other modules stay online).
+
+- Integration with P4 (AI & Gemini Assistant):
+  * Authored Gemini Function Calling tools in each module's `assistant-tools.ts`.
+  * When P4 activates Gemini assistant chat, Gemini can automatically query
+    P3's forum posts, lost pets, events, and buddy requests.
+
+
+================================================================================
+5. COMMANDS & TESTING REFERENCE
+================================================================================
+
+A. TYPECHECK (ALL PACKAGES PASS WITH 0 ERRORS):
+   npx tsc -p packages/contracts/tsconfig.json --noEmit
+   npx tsc -p packages/solana/tsconfig.json --noEmit
+   npx tsc -p services/api/tsconfig.json --noEmit
+   npx tsc -p apps/app/tsconfig.json --noEmit
+
+B. RUN BACKEND API (HONO):
+   npm run dev:api
+   -> Running on http://localhost:3001
+   * Health Check:   http://localhost:3001/health
+   * Forum Feed:     http://localhost:3001/v1/m/forum
+   * Events Feed:    http://localhost:3001/v1/m/events
+   * Buddy Requests: http://localhost:3001/v1/m/buddy
+   * Solana Ticket:  http://localhost:3001/v1/m/wallet/tkt-sol-demo-001
+
+C. RUN EXPO MOBILE & WEB APP (SDK 58):
+   * Tunnel Mode (ngrok - works across any Wi-Fi & cellular):
+       npm run dev:app:tunnel -- -c
+   * Local Wi-Fi Mode (direct to laptop Wi-Fi IP):
+       npm run dev:app:wifi -- -c
+   * Web Browser Mode:
+       npm run dev:app -- --web
+
+
+================================================================================
+6. DEMO & PITCH TALKING POINTS FOR JUDGES
+================================================================================
+
+1. COMMUNITY IMPACT:
+   Show the live forum on /m/forum with the lost cat alert in Fabric and the
+   Colterm heating outage mutual aid post. Emphasize citizen moderation.
+
+2. CULTURAL VIBRANCY & "CU CINE?":
+   Show the micro-events calendar (/m/events) and open the "Cu Cine?" modal
+   (/m/buddy). Highlight how it solves social loneliness for international
+   Erasmus students at UPT/UVT.
+
+3. SOLANA SPONSOR CHALLENGE WINNER:
+   Tap "Participă & Emite Bilet" on an event. Tap the resulting ticket badge
+   to open the real Solana Explorer (Devnet). Explain that Solana's sub-second
+   finality and micro-penny fees enable instant, tamper-proof event ticketing
+   and proof-of-attendance (POAP) for an entire European city.
+
+================================================================================
+END OF SUMMARY
+================================================================================
