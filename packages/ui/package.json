@@ -9,5 +9,13 @@
   },
   "dependencies": {
     "@hub/contracts": "workspace:*"
+  },
+  "peerDependencies": {
+    "expo-blur": "*",
+    "phosphor-react-native": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-safe-area-context": "*",
+    "react-native-svg": "*"
   }
 }
