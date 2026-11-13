@@ -27,7 +27,7 @@ feedbackRoutes.post('/', async (c) => {
     return c.json({ error: 'Invalid request body' }, 400);
   }
   const parsed = parseInAppInput(body);
-  if (!parsed.ok) return c.json({ error: parsed.error }, 400);
+  if (parsed.ok === false) return c.json({ error: parsed.error }, 400); // `=== false` narrows even with strict: false
   const feedback = await feedbackService.addInApp(parsed.value);
   return c.json({ feedback }, 201);
 });
@@ -44,7 +44,7 @@ feedbackRoutes.post('/ingest', async (c) => {
     return c.json({ error: 'Invalid request body' }, 400);
   }
   const parsed = parseSurveyPayload(body);
-  if (!parsed.ok) return c.json({ error: parsed.error }, 400);
+  if (parsed.ok === false) return c.json({ error: parsed.error }, 400);
   const { entry, duplicate } = await feedbackService.ingestSurvey(parsed.value);
   return c.json({ feedback: entry, duplicate }, duplicate ? 200 : 201);
 });
