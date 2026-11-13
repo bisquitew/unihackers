@@ -51,6 +51,30 @@ export class BuddyService {
     return this.chats.find((c) => c.id === chatId) || null;
   }
 
+  async getOrCreateChat(
+    eventId: string,
+    eventTitle: string,
+    participantIds: string[],
+    participantNames: string[]
+  ): Promise<BuddyGroupChat> {
+    const existing = this.chats.find(
+      (c) => c.eventId === eventId && participantIds.every((id) => c.participantIds.includes(id))
+    );
+    if (existing) return existing;
+
+    const newChat: BuddyGroupChat = {
+      id: `chat-${Date.now().toString(36)}`,
+      eventId,
+      eventTitle,
+      participantIds,
+      participantNames,
+      messages: [],
+      createdAt: new Date().toISOString(),
+    };
+    this.chats.push(newChat);
+    return newChat;
+  }
+
   async getChatsForEvent(eventId: string): Promise<BuddyGroupChat[]> {
     return this.chats.filter((c) => c.eventId === eventId);
   }

@@ -6,6 +6,7 @@ import { utilitiesService } from './modules/m04-utilities/service.ts';
 import { transitService } from './modules/m05-transit/service.ts';
 import { parkieService } from './modules/parkie/service.ts';
 import { storageService } from './core/storage.ts';
+import { db } from './core/db.ts';
 
 const PORT = parseInt(process.env.PORT || '8000', 10);
 
@@ -179,7 +180,8 @@ const server = http.createServer(async (req, res) => {
         affected_stops: body.affected_stops || [],
         alternative_instructions: body.alternative_instructions,
         replacement_line: body.replacement_line,
-        valid_from: body.valid_from || new Date().toISOString()
+        valid_from: body.valid_from || new Date().toISOString(),
+        created_at: new Date().toISOString()
       });
       return sendJson(res, 201, created);
     }
@@ -244,6 +246,47 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 201, created);
     }
 
+    // 8. [TIGER DATA / TIMESCALEDB] Hypertables & Continuous Aggregates (Sponsor Challenge)
+    if (pathname === '/v1/core/tiger/status' && method === 'GET') {
+      const status = await db.getTigerStatus();
+      return sendJson(res, 200, status);
+    }
+
+    if (pathname === '/v1/core/tiger/compression' && method === 'GET') {
+      const status = await db.getTigerStatus();
+      return sendJson(res, 200, status.compression);
+    }
+
+    if (pathname === '/v1/m/parkie/analytics/hourly' && method === 'GET') {
+      const lotId = url.searchParams.get('lot_id') || undefined;
+      const hours = parseInt(url.searchParams.get('hours') || '24', 10);
+      const analytics = await parkieService.getHourlyAnalytics(lotId, hours);
+      return sendJson(res, 200, analytics);
+    }
+
+    if (pathname === '/v1/core/analytics/city-metrics' && method === 'GET') {
+      const metricType = url.searchParams.get('metric_type') || undefined;
+      const areaId = url.searchParams.get('area_id') || undefined;
+      const hours = parseInt(url.searchParams.get('hours') || '24', 10);
+      const metrics = await parkieService.getCityMetricsAnalytics(metricType, areaId, hours);
+      return sendJson(res, 200, metrics);
+    }
+
+    if (pathname === '/v1/core/metrics/ingest' && method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.metric_type || !body.area_id || body.value === undefined) {
+        return sendJson(res, 400, { error: 'Missing required metric fields: metric_type, area_id, value' });
+      }
+      const ingested = await parkieService.ingestCityMetric(body);
+      return sendJson(res, 201, ingested);
+    }
+
+    // 9. Open Data Back to the City (Anonymized continuous aggregate datasets)
+    if (pathname === '/v1/core/open-data/export' && method === 'GET') {
+      const openData = await parkieService.getOpenDataExport();
+      return sendJson(res, 200, openData);
+    }
+
     // 404
     return sendJson(res, 404, { error: 'Route not found', path: pathname });
   } catch (err: any) {
@@ -267,6 +310,9 @@ function startServer(port: number) {
     console.log(`   Utilities: http://localhost:${port}/v1/m/utilities/outages`);
     console.log(`   Transit: http://localhost:${port}/v1/m/transit/lines`);
     console.log(`   Parkie: http://localhost:${port}/v1/m/parkie/lots`);
+    console.log(`   Tiger Status: http://localhost:${port}/v1/core/tiger/status`);
+    console.log(`   Tiger Aggregates: http://localhost:${port}/v1/m/parkie/analytics/hourly`);
+    console.log(`   Open Data: http://localhost:${port}/v1/core/open-data/export`);
   });
 }
 
