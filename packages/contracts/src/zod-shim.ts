@@ -26,6 +26,7 @@ const shimZod = {
   string: () => createType(),
   number: () => createType(),
   boolean: () => createType(),
+  literal: (_val?: any) => createType(),
   enum: (_vals: readonly any[]) => createType(),
   array: (_item: any) => createType(),
   record: (_item: any) => createType(),
