@@ -2,12 +2,20 @@
   "name": "@hub/solana",
   "version": "1.0.0",
   "private": true,
+  "description": "Solana devnet integration for event tickets, POAP, and community payments",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc"
   },
   "dependencies": {
+    "@solana/web3.js": "^1.95.8",
     "@hub/contracts": "workspace:*"
-  }
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3",
+    "@types/node": "^20.17.6"
+  },
+  "author": "UniHackers P3",
+  "license": "MIT"
 }

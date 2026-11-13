@@ -1,0 +1,112 @@
+/* Design Tokens - Auto-generated */
+/* Do not edit directly - modify tokens.json instead */
+
+/* === PRIMITIVES === */
+:root {
+  --primitive-color-white: #FFFFFF;
+  --primitive-color-lilac-50: #F8F6FB;
+  --primitive-color-ink-600: #5A5070;
+  --primitive-color-ink-700: #3A2F5C;
+  --primitive-color-ink-900: #1A1033;
+  --primitive-color-pink-500: #FF3D7F;
+  --primitive-color-blue-300: #8FA3FF;
+  --primitive-color-blue-400: #6C84FF;
+  --primitive-color-blue-500: #3D5BFF;
+  --primitive-color-blue-700: #2438C9;
+  --primitive-color-mint-300: #7EE6C8;
+  --primitive-color-mint-500: #12C99B;
+  --primitive-color-mint-700: #00704F;
+  --primitive-color-apricot-300: #FFB88A;
+  --primitive-color-apricot-500: #FF7A2F;
+  --primitive-color-apricot-700: #A84300;
+  --primitive-color-red-700: #B3261E;
+  --primitive-color-ink-alpha-12: rgba(26, 16, 51, 0.12);
+  --primitive-color-ink-alpha-07: rgba(26, 16, 51, 0.07);
+  --primitive-color-ink-alpha-08: rgba(26, 16, 51, 0.08);
+  --primitive-spacing-1: 4px;
+  --primitive-spacing-2: 8px;
+  --primitive-spacing-3: 12px;
+  --primitive-spacing-4: 16px;
+  --primitive-spacing-6: 24px;
+  --primitive-spacing-8: 32px;
+  --primitive-fontSize-caption: 12px;
+  --primitive-fontSize-label: 14px;
+  --primitive-fontSize-body: 16px;
+  --primitive-fontSize-body-lg: 18px;
+  --primitive-fontSize-subheading: 20px;
+  --primitive-fontSize-heading: 26px;
+  --primitive-fontSize-title: 36px;
+  --primitive-fontSize-display: 52px;
+  --primitive-radius-input: 18px;
+  --primitive-radius-group: 24px;
+  --primitive-radius-sheet: 28px;
+  --primitive-radius-full: 999px;
+  --primitive-shadow-ring: 0 0 0 1px rgba(26, 16, 51, 0.05);
+  --primitive-shadow-lift: 0 1px 2px rgba(26, 16, 51, 0.04), 0 6px 16px -10px rgba(26, 16, 51, 0.14);
+  --primitive-shadow-float: 0 2px 4px rgba(26, 16, 51, 0.06), 0 20px 40px -16px rgba(26, 16, 51, 0.28);
+  --primitive-shadow-primary-glow: 0 6px 12px -8px rgba(255, 61, 127, 0.5);
+  --primitive-duration-press: 120ms;
+  --primitive-duration-state: 200ms;
+  --primitive-duration-sheet: 300ms;
+  --primitive-duration-pulse: 2000ms;
+  --primitive-font-display: Nunito, system-ui, sans-serif;
+  --primitive-font-ui: Figtree, system-ui, sans-serif;
+}
+
+/* === SEMANTIC === */
+:root {
+  --color-background: #FFFFFF;
+  --color-background-page: #F8F6FB;
+  --color-foreground: #1A1033;
+  --color-muted-foreground: #5A5070;
+  --color-hairline: rgba(26, 16, 51, 0.07);
+  --color-primary: #FF3D7F;
+  --color-primary-foreground: #1A1033;
+  --color-secondary: rgba(26, 16, 51, 0.07);
+  --color-secondary-pressed: rgba(26, 16, 51, 0.12);
+  --color-secondary-foreground: #1A1033;
+  --color-inverse: #1A1033;
+  --color-inverse-foreground: #FFFFFF;
+  --color-focus-ring: #1A1033;
+  --color-nav-active: rgba(26, 16, 51, 0.08);
+  --color-info: #2438C9;
+  --color-success: #00704F;
+  --color-success-dot: #12C99B;
+  --color-warning: #A84300;
+  --color-warning-dot: #FF7A2F;
+  --color-danger: #B3261E;
+}
+
+/* === COMPONENTS === */
+:root {
+  --button-primary-bg: #FF3D7F;
+  --button-primary-fg: #1A1033;
+  --button-secondary-bg: rgba(26, 16, 51, 0.07);
+  --button-secondary-fg: #1A1033;
+  --button-text-fg: #1A1033;
+  --button-radius: 999px;
+  --button-lg-height: 52px;
+  --button-lg-font-size: 17px;
+  --button-md-height: 44px;
+  --button-md-font-size: 15px;
+  --button-glow: 0 6px 12px -8px rgba(255, 61, 127, 0.5);
+  --button-press-duration: 120ms;
+  --row-padding-y: 16px;
+  --row-gap: 14px;
+  --row-title-size: 16px;
+  --row-detail-size: 14px;
+  --row-illustration-size: 44px;
+  --row-divider: rgba(26, 16, 51, 0.07);
+  --tab-bar-height: 68px;
+  --tab-bar-radius: 999px;
+  --tab-bar-shadow: 0 2px 4px rgba(26, 16, 51, 0.06), 0 20px 40px -16px rgba(26, 16, 51, 0.28);
+  --tab-bar-active-bg: rgba(26, 16, 51, 0.08);
+  --ask-bar-bg: #1A1033;
+  --ask-bar-fg: #FFFFFF;
+  --ask-bar-height: 52px;
+  --ask-bar-radius: 999px;
+  --input-height: 60px;
+  --input-radius: 18px;
+  --input-focus-ring: #1A1033;
+  --avatar-size: 32px;
+}

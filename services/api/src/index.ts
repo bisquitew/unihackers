@@ -2,12 +2,12 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from '@hono/node-server';
-import { authMiddleware, requireRole } from './core/auth.ts';
-import { TIMISOARA_AREAS } from './core/areas.ts';
-import { userService } from './core/users.ts';
-import { getUserNotifications, markNotificationAsRead } from './core/notifications.ts';
-import { getAllFlags, isModuleEnabled } from './core/flags.ts';
-import { registeredModules } from './modules/index.ts';
+import { authMiddleware } from './core/auth';
+import { TIMISOARA_AREAS } from './core/areas';
+import { userService } from './core/users';
+import { getUserNotifications, markNotificationAsRead } from './core/notifications';
+import { getAllFlags } from './core/flags';
+import { registeredModules } from './modules/index';
 
 const app = new Hono();
 
@@ -26,6 +26,13 @@ app.get('/health', (c) => c.json({
   project: 'Timișoara City Hub API',
   version: '1.0.0',
   timestamp: new Date().toISOString()
+}));
+
+app.get('/', (c) => c.json({
+  project: 'Timișoara City Hub API',
+  hackathon: 'UNIHACK 2026',
+  status: 'online',
+  mountedModules: registeredModules.map((m) => m.id),
 }));
 
 // ==========================================
@@ -93,12 +100,12 @@ for (const mod of registeredModules) {
   }
 }
 
-const PORT = parseInt(process.env.PORT || '8000', 10);
+const PORT = parseInt(process.env.PORT || '3001', 10);
 console.log(`🚀 Timișoara City Hub API running on http://localhost:${PORT}`);
 
 serve({
   fetch: app.fetch,
-  port: PORT
+  port: PORT,
 });
 
 export default app;
