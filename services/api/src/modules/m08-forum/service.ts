@@ -83,6 +83,22 @@ export class ForumService {
   async getModerationReports(): Promise<ForumPost[]> {
     return this.posts.filter((p) => p.isReported);
   }
+
+  async approvePost(postId: string): Promise<boolean> {
+    const post = this.posts.find((p) => p.id === postId);
+    if (!post) return false;
+    post.isReported = false;
+    post.reportCount = 0;
+    post.reportReasons = [];
+    return true;
+  }
+
+  async deletePost(postId: string): Promise<boolean> {
+    const idx = this.posts.findIndex((p) => p.id === postId);
+    if (idx === -1) return false;
+    this.posts.splice(idx, 1);
+    return true;
+  }
 }
 
 export const forumService = new ForumService();

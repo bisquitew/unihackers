@@ -1,6 +1,7 @@
 {
   "name": "@hub/solana",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Solana devnet integration for event tickets, POAP, and community payments",
   "main": "./src/index.ts",
@@ -10,7 +11,7 @@
   },
   "dependencies": {
     "@solana/web3.js": "^1.95.8",
-    "@hub/contracts": "workspace:*"
+    "@hub/contracts": "*"
   },
   "devDependencies": {
     "typescript": "^5.6.3",

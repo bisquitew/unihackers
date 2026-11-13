@@ -179,7 +179,8 @@ const server = http.createServer(async (req, res) => {
         affected_stops: body.affected_stops || [],
         alternative_instructions: body.alternative_instructions,
         replacement_line: body.replacement_line,
-        valid_from: body.valid_from || new Date().toISOString()
+        valid_from: body.valid_from || new Date().toISOString(),
+        created_at: new Date().toISOString()
       });
       return sendJson(res, 201, created);
     }
