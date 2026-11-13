@@ -6,6 +6,7 @@ export * from './wallet.ts';
 
 // P2 Modules & Core
 export * from './core.ts';
+export * from './tiger.ts';
 export * from './manifest.ts';
 export * from './modules/utilities.ts';
 export * from './modules/transit.ts';
