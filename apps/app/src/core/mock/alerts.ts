@@ -1,0 +1,91 @@
+// Temporary local data for the shell, shaped like P2's outage and detour models.
+// Replace with @hub/api-client calls (GET /v1/m/utilities/outages, /v1/m/transit/detours) once the API is wired up.
+import type { ModuleArtId } from '@hub/ui';
+
+export type AlertStep = { state: 'done' | 'now' | 'next'; title: string; note?: string };
+
+export type AlertItem = {
+  id: string;
+  /** Which module the alert comes from; its illustration leads the row. Use each illustration once per screen. */
+  module: ModuleArtId;
+  group: 'places' | 'city';
+  title: string;
+  detail: string;
+  trailing: { kind: 'new' } | { kind: 'time'; text: string };
+  headline: string;
+  context: string;
+  steps: AlertStep[];
+  confirmedBy: number;
+};
+
+export const alerts: AlertItem[] = [
+  {
+    id: 'hot-water-garii-2',
+    module: 'utilities',
+    group: 'places',
+    title: 'Hot water is off',
+    detail: 'Strada Gării 2. Back about 18:00.',
+    trailing: { kind: 'new' },
+    headline: 'No hot water until about 18:00',
+    context: 'Strada Gării 2. Colterm is repairing a pipe.',
+    steps: [
+      { state: 'done', title: 'Confirmed by Colterm', note: '15:05' },
+      { state: 'now', title: 'Repair in progress', note: 'Crew on site' },
+      { state: 'next', title: 'Hot water back', note: 'Expected about 18:00' },
+    ],
+    confirmedBy: 14,
+  },
+  {
+    id: 'tram-5',
+    module: 'transit',
+    group: 'places',
+    title: 'Tram 5 isn’t running',
+    detail: 'Take 5C instead.',
+    trailing: { kind: 'time', text: 'Until Dec' },
+    headline: 'Tram 5 isn’t running until December',
+    context: 'Roadworks on Calea Bogdăneștilor. Take bus 5C from Piața Sfântul Gheorghe.',
+    steps: [
+      { state: 'done', title: 'Roadworks announced', note: 'August' },
+      { state: 'now', title: 'Line 5 suspended', note: 'Bus 5C runs instead' },
+      { state: 'next', title: 'Line 5 returns', note: 'Expected December' },
+    ],
+    confirmedBy: 6,
+  },
+  {
+    id: 'smell-east',
+    module: 'smell',
+    group: 'city',
+    title: 'Burnt smell in the east',
+    detail: '12 reports in the last hour.',
+    trailing: { kind: 'time', text: '1h' },
+    headline: 'Burnt smell reported in the east',
+    context: '12 residents reported a burnt-rubber smell between 07:00 and 08:00.',
+    steps: [
+      { state: 'done', title: 'First report', note: '07:10' },
+      { state: 'now', title: 'Reports coming in', note: '12 so far' },
+      { state: 'next', title: 'Source unknown', note: 'No official notice yet' },
+    ],
+    confirmedBy: 12,
+  },
+  {
+    id: 'lights-gara',
+    module: 'safety',
+    group: 'city',
+    title: 'Streetlights out',
+    detail: 'Near Gara de Nord. 3 reports.',
+    trailing: { kind: 'time', text: 'Today' },
+    headline: 'Streetlights are out near Gara de Nord',
+    context: 'Three residents reported dark stretches on Strada Gării.',
+    steps: [
+      { state: 'done', title: 'Reported', note: 'Today' },
+      { state: 'now', title: 'Passed to public lighting', note: 'Awaiting a repair slot' },
+      { state: 'next', title: 'Lights back on' },
+    ],
+    confirmedBy: 3,
+  },
+];
+
+export const alertsFor = (group: AlertItem['group']) => alerts.filter((a) => a.group === group);
+export const alertById = (id: string) => alerts.find((a) => a.id === id);
+
+export const unreadAlerts = 2;
