@@ -19,6 +19,13 @@ interface BuddyRequestItem {
   icebreakerPrompt: string;
 }
 
+interface ChatMessage {
+  id: string;
+  sender: 'me' | 'buddy';
+  text: string;
+  time: string;
+}
+
 const SEED_BUDDIES: BuddyRequestItem[] = [
   {
     id: 'b-1',
@@ -47,16 +54,68 @@ interface BuddyModalProps {
 
 export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModalProps) {
   const [buddies, setBuddies] = useState<BuddyRequestItem[]>(SEED_BUDDIES);
-  const [isPosting, setIsPosting] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'post' | 'chat'>('list');
+  const [activeBuddy, setActiveBuddy] = useState<BuddyRequestItem | null>(null);
+
+  // New buddy request form state
   const [name, setName] = useState('');
   const [bio, setBio] = useState('');
   const [interestsText, setInterestsText] = useState('');
 
-  const handleConnect = (buddy: BuddyRequestItem) => {
-    Alert.alert(
-      'Grup de discuție creat! 💬',
-      `Te-ai conectat cu ${buddy.userName}!\n\nIcebreaker: "${buddy.icebreakerPrompt}"`
-    );
+  // Interactive Chat state
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [inputMessage, setInputMessage] = useState('');
+
+  const handleStartChat = (buddy: BuddyRequestItem) => {
+    setActiveBuddy(buddy);
+    // Seed initial greeting and icebreaker from the buddy
+    setMessages([
+      {
+        id: 'msg-1',
+        sender: 'buddy',
+        text: `Salut! Mă bucur că mergem la ${eventTitle}!`,
+        time: 'Chiar acum',
+      },
+      {
+        id: 'msg-2',
+        sender: 'buddy',
+        text: buddy.icebreakerPrompt,
+        time: 'Chiar acum',
+      },
+    ]);
+    setViewMode('chat');
+  };
+
+  const handleSendMessage = (customText?: string) => {
+    const textToSend = customText || inputMessage;
+    if (!textToSend.trim()) return;
+
+    const userMsg: ChatMessage = {
+      id: `msg-${Date.now()}`,
+      sender: 'me',
+      text: textToSend.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    setMessages((prev) => [...prev, userMsg]);
+    setInputMessage('');
+
+    // Simulated responsive answer from the buddy after 1 second for live demo
+    setTimeout(() => {
+      const replies = [
+        'Super tare! Ne vedem la intrare cu 15 minute înainte. 🍿',
+        'De acord! Caută-mă lângă terasa exterioară. Îți scriu când ajung!',
+        'Perfect, abia aștept să povestim! Am descărcat și eu biletul Solana.',
+      ];
+      const randomReply = replies[Math.floor(Math.random() * replies.length)];
+      const buddyReply: ChatMessage = {
+        id: `msg-${Date.now() + 1}`,
+        sender: 'buddy',
+        text: randomReply,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+      setMessages((prev) => [...prev, buddyReply]);
+    }, 1100);
   };
 
   const handlePostRequest = () => {
@@ -75,7 +134,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
     };
 
     setBuddies([newBuddy, ...buddies]);
-    setIsPosting(false);
+    setViewMode('list');
     setName('');
     setBio('');
     setInterestsText('');
@@ -86,17 +145,26 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
     <Modal visible={visible} animationType="slide" transparent>
       <View style={styles.overlay}>
         <View style={styles.sheet}>
+          {/* Header */}
           <View style={styles.header}>
             <View>
               <Text style={styles.tag}>🤝 CU CINE? • BUDDY FINDER [M07]</Text>
               <Text style={styles.title} numberOfLines={1}>{eventTitle}</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+            <TouchableOpacity
+              onPress={() => {
+                setViewMode('list');
+                setActiveBuddy(null);
+                onClose();
+              }}
+              style={styles.closeBtn}
+            >
               <Text style={styles.closeBtnText}>✕</Text>
             </TouchableOpacity>
           </View>
 
-          {!isPosting ? (
+          {/* VIEW MODE 1: LIST BUDDIES */}
+          {viewMode === 'list' && (
             <>
               <Text style={styles.sub}>
                 Mergi singur? Conectează-te cu alți studenți sau rezidenți din Timișoara:
@@ -112,9 +180,9 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
                       </View>
                       <TouchableOpacity
                         style={styles.connectBtn}
-                        onPress={() => handleConnect(b)}
+                        onPress={() => handleStartChat(b)}
                       >
-                        <Text style={styles.connectBtnText}>+ Conectează-te</Text>
+                        <Text style={styles.connectBtnText}>💬 Deschide Chat</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -136,12 +204,97 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
 
               <TouchableOpacity
                 style={styles.postBtn}
-                onPress={() => setIsPosting(true)}
+                onPress={() => setViewMode('post')}
               >
                 <Text style={styles.postBtnText}>+ Caut și eu un Buddy la acest eveniment</Text>
               </TouchableOpacity>
             </>
-          ) : (
+          )}
+
+          {/* VIEW MODE 2: INTERACTIVE LIVE CHAT */}
+          {viewMode === 'chat' && activeBuddy && (
+            <View style={styles.chatContainer}>
+              {/* Chat Sub-Header */}
+              <View style={styles.chatSubHeader}>
+                <TouchableOpacity
+                  style={styles.backButton}
+                  onPress={() => setViewMode('list')}
+                >
+                  <Text style={styles.backButtonText}>← Înapoi</Text>
+                </TouchableOpacity>
+                <View style={styles.chatBuddyInfo}>
+                  <Text style={styles.chatBuddyName}>{activeBuddy.userName}</Text>
+                  <Text style={styles.chatBuddyStatus}>🟢 Online acum • {activeBuddy.university}</Text>
+                </View>
+              </View>
+
+              {/* Icebreaker Callout */}
+              <View style={styles.chatIcebreakerBanner}>
+                <Text style={styles.chatIcebreakerTitle}>💡 Întrebare de la {activeBuddy.userName}:</Text>
+                <Text style={styles.chatIcebreakerPrompt}>"{activeBuddy.icebreakerPrompt}"</Text>
+              </View>
+
+              {/* Message History */}
+              <ScrollView style={styles.messageList}>
+                {messages.map((m) => (
+                  <View
+                    key={m.id}
+                    style={[
+                      styles.messageBubble,
+                      m.sender === 'me' ? styles.myMessage : styles.buddyMessage,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.messageText,
+                        m.sender === 'me' ? styles.myMessageText : styles.buddyMessageText,
+                      ]}
+                    >
+                      {m.text}
+                    </Text>
+                    <Text style={styles.messageTime}>{m.time}</Text>
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Quick Reply Chips */}
+              <View style={styles.quickRepliesRow}>
+                {[
+                  '🎬 Îmi plac filmele indie!',
+                  '☕ Ne vedem cu 15m înainte?',
+                  '🎟️ Am biletul pe Solana!',
+                ].map((chip) => (
+                  <TouchableOpacity
+                    key={chip}
+                    style={styles.quickChip}
+                    onPress={() => handleSendMessage(chip)}
+                  >
+                    <Text style={styles.quickChipText}>{chip}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Chat Input Bar */}
+              <View style={styles.chatInputRow}>
+                <TextInput
+                  style={styles.chatTextInput}
+                  value={inputMessage}
+                  onChangeText={setInputMessage}
+                  placeholder={`Răspunde-i lui ${activeBuddy.userName}...`}
+                  placeholderTextColor="#71717a"
+                />
+                <TouchableOpacity
+                  style={styles.sendButton}
+                  onPress={() => handleSendMessage()}
+                >
+                  <Text style={styles.sendButtonText}>Trimite</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* VIEW MODE 3: POST REQUEST FORM */}
+          {viewMode === 'post' && (
             <ScrollView style={styles.form}>
               <Text style={styles.formTitle}>Caută un partener de eveniment</Text>
 
@@ -175,7 +328,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
               <View style={styles.btnRow}>
                 <TouchableOpacity
                   style={styles.cancelBtn}
-                  onPress={() => setIsPosting(false)}
+                  onPress={() => setViewMode('list')}
                 >
                   <Text style={styles.cancelBtnText}>Înapoi</Text>
                 </TouchableOpacity>
@@ -205,7 +358,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
-    maxHeight: '85%',
+    maxHeight: '90%',
     borderWidth: 1,
     borderColor: '#3f3f46',
   },
@@ -240,14 +393,12 @@ const styles = StyleSheet.create({
   buddyName: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
   buddyUni: { color: '#a855f7', fontSize: 11, marginTop: 2 },
   connectBtn: {
-    backgroundColor: '#2e1065',
-    borderColor: '#7e22ce',
-    borderWidth: 1,
+    backgroundColor: '#8d23be',
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
-  connectBtnText: { color: '#d8b4fe', fontSize: 11, fontWeight: '700' },
+  connectBtnText: { color: '#ffffff', fontSize: 11, fontWeight: '700' },
   buddyBio: { color: '#d4d4d8', fontSize: 12, marginTop: 6 },
   tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   interestTag: { color: '#818cf8', fontSize: 10, fontWeight: '600' },
@@ -267,6 +418,101 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   postBtnText: { color: '#ffffff', fontSize: 13, fontWeight: 'bold' },
+
+  // Interactive Chat Styles
+  chatContainer: { height: 420, display: 'flex', flexDirection: 'column' },
+  chatSubHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272a',
+  },
+  backButton: {
+    backgroundColor: '#27272a',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  backButtonText: { color: '#ffffff', fontSize: 11, fontWeight: '600' },
+  chatBuddyInfo: { flex: 1 },
+  chatBuddyName: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
+  chatBuddyStatus: { color: '#4ade80', fontSize: 10, marginTop: 1 },
+  chatIcebreakerBanner: {
+    backgroundColor: '#2e1065',
+    borderColor: '#7e22ce',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    marginVertical: 8,
+  },
+  chatIcebreakerTitle: { color: '#c084fc', fontSize: 10, fontWeight: 'bold' },
+  chatIcebreakerPrompt: { color: '#f3e8ff', fontSize: 11, fontStyle: 'italic', marginTop: 2 },
+  messageList: { flex: 1, paddingVertical: 6 },
+  messageBubble: {
+    maxWidth: '80%',
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  buddyMessage: {
+    backgroundColor: '#27272a',
+    alignSelf: 'flex-start',
+    borderBottomLeftRadius: 2,
+  },
+  myMessage: {
+    backgroundColor: '#8d23be',
+    alignSelf: 'flex-end',
+    borderBottomRightRadius: 2,
+  },
+  messageText: { fontSize: 13, lineHeight: 17 },
+  buddyMessageText: { color: '#ffffff' },
+  myMessageText: { color: '#ffffff' },
+  messageTime: { fontSize: 9, color: '#a1a1aa', marginTop: 4, alignSelf: 'flex-end' },
+  quickRepliesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    paddingVertical: 6,
+  },
+  quickChip: {
+    backgroundColor: '#27272a',
+    borderColor: '#3f3f46',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 14,
+  },
+  quickChipText: { color: '#e4e4e7', fontSize: 10 },
+  chatInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+    paddingTop: 6,
+    borderTopWidth: 1,
+    borderTopColor: '#27272a',
+  },
+  chatTextInput: {
+    flex: 1,
+    backgroundColor: '#09090b',
+    borderWidth: 1,
+    borderColor: '#27272a',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#ffffff',
+    fontSize: 12,
+  },
+  sendButton: {
+    backgroundColor: '#8d23be',
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  sendButtonText: { color: '#ffffff', fontWeight: 'bold', fontSize: 12 },
+
+  // Form Styles
   form: { paddingVertical: 10 },
   formTitle: { color: '#ffffff', fontSize: 16, fontWeight: 'bold', marginBottom: 12 },
   label: { color: '#a1a1aa', fontSize: 11, fontWeight: '600', marginBottom: 4 },

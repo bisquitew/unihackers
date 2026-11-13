@@ -8,6 +8,6 @@
     "build": "tsc"
   },
   "dependencies": {
-    "@hub/contracts": "workspace:*"
+    "@hub/contracts": "*"
   }
 }

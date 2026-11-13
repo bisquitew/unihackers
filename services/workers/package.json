@@ -10,8 +10,8 @@
     "ingest:transit": "node --experimental-strip-types src/ingestion/transitIngestion.ts"
   },
   "dependencies": {
-    "@google/genai": "^0.1.0",
-    "@hub/contracts": "workspace:*",
+    "@google/genai": "^0.2.0",
+    "@hub/contracts": "*",
     "dotenv": "^16.4.5"
   },
   "devDependencies": {
