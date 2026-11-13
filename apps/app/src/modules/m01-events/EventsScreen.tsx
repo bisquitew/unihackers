@@ -8,6 +8,7 @@ import {
   Alert,
 } from 'react-native';
 import { EventCard } from './EventCard';
+import { ticketStore } from '../m09-wallet/ticketStore';
 
 interface EventItem {
   id: string;
@@ -76,15 +77,14 @@ export function EventsScreen({ onSelectBuddyForEvent }: EventsScreenProps) {
     (e) => selectedCategory === 'all' || e.category === selectedCategory
   );
 
-  const handleRsvp = (eventId: string) => {
-    // Generate simulated Solana devnet tx
-    const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    let sig = '';
-    for (let i = 0; i < 88; i++) sig += chars.charAt(Math.floor(Math.random() * chars.length));
+  const handleRsvp = async (eventId: string) => {
+    const targetEvent = events.find((e) => e.id === eventId);
+    const eventTitle = targetEvent ? targetEvent.title : 'Eveniment Cultural Timișoara';
+    const newTicket = await ticketStore.addTicketFromRsvp(eventId, eventTitle);
 
     setRsvps((prev) => ({
       ...prev,
-      [eventId]: { hasRsvpd: true, tx: sig },
+      [eventId]: { hasRsvpd: true, tx: newTicket.txSignature },
     }));
 
     setEvents((prev) =>
@@ -92,8 +92,8 @@ export function EventsScreen({ onSelectBuddyForEvent }: EventsScreenProps) {
     );
 
     Alert.alert(
-      '🎉 Bilet Emis cu Succes!',
-      `Locul tău a fost rezervat!\n\nBiletul tău de intrare a fost mintat pe Solana Devnet.\nTx: ${sig.slice(0, 24)}...`
+      '🎉 Bilet Emis pe Solana Devnet!',
+      `Locul tău a fost rezervat!\n\nBilet ID: ${newTicket.ticketId}\nTx: ${newTicket.txSignature.slice(0, 20)}...\n\nBiletul tău și codul QR verificabil sunt acum active în Portofelul tău Solana [M09]!`
     );
   };
 
