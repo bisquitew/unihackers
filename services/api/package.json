@@ -1,25 +1,26 @@
 {
-  "name": "@unihack/api",
+  "name": "@hub/api",
   "version": "1.0.0",
-  "description": "Backend API for Timișoara City Hub (Hono + TypeScript)",
-  "main": "./src/index.ts",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js"
+    "dev": "node --experimental-strip-types src/server.ts",
+    "dev:hono": "tsx watch src/index.ts",
+    "start": "node --experimental-strip-types src/server.ts",
+    "build": "tsc"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.7",
+    "@hub/contracts": "workspace:*",
+    "@hub/solana": "workspace:*",
+    "dotenv": "^16.4.5",
     "hono": "^4.6.10",
-    "zod": "^3.23.8",
-    "@unihack/contracts": "*",
-    "@unihack/solana": "*"
+    "jose": "^5.3.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.17.6",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3"
-  },
-  "author": "UniHackers Team",
-  "license": "MIT"
+  }
 }
