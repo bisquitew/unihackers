@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS m05_transit_lines (
 );
 
 CREATE TABLE IF NOT EXISTS m05_detour_alerts (
-    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     line_number VARCHAR(20) NOT NULL,
     title VARCHAR(255) NOT NULL,
     reason TEXT NOT NULL,

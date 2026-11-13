@@ -2,6 +2,7 @@ import type { ApiModule } from '@hub/contracts';
 import { Hono } from 'hono';
 import { utilitiesApiModule } from './m04-utilities/index.ts';
 import { transitApiModule } from './m05-transit/index.ts';
+import { parkieApiModule } from './parkie/index.ts';
 
 // Helper to create empty stub module so all routes exist without merge conflicts
 function createStubModule(id: string): ApiModule {
@@ -26,5 +27,5 @@ export const registeredModules: ApiModule[] = [
   createStubModule('m10-assistant'),
   createStubModule('m11-feedback'),
   createStubModule('m12-dashboard'),
-  createStubModule('parkie')
+  parkieApiModule      // [PARKIE] - P2 & P1
 ];

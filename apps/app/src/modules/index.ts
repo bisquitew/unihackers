@@ -1,6 +1,6 @@
-import { ModuleManifest } from '@hub/contracts';
-import { utilitiesManifest } from './m04-utilities/manifest';
-import { transitManifest } from './m05-transit/manifest';
+import type { ModuleManifest } from '@hub/contracts';
+import { utilitiesManifest } from './m04-utilities/manifest.ts';
+import { transitManifest } from './m05-transit/manifest.ts';
 
 function createStubManifest(id: string, title: string, owner: 'P1' | 'P2' | 'P3' | 'P4', icon: string, route: string): ModuleManifest {
   return {

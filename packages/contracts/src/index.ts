@@ -5,3 +5,4 @@ export * from './modules/transit.ts';
 export * from './modules/parkie.ts';
 export * from './seed/utilities.seed.ts';
 export * from './seed/transit.seed.ts';
+export * from './seed/parkie.seed.ts';
