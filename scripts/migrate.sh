@@ -16,6 +16,7 @@ MIGRATIONS=(
   "db/modules/m04-utilities/migrations/001_utilities_schema.sql"
   "db/modules/m05-transit/migrations/001_transit_schema.sql"
   "db/modules/parkie/migrations/001_parkie_schema.sql"
+  "db/modules/parkie/migrations/002_timescale_hypertables.sql"
 )
 
 echo "============================================================"
