@@ -1,4 +1,4 @@
-import { ModuleManifest } from '@hub/contracts';
+import type { ModuleManifest } from '@hub/contracts';
 
 export const transitManifest: ModuleManifest = {
   id: 'm05-transit',

@@ -7,6 +7,9 @@
     "dev": "expo start",
     "start": "expo start",
     "tunnel": "expo start --tunnel ngrok",
+    "dev:app": "expo start",
+    "dev:app:tunnel": "expo start --tunnel ngrok",
+    "dev:app:wifi": "expo start --host 10.109.24.138",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
@@ -20,10 +23,11 @@
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "react-native": "^0.88.1",
+    "react-native-web": "~0.21.0",
     "react-native-safe-area-context": "*",
     "react-native-screens": "*",
-    "@hub/contracts": "workspace:*",
-    "@hub/ui": "workspace:*",
+    "@hub/contracts": "*",
+    "@hub/ui": "*",
     "@unihack/contracts": "*",
     "@unihack/solana": "*"
   },

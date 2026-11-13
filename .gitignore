@@ -10,6 +10,7 @@ pnpm-debug.log*
 # Build artifacts
 dist/
 build/
+uploads/
 out/
 .turbo/
 .expo/
@@ -28,6 +29,8 @@ out/
 .env
 .env.local
 .env.*.local
+*.env
+*-credentials.env
 .env.*
 !.env.example
 *.local
