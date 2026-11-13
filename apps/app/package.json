@@ -1,0 +1,32 @@
+{
+  "name": "@unihack/app",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "tunnel": "expo start --tunnel",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "expo": "^58.0.25",
+    "expo-constants": "~58.0.16",
+    "expo-linking": "*",
+    "expo-router": "^58.0.31",
+    "expo-status-bar": "*",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-native": "^0.88.1",
+    "react-native-safe-area-context": "*",
+    "react-native-screens": "*",
+    "@unihack/contracts": "*",
+    "@unihack/solana": "*"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0",
+    "@types/react": "^19.1.1",
+    "typescript": "^5.6.3"
+  },
+  "private": true
+}

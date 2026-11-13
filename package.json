@@ -1,0 +1,27 @@
+{
+  "name": "unihackers-timisoara-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Timișoara City Hub — UNIHACK 2026",
+  "workspaces": [
+    "apps/*",
+    "services/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --prefix services/api",
+    "dev:app": "npm run start --prefix apps/app",
+    "dev:app:tunnel": "npm run start --prefix apps/app -- --tunnel",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "keywords": [
+    "timisoara",
+    "unihack",
+    "community-hub"
+  ],
+  "author": "UniHackers Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@expo/ngrok": "^4.1.3"
+  }
+}
