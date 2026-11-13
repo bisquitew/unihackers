@@ -3,6 +3,7 @@ import m01Events from './m01-events';
 import m07Buddy from './m07-buddy';
 import m08Forum from './m08-forum';
 import m09Wallet from './m09-wallet';
+import m11Feedback from './m11-feedback';
 import { utilitiesApiModule } from './m04-utilities/index';
 import { transitApiModule } from './m05-transit/index';
 import type { ApiModule } from '../types';
@@ -29,7 +30,7 @@ export const registeredModules: ApiModule[] = [
   m08Forum,                                    // [M08_FORUM] - P3
   m09Wallet,                                   // [M09_WALLET] - P3
   createStubModule('m10-assistant'),
-  createStubModule('m11-feedback'),
+  m11Feedback,                                 // [M11_FEEDBACK] - P4
   createStubModule('m12-dashboard'),
   createStubModule('parkie')
 ];

@@ -1,3 +1,4 @@
+import './load-env'; // must stay first: loads root .env before other modules read process.env
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
