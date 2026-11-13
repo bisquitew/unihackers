@@ -3,18 +3,19 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@unihack/contracts": [
-        "../../packages/contracts/src"
-      ],
-      "@unihack/solana": [
-        "../../packages/solana/src"
-      ]
+      "@hub/contracts": ["../../packages/contracts/src"],
+      "@hub/contracts/*": ["../../packages/contracts/src/*"],
+      "@hub/solana": ["../../packages/solana/src"],
+      "@hub/solana/*": ["../../packages/solana/src/*"],
+      "@unihack/contracts": ["../../packages/contracts/src"],
+      "@unihack/contracts/*": ["../../packages/contracts/src/*"],
+      "@unihack/solana": ["../../packages/solana/src"],
+      "@unihack/solana/*": ["../../packages/solana/src/*"]
     }
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    ".expo/types/**/*.ts",
     "expo-env.d.ts"
   ]
 }

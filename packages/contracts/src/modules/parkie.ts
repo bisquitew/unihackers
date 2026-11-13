@@ -1,4 +1,4 @@
-import { z } from '../zod-shim.ts';
+import { z } from '../zod-shim';
 
 export const ParkingLotStatusColorSchema = z.enum(['green', 'yellow', 'red', 'gray'] as const);
 export type ParkingLotStatusColor = 'green' | 'yellow' | 'red' | 'gray';
