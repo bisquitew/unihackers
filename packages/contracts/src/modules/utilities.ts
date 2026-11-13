@@ -1,4 +1,4 @@
-import { z } from '../zod-shim.ts';
+import { z } from '../zod-shim';
 
 export const UtilityProviderSchema = z.enum([
   'colterm',
