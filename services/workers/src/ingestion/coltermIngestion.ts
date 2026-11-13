@@ -1,3 +1,5 @@
+import { pathToFileURL } from 'node:url';
+
 let API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -131,6 +133,6 @@ export async function runColtermIngestion() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runColtermIngestion();
 }

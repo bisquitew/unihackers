@@ -1,3 +1,5 @@
+import { pathToFileURL } from 'node:url';
+
 let API_BASE_URL = process.env.API_BASE_URL || 'http://localhost:8000';
 
 async function resolveApiUrl(): Promise<string> {
@@ -44,6 +46,6 @@ export async function runTransitIngestion() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   runTransitIngestion();
 }
