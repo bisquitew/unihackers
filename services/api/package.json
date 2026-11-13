@@ -1,0 +1,26 @@
+{
+  "name": "@hub/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --experimental-strip-types src/server.ts",
+    "dev:hono": "tsx watch src/index.ts",
+    "start": "node --experimental-strip-types src/server.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "@hub/contracts": "workspace:*",
+    "@hub/solana": "workspace:*",
+    "dotenv": "^16.4.5",
+    "hono": "^4.6.10",
+    "jose": "^5.3.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.3"
+  }
+}

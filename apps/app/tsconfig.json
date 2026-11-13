@@ -1,0 +1,38 @@
+{
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "paths": {
+      "@hub/contracts": [
+        "../../packages/contracts/src"
+      ],
+      "@hub/contracts/*": [
+        "../../packages/contracts/src/*"
+      ],
+      "@hub/solana": [
+        "../../packages/solana/src"
+      ],
+      "@hub/solana/*": [
+        "../../packages/solana/src/*"
+      ],
+      "@unihack/contracts": [
+        "../../packages/contracts/src"
+      ],
+      "@unihack/contracts/*": [
+        "../../packages/contracts/src/*"
+      ],
+      "@unihack/solana": [
+        "../../packages/solana/src"
+      ],
+      "@unihack/solana/*": [
+        "../../packages/solana/src/*"
+      ]
+    }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    "expo-env.d.ts",
+    ".expo/types/**/*.ts"
+  ]
+}
