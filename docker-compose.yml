@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: services/api/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - NODE_ENV=production
+      - AUTH0_DOMAIN=${AUTH0_DOMAIN:-timisoara-hub.eu.auth0.com}
+      - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-https://api.timisoara-hub.ro}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/timisoara_hub}
+    depends_on:
+      - db
+    restart: unless-stopped
+
+  workers:
+    build:
+      context: .
+      dockerfile: services/workers/Dockerfile
+    environment:
+      - API_BASE_URL=http://api:8000
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  db:
+    image: timescale/timescaledb-ha:pg16
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=timisoara_hub
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - tiger_data:/home/postgres/pgdata/data
+    restart: unless-stopped
+
+volumes:
+  tiger_data:
