@@ -1,0 +1,19 @@
+{
+  "name": "unihackers-timisoara-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "UNIHACK 2026 - Timișoara City Hub Monorepo",
+  "scripts": {
+    "dev": "node --experimental-strip-types services/api/src/server.ts",
+    "dev:api": "node --experimental-strip-types services/api/src/server.ts",
+    "dev:workers": "node --experimental-strip-types services/workers/src/index.ts",
+    "dev:app": "pnpm --filter @hub/app dev",
+    "test:p2": "python3 scripts/test_p2.py",
+    "start": "node --experimental-strip-types services/api/src/server.ts",
+    "build": "pnpm -r build",
+    "test": "python3 scripts/test_p2.py"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}
