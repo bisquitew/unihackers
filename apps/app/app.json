@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Timișoara Hub",
+    "slug": "timisoara-hub",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "timisoarahub",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#09090b"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
