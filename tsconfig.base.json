@@ -13,7 +13,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "paths": {
       "@hub/contracts": ["./packages/contracts/src/index.ts"]
     }
@@ -21,7 +20,6 @@
   "include": [
     "types/**/*.d.ts",
     "packages/**/*",
-    "services/**/*",
-    "apps/**/*"
+    "services/**/*"
   ]
 }

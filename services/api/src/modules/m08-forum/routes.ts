@@ -89,3 +89,23 @@ forumRoutes.get('/moderation/reported', async (c) => {
   const reports = await forumService.getModerationReports();
   return c.json({ reportedPosts: reports });
 });
+
+// Moderator: Approve & keep post (dismiss reports)
+forumRoutes.post('/moderation/:id/approve', async (c) => {
+  const id = c.req.param('id');
+  const ok = await forumService.approvePost(id);
+  if (!ok) {
+    return c.json({ error: 'Post not found' }, 404);
+  }
+  return c.json({ success: true, message: 'Post approved and retained in feed' });
+});
+
+// Moderator: Delete inappropriate post
+forumRoutes.delete('/moderation/:id', async (c) => {
+  const id = c.req.param('id');
+  const ok = await forumService.deletePost(id);
+  if (!ok) {
+    return c.json({ error: 'Post not found' }, 404);
+  }
+  return c.json({ success: true, message: 'Post permanently removed by moderator' });
+});

@@ -27,6 +27,8 @@ export const utilitiesService = {
     const newOutage: Outage = {
       ...payload,
       id: crypto.randomUUID(),
+      status: payload.status || 'investigating',
+      severity: payload.severity || 'medium',
       affected_streets: payload.affected_streets || [],
       start_time: payload.start_time || new Date().toISOString(),
       estimated_restore_time: payload.estimated_restore_time || null,

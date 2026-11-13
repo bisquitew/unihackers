@@ -30,6 +30,8 @@ interface Post {
   commentsCount: number;
   comments: Comment[];
   isReported: boolean;
+  reportCount: number;
+  reportReason?: string;
   createdAt: string;
 }
 
@@ -49,6 +51,7 @@ const INITIAL_POSTS: Post[] = [
       { id: 'c2', authorName: 'Ana Radu', content: 'Mergem să căutăm, mulțumim mult!', createdAt: '30m în urmă' },
     ],
     isReported: false,
+    reportCount: 0,
     createdAt: 'Azi, 11:00',
   },
   {
@@ -65,6 +68,7 @@ const INITIAL_POSTS: Post[] = [
       { id: 'c3', authorName: 'Elena D.', content: 'Vin și eu cu doi colegi de la UPT!', createdAt: '2h în urmă' },
     ],
     isReported: false,
+    reportCount: 0,
     createdAt: 'Azi, 10:15',
   },
   {
@@ -81,7 +85,24 @@ const INITIAL_POSTS: Post[] = [
       { id: 'c4', authorName: 'Maria C.', content: 'La Faber și la Biblioteca Centrală Universitară (BCUT) e perfect!', createdAt: '45m în urmă' },
     ],
     isReported: false,
+    reportCount: 0,
     createdAt: 'Azi, 13:50',
+  },
+  {
+    id: 'post-004',
+    category: 'buy_sell',
+    title: 'Bilete concert la suprapreț Piața Unirii',
+    content: 'Vând 3 bilete la concertul de la filarmonică cu preț dublu, plata doar cash în Piața Unirii.',
+    authorName: 'Anonim99',
+    neighbourhood: 'Cetate',
+    photos: [],
+    upvotes: 0,
+    commentsCount: 0,
+    comments: [],
+    isReported: true,
+    reportCount: 3,
+    reportReason: 'Speculă ilegală de bilete și spam',
+    createdAt: 'Azi, 14:10',
   },
 ];
 
@@ -98,9 +119,14 @@ export function ForumScreen() {
   const [newCategory, setNewCategory] = useState<'lost_pets' | 'neighbourhood' | 'help'>('neighbourhood');
   const [newNeighbourhood, setNewNeighbourhood] = useState('Cetate');
 
-  const filteredPosts = posts.filter(
-    (p) => selectedCategory === 'all' || p.category === selectedCategory
-  );
+  const reportedPosts = posts.filter((p) => p.isReported);
+
+  const filteredPosts =
+    selectedCategory === 'moderation'
+      ? reportedPosts
+      : posts.filter(
+          (p) => selectedCategory === 'all' || p.category === selectedCategory
+        );
 
   const handleUpvote = (postId: string) => {
     setPosts((prev) =>
@@ -110,9 +136,51 @@ export function ForumScreen() {
 
   const handleReport = (postId: string) => {
     setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, isReported: true } : p))
+      prev.map((p) =>
+        p.id === postId
+          ? {
+              ...p,
+              isReported: true,
+              reportCount: p.reportCount + 1,
+              reportReason: 'Sesizare transmisă de un rezident',
+            }
+          : p
+      )
     );
-    Alert.alert('Postare raportată', 'Mulțumim! Un moderator va analiza postarea.');
+    Alert.alert(
+      'Postare raportată 🛡️',
+      'Mulțumim! Postarea a fost trimisă în coada de analiză a moderatorilor.'
+    );
+  };
+
+  // Moderator Actions
+  const handleApprovePost = (postId: string) => {
+    setPosts((prev) =>
+      prev.map((p) =>
+        p.id === postId
+          ? { ...p, isReported: false, reportCount: 0, reportReason: undefined }
+          : p
+      )
+    );
+    Alert.alert('Postare Aprobată ✓', 'Postarea a fost verificată și păstrată în feed-ul comunității.');
+  };
+
+  const handleDeletePost = (postId: string) => {
+    Alert.alert(
+      'Confirmă ștergerea',
+      'Sigur doriți să eliminați această postare din platformă?',
+      [
+        { text: 'Anulează', style: 'cancel' },
+        {
+          text: 'Șterge definitiv',
+          style: 'destructive',
+          onPress: () => {
+            setPosts((prev) => prev.filter((p) => p.id !== postId));
+            Alert.alert('Șters', 'Postarea a fost eliminată cu succes.');
+          },
+        },
+      ]
+    );
   };
 
   const handleAddComment = (postId: string) => {
@@ -156,6 +224,7 @@ export function ForumScreen() {
       commentsCount: 0,
       comments: [],
       isReported: false,
+      reportCount: 0,
       createdAt: 'Chiar acum',
     };
 
@@ -178,7 +247,7 @@ export function ForumScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Category Filter Pills */}
+      {/* Category & Moderator Filter Pills */}
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[
@@ -186,12 +255,18 @@ export function ForumScreen() {
             { id: 'lost_pets', label: '🐾 Animale Pierdute' },
             { id: 'help', label: '🤝 Ajutor & Întrebări' },
             { id: 'neighbourhood', label: '🏘️ Inițiative Cartier' },
+            {
+              id: 'moderation',
+              label: `🛡️ Panou Moderare ${reportedPosts.length > 0 ? `(${reportedPosts.length})` : ''}`,
+            },
           ].map((cat) => (
             <TouchableOpacity
               key={cat.id}
               style={[
                 styles.categoryChip,
                 selectedCategory === cat.id && styles.categoryChipActive,
+                cat.id === 'moderation' && styles.moderationChip,
+                cat.id === 'moderation' && selectedCategory === 'moderation' && styles.moderationChipActive,
               ]}
               onPress={() => setSelectedCategory(cat.id)}
             >
@@ -199,6 +274,7 @@ export function ForumScreen() {
                 style={[
                   styles.categoryChipText,
                   selectedCategory === cat.id && styles.categoryChipTextActive,
+                  cat.id === 'moderation' && styles.moderationChipText,
                 ]}
               >
                 {cat.label}
@@ -208,10 +284,37 @@ export function ForumScreen() {
         </ScrollView>
       </View>
 
+      {/* MODERATOR VIEW BANNER (When Moderation Tab is Selected) */}
+      {selectedCategory === 'moderation' && (
+        <View style={styles.modBanner}>
+          <Text style={styles.modBannerTitle}>🛡️ Panou de Moderare Comunitate</Text>
+          <Text style={styles.modBannerSub}>
+            Postările raportate de rezidenți pentru spam, înșelăciuni sau limbaj nepotrivit.
+          </Text>
+        </View>
+      )}
+
+      {/* Empty State for Moderation */}
+      {selectedCategory === 'moderation' && reportedPosts.length === 0 && (
+        <View style={styles.emptyModBox}>
+          <Text style={styles.emptyModIcon}>✨</Text>
+          <Text style={styles.emptyModTitle}>Nicio postare raportată!</Text>
+          <Text style={styles.emptyModDesc}>
+            Toate postările din Timișoara sunt verificate. Comunitatea este în siguranță.
+          </Text>
+        </View>
+      )}
+
       {/* Posts List */}
       <ScrollView style={styles.content}>
         {filteredPosts.map((post) => (
-          <View key={post.id} style={styles.postCard}>
+          <View
+            key={post.id}
+            style={[
+              styles.postCard,
+              post.isReported && selectedCategory === 'moderation' && styles.reportedPostCard,
+            ]}
+          >
             <View style={styles.postHeader}>
               <View>
                 <View style={styles.badgeRow}>
@@ -220,10 +323,28 @@ export function ForumScreen() {
                 </View>
                 <Text style={styles.postAuthor}>{post.authorName} • {post.createdAt}</Text>
               </View>
-              <TouchableOpacity onPress={() => handleReport(post.id)}>
-                <Text style={styles.reportText}>{post.isReported ? '⚠️ Raportat' : '⚑ Raportează'}</Text>
-              </TouchableOpacity>
+
+              {/* Report pill or badge */}
+              {selectedCategory !== 'moderation' ? (
+                <TouchableOpacity onPress={() => handleReport(post.id)}>
+                  <Text style={styles.reportText}>{post.isReported ? '⚠️ Raportat' : '⚑ Raportează'}</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.modReportPill}>
+                  <Text style={styles.modReportPillText}>⚠️ {post.reportCount} sesizări</Text>
+                </View>
+              )}
             </View>
+
+            {/* Moderation Warning Note */}
+            {post.isReported && (
+              <View style={styles.reportedReasonBox}>
+                <Text style={styles.reportedReasonTitle}>Motiv semnalare:</Text>
+                <Text style={styles.reportedReasonText}>
+                  {post.reportReason || 'Semnalat de comunitate pentru verificare'}
+                </Text>
+              </View>
+            )}
 
             <Text style={styles.postTitle}>{post.title}</Text>
             <Text style={styles.postContent}>{post.content}</Text>
@@ -232,22 +353,41 @@ export function ForumScreen() {
               <Image source={{ uri: post.photos[0] }} style={styles.postImage} />
             )}
 
-            {/* Actions: Upvote & Comments */}
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => handleUpvote(post.id)}>
-                <Text style={styles.actionBtnText}>👍 {post.upvotes} Susțineri</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionBtn}
-                onPress={() =>
-                  setActiveCommentsPostId(
-                    activeCommentsPostId === post.id ? null : post.id
-                  )
-                }
-              >
-                <Text style={styles.actionBtnText}>💬 {post.commentsCount} Comentarii</Text>
-              </TouchableOpacity>
-            </View>
+            {/* If NOT in moderator view: Normal Upvote & Comment Actions */}
+            {selectedCategory !== 'moderation' ? (
+              <View style={styles.actionRow}>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => handleUpvote(post.id)}>
+                  <Text style={styles.actionBtnText}>👍 {post.upvotes} Susțineri</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() =>
+                    setActiveCommentsPostId(
+                      activeCommentsPostId === post.id ? null : post.id
+                    )
+                  }
+                >
+                  <Text style={styles.actionBtnText}>💬 {post.commentsCount} Comentarii</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              /* MODERATOR CONTROL BUTTONS */
+              <View style={styles.modActionRow}>
+                <TouchableOpacity
+                  style={styles.modApproveBtn}
+                  onPress={() => handleApprovePost(post.id)}
+                >
+                  <Text style={styles.modApproveBtnText}>✓ Aprobă & Păstrează</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.modDeleteBtn}
+                  onPress={() => handleDeletePost(post.id)}
+                >
+                  <Text style={styles.modDeleteBtnText}>🗑️ Șterge Postarea</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Comments Drawer */}
             {activeCommentsPostId === post.id && (
@@ -384,7 +524,37 @@ const styles = StyleSheet.create({
   categoryChipActive: { backgroundColor: '#8d23be', borderColor: '#a855f7' },
   categoryChipText: { color: '#a1a1aa', fontSize: 12, fontWeight: '500' },
   categoryChipTextActive: { color: '#ffffff', fontWeight: 'bold' },
+  moderationChip: { borderColor: '#b45309' },
+  moderationChipActive: { backgroundColor: '#b45309', borderColor: '#f59e0b' },
+  moderationChipText: { color: '#fbbf24' },
   content: { flex: 1, paddingHorizontal: 16 },
+
+  // Moderator Banner & Empty State
+  modBanner: {
+    backgroundColor: '#451a03',
+    borderColor: '#b45309',
+    borderWidth: 1,
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 10,
+    padding: 12,
+  },
+  modBannerTitle: { color: '#fde68a', fontSize: 13, fontWeight: 'bold' },
+  modBannerSub: { color: '#fef3c7', fontSize: 11, marginTop: 2 },
+  emptyModBox: {
+    backgroundColor: '#18181b',
+    borderRadius: 16,
+    padding: 30,
+    alignItems: 'center',
+    marginHorizontal: 16,
+    marginTop: 20,
+    borderWidth: 1,
+    borderColor: '#27272a',
+  },
+  emptyModIcon: { fontSize: 32, marginBottom: 8 },
+  emptyModTitle: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  emptyModDesc: { color: '#a1a1aa', fontSize: 12, textAlign: 'center', marginTop: 4 },
+
   postCard: {
     backgroundColor: '#18181b',
     borderColor: '#27272a',
@@ -392,6 +562,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     padding: 16,
     marginBottom: 14,
+  },
+  reportedPostCard: {
+    borderColor: '#b45309',
+    backgroundColor: '#1c130d',
   },
   postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   badgeRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
@@ -407,6 +581,25 @@ const styles = StyleSheet.create({
   neighbourhoodBadge: { fontSize: 10, color: '#e4e4e7', fontWeight: '500' },
   postAuthor: { color: '#71717a', fontSize: 11 },
   reportText: { color: '#f59e0b', fontSize: 11, fontWeight: '600' },
+  modReportPill: {
+    backgroundColor: '#7c2d12',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  modReportPillText: { color: '#fdba74', fontSize: 10, fontWeight: 'bold' },
+
+  reportedReasonBox: {
+    backgroundColor: '#291409',
+    borderColor: '#9a3412',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 8,
+    marginTop: 8,
+  },
+  reportedReasonTitle: { color: '#fdba74', fontSize: 10, fontWeight: 'bold' },
+  reportedReasonText: { color: '#ffedd5', fontSize: 11, marginTop: 2 },
+
   postTitle: { color: '#ffffff', fontSize: 15, fontWeight: 'bold', marginTop: 8 },
   postContent: { color: '#d4d4d8', fontSize: 13, marginTop: 6, lineHeight: 18 },
   postImage: { width: '100%', height: 160, borderRadius: 10, marginTop: 10 },
@@ -420,6 +613,37 @@ const styles = StyleSheet.create({
   },
   actionBtn: { flexDirection: 'row', alignItems: 'center' },
   actionBtnText: { color: '#a1a1aa', fontSize: 12, fontWeight: '500' },
+
+  // Moderator Control Buttons
+  modActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#451a03',
+  },
+  modApproveBtn: {
+    flex: 1,
+    backgroundColor: '#14532d',
+    borderColor: '#16a34a',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  modApproveBtnText: { color: '#86efac', fontSize: 11, fontWeight: 'bold' },
+  modDeleteBtn: {
+    flex: 1,
+    backgroundColor: '#7f1d1d',
+    borderColor: '#dc2626',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+  },
+  modDeleteBtnText: { color: '#fca5a5', fontSize: 11, fontWeight: 'bold' },
+
   commentsBox: { marginTop: 10, backgroundColor: '#0f0f12', padding: 10, borderRadius: 10 },
   commentItem: { marginBottom: 8 },
   commentAuthor: { color: '#c084fc', fontSize: 11, fontWeight: 'bold' },

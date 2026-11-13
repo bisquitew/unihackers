@@ -7,6 +7,9 @@
     "dev": "expo start",
     "start": "expo start",
     "tunnel": "expo start --tunnel ngrok",
+    "dev:app": "expo start",
+    "dev:app:tunnel": "expo start --tunnel ngrok",
+    "dev:app:wifi": "expo start --host 10.109.24.138",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web"
@@ -15,9 +18,9 @@
     "@expo-google-fonts/figtree": "0.4.1",
     "@expo-google-fonts/nunito": "0.4.2",
     "@expo/metro-runtime": "~58.0.17",
-    "@hub/contracts": "workspace:*",
-    "@hub/solana": "workspace:*",
-    "@hub/ui": "workspace:*",
+    "@hub/contracts": "*",
+    "@hub/solana": "*",
+    "@hub/ui": "*",
     "expo": "^58.0.25",
     "expo-blur": "~58.0.6",
     "expo-constants": "~58.0.16",
@@ -32,7 +35,7 @@
     "react-native-safe-area-context": "*",
     "react-native-screens": "*",
     "react-native-svg": "15.16.0",
-    "react-native-web": "^0.21.4"
+    "react-native-web": "~0.21.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

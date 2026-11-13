@@ -1,6 +1,7 @@
 {
   "name": "@hub/contracts",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "description": "Shared Zod schemas, interfaces, and core types for Timișoara City Hub",
   "type": "module",
