@@ -16,7 +16,7 @@
  *                    show before/after numbers per version. Also settable from the menu.
  *   FORWARD_ENABLED  "true" to send to the API. Leave unset until P2's API is live.
  *   API_URL          e.g. https://<api-host>/v1/m/feedback/ingest
- *   API_TOKEN        token from P2 (sent as "Authorization: Bearer ...")
+ *   API_TOKEN        same value as FEEDBACK_INGEST_TOKEN in the API's .env (sent as "X-Ingest-Token")
  *
  * The email answer (Q12) is never copied or sent anywhere; only has_email = true/false.
  */
@@ -218,7 +218,8 @@ function forward_(rec) {
       method: 'post',
       contentType: 'application/json',
       payload: JSON.stringify(toPayload_(rec)),
-      headers: token ? { Authorization: 'Bearer ' + token } : {},
+      // Not "Authorization: Bearer": the API's global Auth0 middleware rejects non-Auth0 bearer tokens.
+      headers: token ? { 'X-Ingest-Token': token } : {},
       muteHttpExceptions: true,
     });
     const code = res.getResponseCode();

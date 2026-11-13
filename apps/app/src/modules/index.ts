@@ -2,6 +2,7 @@ import { manifest as m01Manifest } from './m01-events/manifest';
 import { manifest as m07Manifest } from './m07-buddy/manifest';
 import { manifest as m08Manifest } from './m08-forum/manifest';
 import { manifest as m09Manifest } from './m09-wallet/manifest';
+import { manifest as m11Manifest } from './m11-feedback/manifest';
 import { utilitiesManifest } from './m04-utilities/manifest';
 import { transitManifest } from './m05-transit/manifest';
 
@@ -38,7 +39,7 @@ export const registeredModuleManifests: ModuleManifest[] = [
   m08Manifest as unknown as ModuleManifest,
   m09Manifest as unknown as ModuleManifest,
   createStubManifest('m10-assistant', 'Asistent AI Timișoara', 'P4', 'bot', '/m/assistant'),
-  createStubManifest('m11-feedback', 'Living Labs Feedback', 'P4', 'star', '/m/feedback'),
+  m11Manifest, // [M11_FEEDBACK] - P4
   createStubManifest('m12-dashboard', 'Panou Municipal', 'P4', 'bar-chart', '/m/dashboard'),
   createStubManifest('parkie', 'Parkie Smart Parking', 'P1', 'parking', '/m/parkie')
 ];

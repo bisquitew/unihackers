@@ -59,8 +59,8 @@ Script properties** and add:
 
 | Property | Value |
 | --- | --- |
-| `API_URL` | the M11 ingest URL from P2/P4, e.g. `https://<api-host>/v1/m/feedback/ingest` |
-| `API_TOKEN` | the token P2 gives you |
+| `API_URL` | the M11 ingest URL, e.g. `https://<api-host>/v1/m/feedback/ingest` |
+| `API_TOKEN` | the same value as `FEEDBACK_INGEST_TOKEN` in the API's `.env` |
 | `FORWARD_ENABLED` | `true` |
 
 Then run **Living Labs → Retry failed API sends** to send everything collected so far.
