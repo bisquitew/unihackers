@@ -1,444 +1,293 @@
-#todo list for the team, check
+# &#91;PRODUCT\_NAME\] — UniHack Brief & Team Build Plan
 
+Nov 13, 2026 · @Zaq
 
-# UNIHACK – Timișoara City Hub: Project Brief
+## 1. Project brief
 
-Nov 13, 2026
+We are building \[PRODUCT\_NAME\]: one community hub for Timișoara, Romania, that solves real city problems, absorbs our previous winning project \[PARKIE\_MODULE\], and targets as many UniHack sponsor challenges as possible in 48 hours.
 
-## 1. Project overview
+**What the product is**
 
-We are building a city hub for **Timișoara, Romania** for UNIHACK: one app that brings together solutions to the city's community problems, a community forum, and our previous winning project, Parkie.
+- A single city hub for residents, students, newcomers and tourists in Timișoara. Everything is built around this one city.
+- A native phone app for iOS and Android, plus a web app usable on any other device (laptop, tablet).
+- A set of feature modules, each solving one community problem (section 2), plus a Facebook-style community forum with groups (e.g. "my cat is missing").
+- &#91;PARKIE\_MODULE\], our previous hackathon-winning project, fully ported in as one of the modules.
 
-- **Platforms:** a mobile app for iOS and Android, plus a web app that works on any other device.
-- **Focus:** everything is built around Timișoara and its residents, students, newcomers and visitors.
-- **Scope:** the community problems in section 2, the extra features in section 3, and as many sponsor side challenges from section 4 as we can fit in 48 hours.
+**How we build it (team requirements)**
 
-## 2. Community problems the hub addresses
+- Team of 4, 48 hours. Do as much of the scope as possible, not necessarily all of it.
+- Strictly modular: every feature is built independently. If one breaks or we drop it, it stays as a draft and does not affect the rest of the app.
+- Each member owns their own components and can finish their tasks without waiting on anyone else.
+- Scalable: new features can be added later without conflicts.
+- One member owns the visual identity and the frontend shell. This is ideally the person porting \[PARKIE\_MODULE\], since it is a large part of the app.
+- Deliverable right now is the structure, not the code: full architecture, team split, tech stack, then a list of extra ideas.
 
-These are the seven problems from the challenge brief. The hub should also be open to other community problems like these.
+**Open item:** the \[PARKIE\_MODULE\] file was mentioned as attached but was not included in either upload. Its section in this plan uses placeholders until we have it.
 
-### 2.1 Small cultural events are missing
+## 2. Community problems and their modules
 
-The cultural scene relies on formal museums and big annual festivals, with little in between. People asked for:
+Each problem becomes one independent module with a placeholder name. Swap the placeholders for real names once you pick a brand.
 
-- micro-festivals and pop-up events
-- open-air cinema
-- creative workshops and mixed-discipline nights
-- small showcases for local artists
-- social gatherings for specific age groups
+| Module | Problem in Timișoara | What the module does |
+| --- | --- | --- |
+| \[M01\_EVENTS\] | The cultural scene is mostly formal museums and big annual festivals, with little in between. People asked for micro-festivals, open-air cinema, pop-up events, creative workshops, mixed-discipline nights, small showcases for local artists, and social gatherings for specific age groups. | Discover, create and RSVP to small events. Organizers post; residents filter by type, area, date and age group. |
+| \[M02\_VISITOR\_INFO\] | Visitors can't find practical information when they need it. The review of the 2023 European Capital of Culture year criticised the city's communication with international visitors as slow and poorly targeted. | Multilingual practical info (transport, tickets, pharmacies, ATMs, opening hours) plus an AI assistant that answers questions. |
+| \[M03\_SAFETY\] | People don't feel safe in parts of the city, especially at night. In August 2025, residents near Gara de Nord protested over threats, night-time noise and buildings taken over by squatters, saying repeated complaints produced no concrete response. | Map-based safety reports (noise, lighting, abandoned buildings), area heatmap, and an aggregated, exportable report for city hall. |
+| \[M04\_UTILITIES\] | Many apartments get heat and hot water from Colterm. In October 2021 its gas was cut, leaving about 50,000 households plus hospitals and schools without heat or hot water; months later it considered cutting hot water at night. Notices for water, heat and power cuts are scattered across utility websites, social media and notes taped to doors, so residents rarely know if their building is affected or when service returns. | One feed of planned and unplanned outages, matched to the user's saved address, with push alerts and estimated restore time. |
+| \[M05\_TRANSIT\] | Roadworks from August to the end of 2026 suspended tram line 5 and detoured lines 1 and 2. Lines 6a and 6b were already suspended, and a temporary bus line 5C was added. Changes come out as press releases, so people wait at stops no tram serves any more. | Live list of suspended, detoured and temporary lines, "is my stop still served?" check, and alerts for saved lines. |
+| \[M06\_SMELL\] | The city keeps having bad-smell episodes. In early 2022 residents reported a burnt-rubber smell almost every morning, with no source named. Sensors measure particles, but when thousands notice a smell, nothing is recorded. | One-tap smell reports (type, intensity, time, location) aggregated into a live map and time series, combined with wind data to suggest a likely source direction. |
+| \[M07\_BUDDY\] | Many people skip a concert or play because they have no one to go with: first-year and international students, newcomers, people whose friends like different things. | Opt-in "looking for company" on any event, interest-based matching, and small group chats. |
+| \[M08\_FORUM\] | No central place for neighbourhood and community help. | Facebook-style groups and posts (lost pets, neighbourhood, buy/sell, help needed), with comments, photos and moderation. |
+| \[PARKIE\_MODULE\] | From our previous winning project (details pending the file). | Full port of the existing project as a self-contained module. |
 
-### 2.2 Tourist information is hard to find
+The list stays open: "and community problems like these" in the brief means more modules can be added later through the same module contract (section 4).
 
-Visitors can't find practical information about the city when they need it. The review of the 2023 European Capital of Culture year said the same, criticising the city's communication with international visitors as slow and poorly targeted.
+## 3. Sponsor side-challenges
 
-### 2.3 Feeling safe in the city
+We target nine side-challenges; each maps to specific modules and one owner (owners P1–P4 are defined in section 6). Tiger Data was marked optional in one file; it is kept here because it fits our data naturally.
 
-People don't feel safe in parts of the city, especially at night. In August 2025, residents near Gara de Nord protested over threats, night-time noise and abandoned buildings taken over by squatters. They said their repeated complaints had produced no concrete response.
-
-### 2.4 When does my hot water come back?
-
-Many apartments get heating and hot water from Colterm, the city's district heating company.
-
-- In October 2021 its gas supply was cut, leaving about 50,000 households, plus hospitals and schools, without heat or hot water.
-- A few months later the company considered cutting hot water at night.
-- Notices about planned cuts and breakdowns of water, heat and power are scattered across utility websites, social media and notes taped to building doors.
-
-Result: residents rarely know whether their own building is affected or when service will return.
-
-### 2.5 Months of public transport detours
-
-Roadworks running from August to the end of 2026 have changed several lines:
-
-- tram line 5 is suspended
-- lines 1 and 2 are detoured
-- lines 6a and 6b were already suspended
-- a temporary bus line, 5C, has been added
-
-These changes are announced only through press releases, so it's easy to end up waiting at a stop that no tram serves any more.
-
-### 2.6 Where is that smell coming from?
-
-Timișoara keeps having episodes of bad smells. In early 2022, residents described a burnt-rubber smell almost every morning, and reports at the time named no source. Air-quality sensors measure particles, but when thousands of people notice a smell, none of it is recorded anywhere.
-
-### 2.7 Nobody to go with
-
-Many people skip a concert or a play simply because they have no one to go with: first-year and international students, newcomers, and people whose friends like different things.
-
-## 3. Extra features
-
-### 3.1 Community forum
-
-A Facebook-style forum with topic groups where residents can post and help each other, for example "My cat is missing".
-
-### 3.2 Parkie (our previous winning project)
-
-Parkie is our AI-powered smart parking app, winner of the Community Problem Track Award at ITfest 2026 in Timișoara (team UniHackers). We want to integrate it fully into the hub, not just link to it.
-
-It uses computer vision on parking-lot camera feeds to detect which spots are taken, and shows live availability on a mobile map so drivers don't circle the block.
-
-#### How it works
-
-1. **Lot owners** register their lot on the web dashboard and draw the parking slots by clicking 4 corners per slot on a camera frame.
-2. **The AI vision agent** runs YOLO on the camera feed, works out which slots are occupied and reports the count to the backend.
-3. **Drivers** open the mobile app and see a live map with colour-coded pins, then navigate to the best lot.
-4. Updates reach the app in real time through Supabase Realtime, with no refreshing.
-
-#### Components
-
-| Component | Folder | Tech | What it does |
-| --- | --- | --- | --- |
-| AI vision agent | `ai_vision/` | Python, YOLOv11m (Ultralytics), OpenCV | Detects vehicles, matches them to slot polygons, smooths results, reports occupancy |
-| Backend API | `backend_api/` | FastAPI, Supabase (PostgreSQL), bcrypt + JWT, Docker | 15 endpoints: accounts, lots, occupancy updates, frame capture, admin verification, voice search |
-| Mobile app | `Frontend/Parkie/` | Expo, React Native, TypeScript, react-native-maps, Supabase Realtime | Live map, nearby search, voice search, lot details, navigation |
-| Web dashboard | `Frontend/Dashboard/` | Vite, TypeScript, HTML Canvas | Owners add lots and draw slots; admins verify or reject lots |
-
-A root Makefile starts each part: `make backend`, `make vision`, `make mobile`, `make dashboard`, `make test`. Requirements: Python 3.11+, Node.js 20+, Docker optional.
-
-#### Features
-
-- **Live map pins** showing free spots: green below 70% occupied, yellow 70–85%, red above 85%, grey when unknown or offline.
-- **Nearby search:** search a destination (OpenStreetMap Nominatim autocomplete), see lots within 500 m, ranked first by lowest occupancy, then by status colour.
-- **Voice search:** speak a place name in Romanian; OpenAI Whisper transcribes it and Nominatim turns it into map coordinates.
-- **Lot details card:** available, occupied, occupancy %, status and last scan time, plus a "Navigate Here" button (opens Apple Maps).
-- **Owner dashboard:** add a lot (name, coordinates, camera URL), capture a camera frame, draw and edit slot polygons, save the setup.
-- **Admin panel:** review pending lots, verify, reject (delete) or unverify them. Only verified lots appear in the mobile app, and editing a lot sends it back for re-verification.
-- **Mock data generator:** 14 real Timișoara locations (e.g. Piața Unirii, Iulius Town, Gara de Nord, Shopping City) with simulated rush and exit surges, for demos.
-
-#### AI detection pipeline
-
-1. **YOLO inference** every 5 s detects cars, motorcycles, buses, trucks and bicycles.
-2. **Polygon matching** checks 10 sample points of each vehicle box against each slot polygon.
-3. **Large-vehicle filter** ignores boxes larger than 12% of the frame (passing buses or trucks).
-4. **Smoothing:** a 5-frame majority vote per slot prevents flicker.
-5. **Reporting:** the stable occupied count is posted to the backend every 15 s; the agent reconnects automatically if the stream drops.
-
-A training script can also fine-tune a custom detector on the PKLot dataset.
-
-#### User roles
-
-- **Driver:** uses the mobile app; no account needed.
-- **Lot owner:** registers and logs in on the dashboard, manages their own lots.
-- **Admin:** verifies, rejects or unverifies lots.
-
-#### API endpoints
-
-| Method | Endpoint | Used by | Purpose |
-| --- | --- | --- | --- |
-| POST | `/auth/register` | Dashboard | Create a lot owner account |
-| POST | `/auth/login` | Dashboard | Log in, get a JWT and user profile |
-| GET | `/lots` | Mobile app | All verified lots (`include_unverified` optional) |
-| GET | `/lots/my` | Dashboard (JWT) | The owner's own lots |
-| GET | `/lots/colors` | Mobile app | Lightweight id + status colour only |
-| GET | `/lots/{id}` | App, dashboard | One lot's details |
-| GET | `/lots/{id}/config` | AI agent | Camera URL and slot polygons |
-| POST | `/lots` | Dashboard (JWT) | Register a new lot (starts unverified) |
-| PUT | `/lots/{id}/setup` | Dashboard (JWT) | Save slot setup; resets verification |
-| POST | `/vision/update_lot` | AI agent | Report detected cars; recalculates free spots and colour |
-| POST | `/vision/capture_frame` | Dashboard | Grab one camera frame as base64 JPEG |
-| POST | `/search/voice` | Mobile app | Audio in, transcript + coordinates out |
-| GET | `/admin/lots/pending` | Admin (JWT) | Lots awaiting review |
-| PATCH | `/admin/lots/{id}/verify` | Admin (JWT) | Verify or unverify a lot |
-| DELETE | `/admin/lots/{id}` | Admin (JWT) | Reject and delete a lot |
-
-#### Database (Supabase)
-
-- **users:** id, name, email (unique), password (bcrypt), role (owner/admin), created_at.
-- **parking_lots:** id, owner_id, name, latitude, longitude, camera_url, slots_data (8-number polygon per slot), capacity, available_spots, status_color, is_verified, last_updated.
-
-#### Design system
-
-Dark amethyst theme: background `#0a0a0a`, primary `#8d23be`, surface `#401056`, status green `#10b981`, yellow `#f59e0b`, red `#ef4444`, with glassmorphism panels (`rgba(64, 16, 86, 0.4)` and violet borders).
-
-#### Things to fix when integrating
-
-Found while reading the repository:
-
-- **Committed secrets:** `lib/supabase.js` contains the Supabase URL and key, and `config/api.js` contains an ngrok URL. The `.ts` versions read from environment variables; delete the `.js` duplicates and rotate the key.
-- **Missing source:** `components/NearbySearch.tsx` came through as a binary file, so its code (search + ranking) is not in the export.
-- **Wrong default map location:** with no GPS or lots, the map centres on Milan (45.4642, 9.19) instead of Timișoara.
-- **Navigation is Apple Maps only;** Android users need a Google Maps link.
-- **Open endpoints:** `/vision/update_lot` and `/vision/capture_frame` have no authentication.
-- **Overlap with the hub:** Parkie has its own login (bcrypt + JWT) while the hub plans Auth0 (4.5), and its voice search uses OpenAI Whisper; both need to be reconciled with the hub's shared services.
-- **Legacy code:** `backend_api/legacy/` holds an older single-file version of the API and can be left out.
-
-## 4. Sponsor side challenges
-
-There are nine side challenges. Tiger Data is optional for now; all others are targets.
-
-| # | Challenge | Sponsor | Prize | Status |
+| Challenge | Prize | What judges want | How we target it | Owner |
 | --- | --- | --- | --- | --- |
-| 4.1 | Glue It Together | Netrom Software | not stated | Target |
-| 4.2 | Living Labs Award | Vest Ventures | not stated | Target |
-| 4.3 | Best Use of Gemini API | Google / MLH | MLH swag kits | Target |
-| 4.4 | Best Use of ElevenLabs | ElevenLabs | Wireless earbuds | Target |
-| 4.5 | Best Use of Auth0 | Auth0 | Wireless headphones (per team member) | Target |
-| 4.6 | Best Use of Solana | Solana | Unruggable hardware wallets (per team member) | Target |
-| 4.7 | Best Use of Entire | Entire | Mini portable projector | Target |
-| 4.8 | Best Use of Vultr | Vultr | Assorted prizes | Target |
-| 4.9 | Best Use of Tiger Data | Tiger Data | Stream Deck Mini | Optional for now |
-
-### 4.1 Netrom Software — Glue It Together
-
-Combine APIs, cloud services, AI and other tools into one working solution that does more than any single component could on its own.
-
-- Multi-API mashup combining AI, serverless functions and public data
-- Smart workflow automation that bridges separate tools and cloud services
-- Hybrid solution connecting existing platforms with custom logic
-
-### 4.2 Vest Ventures — Living Labs Award
-
-Awarded to the team with the most interactive development process: testing the idea with real users and quickly adapting the solution based on their feedback. It rewards adaptability and a crowd-sourced approach.
-
-- Validate the idea with real users through surveys, interviews or live testing (in person or online)
-- Iterate quickly and adapt the solution based on the feedback
-- Show measurable crowd-sourced improvements made during the hackathon
-
-### 4.3 Best Use of Gemini API
-
-Build an AI-powered app with the Google Gemini API that makes people say "whoa". Gemini can understand language, analyse information and generate content.
-
-- Chatbot that gives personalised advice
-- App that summarises complex documents or research papers
-- Generator for creative content such as code, scripts or music
-
-### 4.4 Best Use of ElevenLabs
-
-Give the project a voice with natural, human-sounding, emotionally expressive AI audio, without actors or complex audio production.
-
-- AI companion you can talk to
-- Narrated, interactive stories
-- Voice-enabled assistant or app
-- Fully autonomous audio experiences
-
-### 4.5 Best Use of Auth0
-
-Secure the app with Auth0 instead of building authentication from scratch. It is free to try, needs no credit card, and allows up to 7,000 free active users with unlimited logins. Any Auth0 API counts.
-
-- Social sign-in or passwordless login
-- Multi-factor authentication (MFA)
-- Role-based access control
-- Auth0 for AI Agents, to secure AI features
-
-### 4.6 Best Use of Solana
-
-Build a fast, scalable app that uses Solana's core advantages: very fast execution and near-zero transaction costs.
-
-- Game, social app or consumer product that relies on instant, high-frequency transactions
-- Trading, lending or decentralised exchange (DEX) platform
-- Supply chain, identity or payments prototype that can handle real-world volume
-
-### 4.7 Best Use of Entire
-
-Entire is a Git forge built for collaboration between people and AI agents. To qualify, the team should use as many of its core capabilities as possible in our development workflow, and show clean code history and measurable token savings.
-
-- **Sessions (shared memory):** save AI agent sessions as checkpoints and push them to the team, so anyone can continue with no lost context.
-- **Graph (codebase mapping):** generate a visual map of the codebase; searching it instead of blind file searches cuts agent token usage by up to 71%.
-- **Brain (persistent reasoning):** combine sessions and Graph into lasting project knowledge that agents can query (CLI or MCP), so they don't repeat mistakes.
-- **Trails (code review):** assign a task to an agent through a Trail (Entire's combined issue and pull request), then let an agent review whether the change matches the intent and should be merged.
-
-### 4.8 Best Use of Vultr
-
-Deploy the project on Vultr's cloud: one-click deployment, scalable compute, and Cloud GPUs for AI features. Sign up to claim free cloud credits.
-
-### 4.9 Best Use of Tiger Data (optional for now)
-
-Tiger Data extends PostgreSQL for real-time data, time-series metrics and analytics.
-
-- Plain SQL, with no complex NoSQL pipelines
-- Relational data (e.g. user profiles) and high-frequency metric streams in one database
-- Lag-free live dashboards using pre-computed continuous aggregates
-- 90%+ data compression, so millions of events fit on a free-tier instance
-
-Example uses: IoT or sensor monitoring, real-time analytics dashboards, financial prediction engines.
-
-## 5. Team and build constraints
-
-- **Time:** 48 hours to build as much of this as possible.
-- **Team:** 4 people. Each member gets their own set of tasks and can finish them without needing anything from the others.
-- **Modular features:** every feature is built independently. If one breaks or we stop working on it, it stays as a draft without affecting the rest of the project.
-- **Scalable:** new features can be added later without conflicts with existing ones.
-
-## 6. What we are asking for
-
-We don't want the finished project yet. We want the full structure first, and will develop it from there.
-
-1. **Full project structure** — modular, independent and scalable, following the constraints in section 5, for both the mobile app (iOS/Android) and the web app.
-2. **Task split for 4 people** — each member's tasks, doable without depending on the others.
-3. **Recommended technologies** — a tech stack we can use, including where each sponsor challenge fits.
-4. **New ideas** — at the end, suggestions for more things the app could do to help people in the city. *(Now covered in section 8.)*
-
-## 7. Notes on the merge
-
-This brief combines two versions of the same notes. Where they differed:
-
-- Entire and Vultr appeared only in the newer version; both are included.
-- Tiger Data was marked "optional for now" only in the older version; that status is kept.
-- Sponsor descriptions use the fuller wording, with the example ideas from both versions combined.
-- The web app, the tech stack request, the new-ideas request and the "no dependencies between members" rule came from the newer version.
-
-## 8. New feature ideas (researched, added Nov 13, 2026)
-
-### 8.0 Positioning: what the official app does NOT do
-
-The municipality launched its own official **Timișoara City App** in testing on 10 November 2026 (full launch planned for December). It covers: live public transport tracking and ticket buying, Timpark parking payment, events and tourist attractions with themed routes, all online city-hall services from the Unic Portal (taxes, appointments, documents), heavy-vehicle access features, and "Timi", a text/voice AI assistant for transport, events and city services.
-
-What the official app does **not** have, and where our hub wins:
-
-- **no community layer** — no forum, no user-to-user help, no event companions
-- **no citizen reporting** — you can pay taxes but not report a broken streetlight
-- **no crowdsourced data** — no outage, smell, or safety signals from residents
-- **no social/buddy features** — nothing for students and newcomers
-- **no gamification or engagement loop**
-
-Everything below is chosen to sit in that gap. We are the **community and problems layer** on top of the city; they are the services and payments layer.
-
-### 8.1 "ReparaTM" — civic issue reporting with AI triage
-
-Photo-first reporting of potholes, broken streetlights, graffiti, illegal dumping, broken playgrounds and similar problems, plus status tracking and community upvoting. This is the most battle-tested civic-tech pattern out there (Civix, CivicFix, UrbanMind, Civik all follow it).
-
-- **Citizen flow:** take a photo → GPS auto-attached → Gemini classifies the issue type and suggests priority from the image and description → one-tap submit in under 30 seconds.
-- **Duplicate clustering:** group similar reports by type + geography into "hotspots" instead of scattered tickets (a few confirmed reports = one confirmed hotspot).
-- **Status timeline:** Reported → Verified → In Progress → Resolved, with push notifications at each stage.
-- **City dashboard:** heatmap of open issues by category and neighbourhood, resolution-time stats, CSV export.
-- **Rewards:** points for valid reports and +bonus when an issue gets resolved (see 8.8).
-- Solves problems 2.3 and 2.6 partially; strong fit for **Netrom Glue (4.1)**, **Gemini (4.3)** and **Vultr (4.8)**.
-
-### 8.2 "MiroaseTM" — crowdsourced smell map
-
-Direct answer to problem 2.6. Smell Vancouver (UBC) proved this model works: a simple web/mobile app where people report odour type, strength, offensiveness (1–5), suspected source and symptoms, mapped in real time. Their data identified hotspots, dominant odour types (65% "rotten"/"chemical"), and even detected a refinery incident before official reports.
-
-- Report flow: 10-second form — location (GPS), odour type (burnt rubber, chemical, rotten, smoke...), strength, how unpleasant.
-- Live heat map of the city, layered over existing particulate-sensor data so "what the sensors say" and "what people smell" can be compared.
-- Trend detection: Gemini summarises the day's reports into a plain-language city smell brief ("burnt-rubber reports concentrated in the east between 6–9 AM").
-- Historically interesting angle: Timișoara's 2022 burnt-rubber episodes were never attributed — a year of crowdsourced data would have given the city evidence.
-- Fits **Gemini (4.3)**; the time-series reports are also a natural **Tiger Data (4.9)** use case if we pick it up.
-
-### 8.3 Utility status hub — "are we affected?"
-
-Direct answer to problem 2.4, modelled on cities like St. George (UT) that run report-and-track utility outage maps.
-
-- **Aggregation:** scrape/watch Colterm, apă (water) and electricity notice pages and social accounts; every planned or unplanned cut becomes one card in the app.
-- **Crowd verification:** users tap "my building is affected too" — multiple reports from one neighbourhood confirm an outage before any official notice appears (same early-warning pattern Downdetector-style systems use).
-- **Building subscription:** save your address once; get a push notification only when *your* area is affected and an "estimated return" when available.
-- **Community answers:** a thread per outage where neighbours share what they know ("boiler came back on str. X at 14:00").
-- Fits **Netrom Glue (4.1)** — a true multi-API mashup of scraping + crowdsourcing + push.
-
-### 8.4 Roadworks-aware transit layer
-
-The official app shows live vehicle positions and third-party apps already show real-time STPT arrivals, but none of them solve the actual 2026 problem: **detours**.
-
-- **Detour-aware trip planner:** plan a route that knows line 5 is suspended, 1 and 2 are detoured, and 5C exists — and never sends you to a dead stop.
-- **Stop-level warnings:** open the map near a stop and see "line 5 no longer serves this stop — use 5C from Piața Sf. Gheorghe".
-- **Saved lines + push alerts:** follow your line and get notified when its status changes.
-- **"When's my tram" widget** using the public STPT data (csuki-style feeds) so we keep parity with what exists, then beat it on the roadworks layer.
-- Solves problem 2.5.
-
-### 8.5 "Cu Cine?" — event buddy matching
-
-Direct answer to problem 2.7. Same pattern as EventBuddie / aKind / Buzzable: match people who want to attend the same event.
-
-- Tap "I want to go" on any event (from the 8.7 micro-events feed) and see others going, with a compatibility hint (shared groups, interests, university).
-- Lightweight in-app chat before the event to arrange meeting up; profile verification through the hub account.
-- Group mode: small groups ("3 people going to the open-air cinema, join them").
-- AI wingman (Gemini): suggests what two matched people have in common to break the ice.
-- **Safety by design:** verified accounts via **Auth0 (4.5)**, report/block tools, meet-at-venue guidance, no home addresses ever.
-- Solves problem 2.7 and deepens 2.1 (events get more attendees).
-
-### 8.6 Night safety layer — "drumul sigur"
-
-Answer to problem 2.3, but avoiding the pitfalls of apps like Citizen (crime alerts caused panic, false reports and vigilante behaviour — even their own users called it "a bunch of bs speculation").
-
-- **Safety-scored walking routes:** at night, routing prefers well-lit, populated streets. Score comes from streetlight density, reports of broken lights (from 8.1), open venues, and community votes on "feels safe" per street segment — infrastructure, not people-watching.
-- **Walk me home:** share a live trip with a friend; they get a notification when you arrive.
-- **Safe spots map:** 24h pharmacies, open venues, police boxes, well-lit transit hubs.
-- **Broken-streetlight fast path:** one-tap report pre-wired into the 8.1 civic reporting (dark streets are the city's cheapest safety fix).
-- Fits **Netrom (4.1)** and is a strong demo moment.
-
-### 8.7 Micro-events engine — the "in-between" cultural scene
-
-Answer to problem 2.1: the official app lists big events; the gap in Timișoara is the small stuff.
-
-- **Anyone can post:** pop-ups, open-air cinema, workshops, jam nights, student showcases — approval-light, community-flagged moderation.
-- **AI recommendations in plain language:** "something chill outdoors this weekend near where I live, free" → ranked list (the pattern aKind just shipped and Buzzable uses).
-- **Feed + map:** what's happening near you right now.
-- **Attendance intent:** events connect directly to "Cu Cino?" buddy matching (8.5).
-- **QR check-in** so organisers and attendees verify real turnout — also feeds Living Labs metrics (4.2).
-- Fits **Gemini (4.3)** for recommendations and **ElevenLabs (4.4)** for narrated event digests ("listen to tonight's 3 picks").
-
-### 8.8 Civic points and badges
-
-Engagement loop across all features, proven by UrbanMind (+10 per report, +20 on resolution) and Civic360 (badges, leaderboards).
-
-- Points for: valid reports, resolved issues, attending events, helping on the forum, confirming outages.
-- Badges and a friendly neighbourhood leaderboard.
-- **Optional Solana angle (4.6):** verifiable on-chain reputation — a "civic contribution score" minted as a token/credential per contributor, fast and near-zero cost. We do **not** build payments or trading; reputation only, which keeps the scope sane for 48 hours.
-
-### 8.9 Multilingual AI city guide (voice-first)
-
-Differentiated answer to problem 2.2: the official "Timi" answers in writing about official services; we go voice-first and community-fed.
-
-- Ask anything in Romanian, English, German or Hungarian — voice in, spoken answer out.
-- Answers grounded in **our own data** (live events, smell map, outage map, forum threads, Parkie lots), not just generic tourist info — that's what makes it "whoa".
-- **ElevenLabs (4.4)** narration of themed walking routes through the city (a narrated, interactive story of Timișoara's squares and history).
-- Gemini (4.3) for the reasoning; a RAG layer over our event/issue/utility data.
-
-### 8.10 Student & newcomer onboarding
-
-Timișoara is a student city and the forum already targets newcomers; make it explicit.
-
-- **"First 30 days in Timișoara" checklist:** transit pass, dorm/internet setup, family-doctor registration, where to eat cheap, which forum groups to join.
-- **Student discounts map** contributed by the community (businesses can claim and verify listings).
-- **University groups** in the forum, linked to campus events in 8.7 and buddy matching in 8.5.
-
-### 8.11 Lost & found + missing pets
-
-Extends the forum's "my cat is missing" example into a real tool:
-
-- Structured lost/found posts with photo, location and date.
-- **Zone push notifications:** lost pet near your neighbourhood → everyone nearby gets an alert.
-- Matches found items to lost reports automatically (same category + area + time window).
-
-### 8.12 Parkie extensions (beyond integration)
-
-Keep everything from 3.2, and add:
-
-- **Bike racks / EV chargers:** same YOLO pipeline, new object classes — cheap win since the vision agent already exists.
-- **Occupancy forecasting:** Tiger Data (4.9) time-series continuous aggregates predict "the Iulius Town lot is usually full at 18:00 on Fridays" from the occupancy stream — one clean sponsor story.
-- **Street-parking pilot:** the same slot-polygon approach on public street cameras if the city shares feeds.
-- Fix the known integration issues listed in 3.2 before adding any of these.
-
-### 8.13 Living Labs toolkit (built into the app)
-
-The Living Labs award (4.2) rewards real-user validation and iteration — so make that a feature:
-
-- **In-app feedback widget:** thumbs up/down plus a comment on every screen, logged with screen name and timestamp.
-- **Quick polls:** "should we add X?" in-app.
-- **QR posters** around campus and the city centre during the hackathon → install + test funnel with measurable numbers.
-- **Feedback dashboard:** what was reported, what we changed, when — the "show measurable crowd-sourced improvements" requirement becomes a slide.
-
-### 8.14 Multi-channel access
-
-Not everyone installs an app during a demo; meet people where they are (the multichannel pattern from Civic360).
-
-- **Telegram bot** (fastest to build): report issues, get event and outage notifications, ask the AI guide.
-- Same backend services, just another client — proves the "Glue It Together" mashup story (4.1).
-
-### 8.15 Priorities
-
-| Idea | Problem solved | Sponsor fit | Effort | Impact |
+| Netrom Software — Glue It Together | — | Combine APIs, cloud services, AI and tools into something greater than its parts: multi-API mashups (AI + serverless + public data), workflow automation across tools, hybrid solutions linking existing platforms with custom logic. | Serverless ingestion jobs pull utility notices, transit press releases and weather; Gemini turns them into structured alerts; the API matches them to users and pushes notifications. | P2 |
+| Solana — Best Use of Solana | Unruggable hardware wallets (per member) | A fast, scalable app using Solana's speed and near-zero fees: games or social apps with many transactions; trading, lending or DEX; supply chain, identity or payments prototypes able to handle real-world volume. | Payments prototype: event tickets and proof-of-attendance on devnet, and micro-payments for \[PARKIE\_MODULE\] if it involves payments. | P3 |
+| Vest Ventures — Living Labs Award | — | The most interactive development process: validate with real users (surveys, interviews, live tests, in person or online), iterate quickly on feedback, show measurable crowd-sourced improvements during the hackathon. | In-app feedback module plus an external survey from hour 2; a public changelog showing each change and the feedback that caused it. | P4 |
+| ElevenLabs — Best Use of ElevenLabs | Wireless earbuds | Natural, expressive AI voice: AI companions you talk to, narrated or interactive stories, voice-enabled assistants or apps. | Voice city assistant for visitors, narrated walking tours, spoken outage and transit alerts. | P4 |
+| Google Gemini — Best Use of Gemini API | MLH swag kits | An AI app that makes people say "whoa": personalised-advice chatbots, summarisers of complex material, generators for code, scripts or music. | City assistant with function calling over every module; photo of a notice taped to a door → structured outage; report clustering and summaries for city hall. | P4 (assistant), P2 (ingestion) |
+| Auth0 — Best Use of Auth0 | Wireless headphones (per member) | Secure the app with social sign-in, MFA, passwordless login, role-based access, or Auth0 for AI Agents. Free tier: no card, up to 7,000 active users. | Passwordless and Google sign-in, roles (resident, organizer, moderator, admin), MFA for moderators and admins. | P2 |
+| Tiger Data — Best Use of Tiger Data (optional) | Stream Deck Mini | PostgreSQL extended for real-time and time-series data: plain SQL, relational and metric data together, live dashboards from continuous aggregates, 90%+ compression. Ideas: IoT or sensor monitoring, real-time analytics dashboards, prediction engines. | Our main Postgres runs on Tiger Cloud. Smell, safety and outage reports and parking data become hypertables with continuous aggregates powering a live city dashboard. | P2 (DB), P4 (dashboard) |
+| Entire — Best Use of Entire | Mini portable projector | Smarter AI coding workflows using Entire's Git forge: Sessions (shared agent memory), Graph (codebase map, up to 71% fewer tokens), Brain (persistent project knowledge), Trails (agent task + review in place of PRs). Judged on human-AI collaboration, clean history and measurable token savings. | Every member's AI coding sessions run through Entire; module work is assigned as Trails; we report token savings from Graph in the pitch. | All, coordinated by P2 |
+| Vultr — Best Use of Vultr | Assorted prizes | High-performance projects on Vultr: one-click deploys, scalable compute, cloud GPUs for AI. Free credits on sign-up. | API, workers and object storage (photos) hosted on Vultr. | P2 |
+
+Three challenges are process or tooling rather than features (Living Labs, Entire, Vultr), so start them in the first hours; they cannot be added at the end.
+
+## 4. Architecture
+
+The app is a small frozen core plus independent vertical-slice modules; a module can crash, be unfinished or be switched off and the rest of the app does not notice.
+
+&#91;embedded content: system architecture · app, API, data, external services\]
+
+Requests flow top-down from the app to the API to Postgres; workers push city data in from the side, and every module appears once in the app and once in the API.
+
+**Rules that keep modules independent**
+
+1. **A module is a vertical slice.** Its screens, API routes, database schema, background jobs and mock data all live in that module's own folders, owned by one person.
+2. **The core is small and frozen after hour 3.** Core = auth, users, saved places/areas, notifications, feature flags, module registry, UI kit, shared types. Changes after hour 3 only in agreed sync windows.
+3. **Modules never import each other.** They talk only through core events, each other's public read endpoints, or deep links.
+4. **Feature flags per module:** `draft` (hidden in production, visible in dev menu), `beta`, `live`. A broken module is set to `draft` and disappears.
+5. **Mock-first.** Every module ships seed data and a mock adapter for each external API, so it works without the real source and without other modules.
+6. **One Postgres schema per module**, with its own migrations folder. Only references into core (`core.users`, `core.areas`) by id; never foreign keys between modules.
+7. **Pre-registered stubs.** In hour 1 we create every module folder, manifest and registry line at once. After that nobody edits shared index files, which removes the most common merge conflict.
+8. **Fault isolation at runtime.** The API loader wraps each module's start-up in try/catch and disables it on failure; the app wraps each module in its own error boundary.
+
+**Repository layout (monorepo)**
+
+```text
+[repo-name]/
+  apps/
+    app/                       Expo app: iOS, Android and web from one codebase
+      app/                     Expo Router (file-based routes)
+        _layout.tsx            shell, providers, auth gate            P1
+        (tabs)/                Home, Map, Alerts, Community, Profile  P1
+        m/<module>/            each module's own routes               module owner
+      src/modules/<module>/    screens, hooks, components, manifest.ts
+      src/modules/index.ts     registry, pre-filled in hour 1, then frozen
+  services/
+    api/                       Node + Hono API
+      src/core/                auth, users, areas, notifications, flags, events   P2
+      src/modules/<module>/    routes.ts, service.ts, db.ts, assistant-tools.ts, seed.ts
+      src/modules/index.ts     pre-filled, frozen
+    workers/                   scheduled ingestion jobs (serverless)  P2 / P4
+  packages/
+    ui/                        design system and shared components    P1
+    contracts/                 shared zod schemas and core types      P2, frozen hour 3
+    api-client/                typed fetch client, one file per module
+    config/                    tsconfig, eslint, prettier
+  db/
+    core/migrations/
+    modules/<module>/migrations/
+  docs/                        decisions, Living Labs log, pitch notes
+```
+
+**The module contract (frontend)** — each module exports one manifest; the shell builds navigation, home cards and map layers from it:
+
+```ts
+export const manifest: ModuleManifest = {
+  id: 'm04-utilities',
+  title: '[M04_UTILITIES]',
+  owner: 'P2',
+  status: 'beta',               // draft | beta | live
+  icon: 'droplet',
+  entryRoute: '/m/utilities',
+  homeCard?: UtilitiesCard,     // optional tile on Home
+  mapLayer?: OutageLayer,       // optional layer on the shared map
+  settings?: UtilitiesSettings, // optional block in Profile
+};
+```
+
+**The module contract (backend)** — each module exports one object; the API mounts it at `/v1/m/<module>`:
+
+```ts
+export const apiModule: ApiModule = {
+  id: 'm04-utilities',
+  routes,           // Hono router
+  jobs?,            // scheduled jobs
+  assistantTools?,  // Gemini function declarations + handlers
+  onEvent?: { 'place.saved': handler },
+};
+```
+
+**Shared extension points** — how a module appears in shared screens without anyone editing those screens: Home cards, Map layers, Alert types (via core notifications), assistant tools, search providers, Profile settings.
+
+**Git workflow** — one branch per module; `CODEOWNERS` maps each folder to its owner; a change outside your folders needs a second person's OK and happens only in a sync window.
+
+## 5. Tech stack
+
+TypeScript everywhere, one codebase for iOS, Android and web, and one Postgres database; this keeps four people productive in 48 hours and lets anyone read anyone's code.
+
+| Layer | Choice | Why | Challenge |
+| --- | --- | --- | --- |
+| App (iOS, Android, web) | Expo (React Native) + Expo Router, TypeScript | One codebase ships to both stores and the browser; file-based routes give each module its own folder. Demo on phones via Expo Go. | — |
+| Styling and UI kit | NativeWind (Tailwind for React Native) + own tokens in `packages/ui` | Fast to style, same classes on web and native, design tokens in one place. | — |
+| Maps | `react-native-maps` on native, MapLibre GL (or Leaflet) on web, behind one `<Map>` component with `.native.tsx` / `.web.tsx` files | The native map library does not run on web; one wrapper hides that from every module. OpenStreetMap tiles. | — |
+| Data and state | TanStack Query (server data), Zustand (local state), react-hook-form + zod (forms) | Caching and offline-friendly lists with little code; zod schemas shared with the API. | — |
+| Languages | i18next with Romanian and English (add Hungarian, German, Serbian later) | Visitors and international students are core users. | — |
+| Push notifications | Expo Notifications | One API for iOS and Android push. | — |
+| API | Node.js + Hono, zod validation | Tiny, fast, runs in containers or serverless; each module is a sub-router. | Netrom |
+| ORM and migrations | Drizzle ORM, one Postgres schema per module | Typed SQL, schema namespaces map directly to modules. | — |
+| Database | PostgreSQL with PostGIS on Tiger Cloud (TimescaleDB); local Docker image of the same for dev | Relational data, geo queries and time-series reports in one database; continuous aggregates for dashboards. | Tiger Data |
+| Auth | Auth0: passwordless email, Google sign-in, RBAC roles, MFA for staff roles; `react-native-auth0` on native, Auth0 SPA SDK on web | Login, roles and MFA without building them. | Auth0 |
+| Hosting | Vultr compute (Docker) for the API, Vultr Object Storage (S3-compatible) for photos | Free credits; one place for compute and files. | Vultr |
+| Scheduled ingestion | Serverless cron functions (e.g. Cloudflare Workers Cron or Google Cloud Run functions) calling the API | Pulls utility notices, transit updates and weather on a schedule; the "glue" layer. | Netrom |
+| AI | Gemini API via the `@google/genai` SDK: function calling, structured JSON output, image input | Assistant over all modules, extract outages from press releases and photographed notices, cluster and summarise reports. | Gemini, Netrom |
+| Voice | ElevenLabs text-to-speech and conversational agents | Voice assistant, narrated tours, spoken alerts. | ElevenLabs |
+| Blockchain | Solana devnet, `@solana/web3.js`, Solana Pay; wallet adapter on web, Mobile Wallet Adapter on Android | Tickets, proof-of-attendance and micro-payments with near-zero fees. | Solana |
+| Realtime (optional) | Postgres LISTEN/NOTIFY or Server-Sent Events | Live forum and alert updates; polling is an acceptable fallback. | — |
+| Repo and tooling | pnpm workspaces + Turborepo, GitHub Actions, Entire for agent sessions, Graph and Trails | Fast installs, per-package builds, shared AI context across the team. | Entire |
+| Feedback | Tally or Google Forms survey + in-app feedback widget; events table in Postgres | Measurable before/after numbers for the pitch. | Living Labs |
+
+**Timișoara data sources to check on day 1 (P2):** the city's open data portal ([data.primariatm.ro](https://www.opengovpartnership.org/documents/action-plan-timisoara-romania-2022-2024/), launched 2021, though [an OGP review notes it has not been updated recently](https://www.opengovpartnership.org/?p=97232)); STPT timetables on [stpt.ro](https://stpt.ro/EN/payment.html) (no open GTFS feed found, so plan on parsing press releases and timetables); Colterm, Aquatim and the power distributor's outage pages; Open-Meteo for wind direction. Assume every source may fail, which is why every module ships mock data.
+
+## 6. Team split
+
+Four owners, each with their own folders, modules and challenges; after the hour-3 contract freeze nobody waits on anyone, because every dependency has a mock.
+
+| Owner | Role | Owns (folders) | Modules | Challenges |
 | --- | --- | --- | --- | --- |
-| 8.1 Civic reporting | 2.3, 2.6 | Netrom, Gemini, Vultr | Medium | Very high |
-| 8.3 Utility status hub | 2.4 | Netrom | Medium | Very high |
-| 8.4 Roadworks transit | 2.5 | Netrom | Medium | High |
-| 8.5 Event buddies | 2.7 | Auth0, Gemini | Medium | High |
-| 8.7 Micro-events | 2.1 | Gemini, ElevenLabs | Medium | High |
-| 8.6 Night safety | 2.3 | Netrom | Medium | High |
-| 8.2 Smell map | 2.6 | Gemini, Tiger Data | Low | Medium-high |
-| 8.9 AI city guide | 2.2 | Gemini, ElevenLabs | Medium | High |
-| 8.8 Civic points | all | Solana | Low | Medium |
-| 8.10–8.11 Students, lost&found | 2.7, forum | — | Low | Medium |
-| 8.12 Parkie extensions | parking | Tiger Data | Low-medium | Medium |
-| 8.13 Living Labs | — | Vest Ventures | Low | High (for judging) |
-| 8.14 Telegram bot | all | Netrom | Low | Medium |
+| P1 | Design, app shell and \[PARKIE\_MODULE\] port | `packages/ui`, `apps/app/app/_layout.tsx`, `apps/app/app/(tabs)/`, all \[PARKIE\_MODULE\] folders | \[PARKIE\_MODULE\] | Pitch visuals; Solana payments in \[PARKIE\_MODULE\] if relevant (using P3's wallet package) |
+| P2 | Platform, data and city alerts | repo scaffold, `packages/contracts`, `services/api/src/core`, `apps/app/src/core`, `services/workers`, `db/core`, infra | \[M04\_UTILITIES\], \[M05\_TRANSIT\] | Auth0, Vultr, Tiger Data, Netrom, Entire (coordination) |
+| P3 | Community and social | M01, M07, M08, M09 folders, `packages/solana` | \[M08\_FORUM\], \[M01\_EVENTS\], \[M07\_BUDDY\], \[M09\_WALLET\] | Solana |
+| P4 | AI, voice and civic reports | M02, M03, M06, M10, M11, M12 folders | \[M10\_ASSISTANT\], \[M02\_VISITOR\_INFO\], \[M06\_SMELL\], \[M03\_SAFETY\], \[M11\_FEEDBACK\], \[M12\_DASHBOARD\] | Gemini, ElevenLabs, Living Labs, Tiger Data dashboard |
 
-If we can only build five: **8.1 + 8.3 + 8.4 + 8.5 + 8.13** — four real community problems solved plus the validation story, and every one of them is something the official Timișoara City App does not do.
+New placeholders: \[M09\_WALLET\] is the Solana wallet, ticket and payment module, kept separate so a blockchain failure never touches events. \[M10\_ASSISTANT\] is the Gemini + ElevenLabs assistant. \[M11\_FEEDBACK\] is the in-app feedback and changelog. \[M12\_DASHBOARD\] is the web-only city dashboard for officials.
+
+**How each person stays unblocked**
+
+- Auth: until Auth0 is wired, the API accepts a dev token that maps to fixed test users per role.
+- UI kit: until P1 ships components, use plain React Native views; restyle in the polish phase.
+- Notifications: `notify()` exists from hour 3 and logs to console until push is live.
+- Data: every module has `seed.ts` and mock adapters, so no module needs another module's data or a real external source.
+
+### P1 — Design, app shell and \[PARKIE\_MODULE\]
+
+Must (by hour 24)
+
+- [ ] Visual identity: placeholder name, logo mark, colour palette, type scale, icon set, tone of voice
+- [ ] Design tokens and core components in `packages/ui`: Button, Card, ListItem, Chip, Avatar, Sheet, Tabs, Empty / Loading / Error states
+- [ ] `<Map>` wrapper (native + web) with a layer API modules can plug into
+- [ ] App shell: tabs (Home, Map, Alerts, Community, Profile), Home built from module home cards, Map built from module layers
+- [ ] Responsive web layout (sidebar on desktop, tabs on phone)
+- [ ] &#91;PARKIE\_MODULE\] core flow ported as a module (frontend, API module, schema, seed)
+
+Should
+
+- [ ] Onboarding: language, neighbourhood, interests, home address (feeds P2's saved places)
+- [ ] Dark mode and accessibility pass (contrast, font scaling, screen reader labels)
+- [ ] &#91;PARKIE\_MODULE\] secondary features
+
+Could
+
+- [ ] App icon, splash screen, store screenshots, pitch deck visuals
+
+### P2 — Platform, data and city alerts
+
+Must (by hour 3, then by hour 24)
+
+- [ ] Hour 0–3: monorepo, Expo app and API skeletons, `packages/contracts`, all module stubs and registry lines, CODEOWNERS, CI, Entire set up for the team
+- [ ] Core API: users, saved places and areas (PostGIS), feature flags, events outbox, `notify()`
+- [ ] Auth0: passwordless + Google login, roles (resident, organizer, moderator, admin), API middleware, app auth provider in `apps/app/src/core`
+- [ ] Database on Tiger Cloud, migrations per schema, deployment on Vultr
+- [ ] &#91;M04\_UTILITIES\]: outage model, address matching, ingestion job with Gemini extraction, alerts
+- [ ] &#91;M05\_TRANSIT\]: line status model, "is my stop served" check, ingestion from press releases, alerts
+
+Should
+
+- [ ] Expo push notifications end to end
+- [ ] Photo upload service (Vultr Object Storage, signed URLs) used by forum and reports
+- [ ] MFA for moderators and admins
+
+Could
+
+- [ ] Realtime updates (SSE), rate limiting, audit log
+
+### P3 — Community and social
+
+Must (by hour 24)
+
+- [ ] &#91;M08\_FORUM\]: groups, posts with photos, comments, categories (lost pets, neighbourhood, help), report-a-post
+- [ ] &#91;M01\_EVENTS\]: create, list, filter (type, area, date, age group), RSVP, map layer, home card
+- [ ] &#91;M07\_BUDDY\]: "looking for company" on an event, interest matching, small group chat
+
+Should
+
+- [ ] Moderation tools for the moderator role
+- [ ] &#91;M09\_WALLET\] on Solana devnet: ticket mint on RSVP, QR check-in, proof-of-attendance
+
+Could
+
+- [ ] Micro-payments for paid events or \[PARKIE\_MODULE\]; reputation points for helpful posts
+
+### P4 — AI, voice and civic reports
+
+Must (by hour 24)
+
+- [ ] &#91;M11\_FEEDBACK\] live by hour 4: in-app feedback, external survey, changelog page (Living Labs needs the whole 48 hours)
+- [ ] &#91;M10\_ASSISTANT\]: Gemini chat with function calling into each module's `assistantTools` (disabled modules simply contribute no tools)
+- [ ] &#91;M02\_VISITOR\_INFO\]: curated practical info in RO/EN, answered through the assistant
+- [ ] &#91;M06\_SMELL\]: one-tap report, map heatmap, time series as a Tiger Data hypertable, wind overlay
+
+Should
+
+- [ ] ElevenLabs voice: talk to the assistant, spoken alerts, one narrated walking tour
+- [ ] &#91;M03\_SAFETY\]: same report pattern as smell, plus Gemini summary per area
+
+Could
+
+- [ ] &#91;M12\_DASHBOARD\]: web dashboard for officials from continuous aggregates, exportable report
+
+## 8. Open questions and new ideas
+
+**Open questions to settle in hour 0**
+
+- [ ] Share the \[PARKIE\_MODULE\] file so P1 can size the port and we can see if Solana payments fit it.
+- [ ] Check UniHack's rules on reusing a previous project. Many hackathons require new code; if so, rebuild \[PARKIE\_MODULE\] during the event and say so in the pitch.
+- [ ] Pick the product name and replace the placeholders.
+- [ ] Confirm which phones (iOS and Android) and laptop run the live demo.
+- [ ] Decide the 3 modules we demo end to end if time runs short (suggestion: \[M04\_UTILITIES\], \[M10\_ASSISTANT\], \[PARKIE\_MODULE\]).
+
+**More things the app could do**
+
+| Idea | What it does | Builds on |
+| --- | --- | --- |
+| "My building" page | One screen per saved address: heat, water and power status, nearest working stops, nearby events and reports. | M04, M05, M01, M03 |
+| Walk-me-home | Share a live route with a friend, suggest better-lit routes from safety reports, voice check-ins at night. | M03, M10 (voice) |
+| Outage helpers | During heating or water cuts, list where to shower or warm up and let neighbours volunteer to check on elderly residents. | M04, M08 |
+| Civic issue tracker | Report potholes, broken street lights or overflowing bins with photo and location; track status; export to city hall. | M03 pattern |
+| Accessibility map | Step-free routes, ramps, broken lifts on trams and in buildings, reported by users. | Map layers |
+| Neighbourhood audio digest | A 2-minute AI-written, ElevenLabs-voiced summary of what happened in your area this week. | M10, all modules |
+| Live translation | Forum posts and event descriptions translated on the fly for international students and visitors. | M08, M01, Gemini |
+| Lost-pet photo matching | Gemini compares a "found" photo with "lost" posts and suggests matches. | M08 |
+| Newcomer guides | Step-by-step guides for new residents and students: transport card, doctors, registering, SIM cards. | M02 |
+| Neighbourhood polls | Quick polls and petitions per area, with results shared with local officials. | M08, Auth0 roles |
+| Civic rewards | Points for useful reports and volunteering, redeemable at local businesses, optionally as Solana tokens. | M09 |
+| Bike and micromobility | Bike-sharing station availability next to transit status. | M05 |
+| Open data back to the city | Publish anonymised aggregates (smell, safety, outages) as open datasets the city can reuse. | M12, Tiger Data |
