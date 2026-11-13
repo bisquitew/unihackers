@@ -199,13 +199,27 @@ E. FRONTEND SCREENS & COMPONENTS (apps/app/src/modules/ & app/)
 
 4. Solana Wallet UI:
    - apps/app/src/modules/m09-wallet/manifest.ts
-       Module manifest (id: 'm09-wallet', title: 'Portofel Solana Devnet', icon: 'credit-card').
+        Module manifest (id: 'm09-wallet', title: 'Portofel Solana Devnet', icon: 'credit-card').
+   - apps/app/src/modules/m09-wallet/ticketStore.ts
+        Store reactiv partajat intre M01 Events si M09 Wallet. Sincronizeaza automat
+        biletele mintate la RSVP si gestioneaza starea de verificare si ecusoane POAP.
+   - apps/app/src/modules/m09-wallet/QRCodeView.tsx
+        Componenta nativa pura de redare matrice QR fara dependente native grele,
+        cu logo-ul Solana in centru si compatibilitate 100% Web, iOS si Android.
+   - apps/app/src/modules/m09-wallet/TicketQRModal.tsx
+        Modal interactiv de afisare cod QR criptografic pentru fiecare bilet, cu
+        semnatura Solana 88-char base58 si buton rapid de lansare scaner la usa.
+   - apps/app/src/modules/m09-wallet/ScannerModal.tsx
+        Simulator realist de cititor QR la intrare pentru personalul festivalului/locatiei
+        (Faber, Scart, D'arc). Simuleaza scanarea laser, verifica semnatura pe Solana
+        Devnet si emite automat ecusonul POAP on-chain cu animatie de succes.
    - apps/app/src/modules/m09-wallet/TicketBadge.tsx
-       Badge showing ticket ID, on-chain transaction hash, check-in status,
-       and direct clickable link opening Solana Explorer (Devnet).
+        Card bilet imbunatatit cu butoane actionabile: Afiseaza QR, Check-in Usa si Solana Explorer.
+   - apps/app/src/modules/m09-wallet/WalletScreen.tsx
+        Ecran complet de portofel Solana: card cu cheie publica si balanta 1.50 SOL,
+        taburi pentru Bilete Active, Galerie Ecusoane POAP si Consola Scanner Staff.
    - apps/app/src/modules/m09-wallet/index.ts
-       Exports manifest and TicketBadge.
-
+        Exporturi unificate pentru toate componentele portofelului.
 5. Expo Router Routes:
    - apps/app/app/_layout.tsx
        Root Stack layout with dark theme header and title bars.

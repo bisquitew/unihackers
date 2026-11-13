@@ -15,6 +15,7 @@
     "dev:app": "npm run start --prefix apps/app",
     "dev:app:tunnel": "npm run start --prefix apps/app -- --tunnel ngrok",
     "dev:app:wifi": "npm run start --prefix apps/app -- --host 10.109.24.138",
+    "test:solana": "node --experimental-strip-types scripts/test-solana-real.ts",
     "test:p2": "python3 scripts/test_p2.py",
     "start": "node --experimental-strip-types services/api/src/server.ts",
     "build": "npm run build --workspaces --if-present",

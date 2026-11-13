@@ -1,4 +1,4 @@
-import { getSolanaExplorerUrl } from './config';
+import { getSolanaExplorerUrl } from './config.ts';
 
 export interface MintPoapParams {
   eventId: string;
