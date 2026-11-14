@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     boxShadow: shadows.float,
   } as any,
-  tint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 255, 255, 0.6)' },
+  tint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255, 255, 255, 0.6)' },
   item: { minWidth: 64, height: 54, borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 4 },
   itemActive: { backgroundColor: colors.navActive },
   label: { fontFamily: 'Figtree_600SemiBold', fontSize: 11, lineHeight: 12 },

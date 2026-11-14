@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { rateLimit } from '../../core/rate-limit.ts';
 import { smellService } from './service.ts';
 import { parseNewReport, parseReadQuery } from './validation.ts';
 
@@ -13,7 +14,10 @@ smellRoutes.get('/health', async (c) => {
   return c.json({ module: 'm06-smell', status: 'ok', storage: smellService.status(), wind: { source: wind.source, cached: wind.cached, reason: wind.reason } });
 });
 
-smellRoutes.post('/reports', async (c) => {
+// 10 reports per client per 10 minutes (smells change fast, so more than safety's 5).
+const reportLimit = rateLimit({ windowMs: 10 * 60_000, max: 10, message: 'You sent many reports in a short time. Please wait a few minutes before sending another.' });
+
+smellRoutes.post('/reports', reportLimit, async (c) => {
   let body: unknown;
   try {
     body = await c.req.json();

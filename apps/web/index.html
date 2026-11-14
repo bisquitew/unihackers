@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Parkie — Panou Administrare Parcări Timișoara</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+  <!-- Top Header -->
+  <header class="app-header">
+    <div class="brand-section">
+      <span class="brand-badge">PARKIE WEB</span>
+      <div>
+        <div class="brand-title">Timișoara City Hub — Admin Camere & Plots</div>
+        <div class="brand-subtitle">Calibrare live camere video și monitorizare automată locuri de parcare</div>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="live-indicator">
+        <span class="live-dot"></span>
+        <span>FEED VIDEO ACTIV</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Application Body -->
+  <div class="app-container">
+    
+    <!-- Sidebar: Lot List -->
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Parcări Monitorizate</span>
+      </div>
+      <div class="lot-list" id="lotList">
+        <!-- Rendered dynamically -->
+      </div>
+    </aside>
+
+    <!-- Center: Camera Workspace -->
+    <main class="workspace">
+      
+      <!-- Toolbar -->
+      <div class="workspace-toolbar">
+        <div class="toolbar-group">
+          <button class="btn btn-secondary btn-active" id="selectModeBtn">
+            <span>🖱️</span> Selectează / Mută
+          </button>
+          <button class="btn btn-secondary" id="drawModeBtn">
+            <span>➕</span> Desenează Plot
+          </button>
+          <button class="btn btn-secondary" id="addGridBtn">
+            <span>📐</span> Grilă +5 Locuri
+          </button>
+        </div>
+
+        <div class="toolbar-group">
+          <button class="btn btn-primary" id="savePlotsBtn">
+            <span>💾</span> Salvează & Calibrează
+          </button>
+        </div>
+      </div>
+
+      <!-- Viewport & Inspector -->
+      <div class="viewport-container">
+        
+        <!-- Video Feed Stage -->
+        <div class="camera-stage">
+          <div class="camera-feed-wrapper">
+            <canvas id="cameraCanvas" width="800" height="450"></canvas>
+            <div class="camera-overlay-info">
+              <span>REZ: 800x450</span>
+              <span>FPS: 30</span>
+              <span>MODE: CALIBRATION</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Inspector Panel -->
+        <aside class="inspector-panel">
+          
+          <!-- Summary Box -->
+          <div class="inspector-section">
+            <div class="inspector-title">Stare Curentă Parcare</div>
+            <div class="lot-stats" style="margin-bottom: 8px;">
+              <span>Total Plots: <strong id="totalSpots">0</strong></span>
+              <span id="statusBadge" class="status-pill status-green">GREEN</span>
+            </div>
+            <div class="lot-stats">
+              <span>Libere: <strong id="freeSpots" style="color: #4ade80;">0</strong></span>
+              <span>Ocupate: <strong id="occSpots" style="color: #f87171;">0</strong></span>
+            </div>
+          </div>
+
+          <!-- Camera Config Box -->
+          <div class="inspector-section">
+            <div class="inspector-title">Sursă Cameră Video</div>
+            <div class="form-group">
+              <label for="cameraUrlInput">URL Stream RTSP / MJPEG</label>
+              <input type="text" id="cameraUrlInput" class="form-control" placeholder="rtsp://cam.timisoara-hub.ro/live">
+            </div>
+          </div>
+
+          <!-- Plot Inspector Box -->
+          <div class="inspector-section">
+            <div class="inspector-title" id="inspectorTitle">Niciun Plot Selectat</div>
+            
+            <div class="form-group">
+              <label for="plotIdInput">Identificator Plot</label>
+              <input type="text" id="plotIdInput" class="form-control" placeholder="slot-1" disabled>
+            </div>
+
+            <div class="form-group">
+              <label for="plotTypeSelect">Tip Loc de Parcare</label>
+              <select id="plotTypeSelect" class="form-control" disabled>
+                <option value="standard">Standard</option>
+                <option value="ev">Încărcare Electrică (EV) ⚡</option>
+                <option value="disabled">Persoane cu Dizabilități ♿</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="plotStatusSelect">Stare Detecție</label>
+              <select id="plotStatusSelect" class="form-control" disabled>
+                <option value="available">Liber (Verde)</option>
+                <option value="occupied">Ocupat (Roșu)</option>
+              </select>
+            </div>
+
+            <div class="coord-grid">
+              <div class="form-group">
+                <label>X (%)</label>
+                <input type="number" id="plotXInput" class="form-control" disabled>
+              </div>
+              <div class="form-group">
+                <label>Y (%)</label>
+                <input type="number" id="plotYInput" class="form-control" disabled>
+              </div>
+              <div class="form-group">
+                <label>Lățime (%)</label>
+                <input type="number" id="plotWInput" class="form-control" disabled>
+              </div>
+              <div class="form-group">
+                <label>Înălțime (%)</label>
+                <input type="number" id="plotHInput" class="form-control" disabled>
+              </div>
+            </div>
+
+            <button class="btn btn-secondary" id="toggleOccupancyBtn" style="width: 100%; margin-bottom: 8px;" disabled>
+              🔄 Testează Ocupare (Simulare Mașină)
+            </button>
+
+            <button class="btn btn-danger" id="deletePlotBtn" style="width: 100%;" disabled>
+              🗑️ Șterge Plot
+            </button>
+          </div>
+
+        </aside>
+
+      </div>
+
+    </main>
+
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast"></div>
+
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

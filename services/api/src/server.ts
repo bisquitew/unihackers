@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
 import { TIMISOARA_AREAS } from './core/areas.ts';
 import { userService } from './core/users.ts';
 import { getAllFlags } from './core/flags.ts';
@@ -14,6 +16,7 @@ import { forumService } from './modules/m08-forum/service.ts';
 import { Hono } from 'hono';
 import { visitorInfoRoutes } from './modules/m02-visitor-info/routes.ts';
 import { smellRoutes } from './modules/m06-smell/routes.ts';
+import { safetyRoutes } from './modules/m03-safety/routes.ts';
 import { assistantRoutes } from './modules/m10-assistant/routes.ts';
 import { feedbackRoutes } from './modules/m11-feedback/routes.ts';
 import { storageService } from './core/storage.ts';
@@ -75,10 +78,55 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
+function serveWebAdmin(req: http.IncomingMessage, res: http.ServerResponse, pathname: string) {
+  let subPath = pathname.replace(/^\/admin\/?/, '');
+  if (!subPath || subPath === '') subPath = 'index.html';
+
+  const webRoot = path.resolve(process.cwd(), 'apps/web');
+  const filePath = path.normalize(path.join(webRoot, subPath));
+
+  if (!filePath.startsWith(webRoot)) {
+    return sendJson(res, 403, { error: 'Forbidden' });
+  }
+
+  const mimeMap: Record<string, string> = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+  };
+
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, {
+      'Content-Type': mimeMap[ext] || 'application/octet-stream',
+      'Access-Control-Allow-Origin': '*'
+    });
+    return fs.createReadStream(filePath).pipe(res);
+  }
+
+  // Fallback to index.html for SPA routes
+  const fallback = path.join(webRoot, 'index.html');
+  if (fs.existsSync(fallback)) {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Access-Control-Allow-Origin': '*'
+    });
+    return fs.createReadStream(fallback).pipe(res);
+  }
+
+  return sendJson(res, 404, { error: 'Web admin not found' });
+}
+
 // P4 modules run on their Hono routers here too, mounted like index.ts does (short id and full id).
 const p4App = new Hono();
 const P4_ROUTERS: [Hono, string[]][] = [
   [visitorInfoRoutes, ['visitor-info', 'm02-visitor-info']],
+  [safetyRoutes, ['safety', 'm03-safety']],
   [smellRoutes, ['smell', 'm06-smell']],
   [assistantRoutes, ['assistant', 'm10-assistant']],
   [feedbackRoutes, ['feedback', 'm11-feedback']],
@@ -101,11 +149,20 @@ async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, 
     if (typeof value === 'string') headers.set(key, value);
     else if (Array.isArray(value)) headers.set(key, value.join(', '));
   }
+  // The routers rate-limit per client; tell them who the client is (Hono has no socket here).
+  if (!headers.has('x-forwarded-for') && req.socket.remoteAddress) headers.set('x-forwarded-for', req.socket.remoteAddress);
   const body = method === 'GET' || method === 'HEAD' ? undefined : await parseRawBuffer(req);
   const init: RequestInit = { method, headers };
   if (body && body.length) init.body = new Uint8Array(body);
   const response = await p4App.fetch(new Request(url.href, init));
+  // Pass the router's headers through (e.g. Retry-After on 429); the body is re-sent whole, so drop length/encoding.
+  const passThrough: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    // content-type is set below (once, with a default); the CORS headers below replace the router's.
+    if (!['content-length', 'transfer-encoding', 'content-encoding', 'content-type'].includes(key) && !key.startsWith('access-control-allow-')) passThrough[key] = value;
+  });
   res.writeHead(response.status, {
+    ...passThrough,
     'Content-Type': response.headers.get('content-type') ?? 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
@@ -494,6 +551,30 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, nearest);
     }
 
+    // [PARKIE WEB ADMIN] Get and Update Camera Plots
+    if (pathname.startsWith('/v1/m/parkie/lots/') && pathname.endsWith('/plots')) {
+      const id = pathname.replace('/v1/m/parkie/lots/', '').replace('/plots', '');
+      if (method === 'GET') {
+        const lot = parkieService.getLotById(id);
+        if (!lot) return sendJson(res, 404, { error: 'Parking lot not found', id });
+        return sendJson(res, 200, {
+          id: lot.id,
+          name: lot.name,
+          camera_url: lot.camera_url,
+          slots_data: lot.slots_data,
+          capacity: lot.capacity,
+          available_spots: lot.available_spots,
+          status_color: lot.status_color
+        });
+      }
+      if (method === 'PUT' || method === 'POST') {
+        const body = await parseBody(req);
+        const updated = await parkieService.updateLotPlots(id, body);
+        if (!updated) return sendJson(res, 404, { error: 'Parking lot not found for plot update', id });
+        return sendJson(res, 200, updated);
+      }
+    }
+
     if (pathname.startsWith('/v1/m/parkie/lots/') && method === 'GET') {
       const id = pathname.replace('/v1/m/parkie/lots/', '');
       const lot = parkieService.getLotById(id);
@@ -719,6 +800,11 @@ const server = http.createServer(async (req, res) => {
     // and the survey ingest token check are identical on both servers.
     if (isP4Path(pathname)) return forwardToP4(req, res, url, method);
 
+    // --- [PARKIE WEB ADMIN PORTAL] ---
+    if (pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/')) {
+      return serveWebAdmin(req, res, pathname);
+    }
+
     // 404
     return sendJson(res, 404, { error: 'Route not found', path: pathname });
   } catch (err: any) {
@@ -747,6 +833,7 @@ function startServer(port: number) {
     console.log(`   Utilities: http://localhost:${port}/v1/m/utilities/outages`);
     console.log(`   Transit: http://localhost:${port}/v1/m/transit/lines`);
     console.log(`   Parkie: http://localhost:${port}/v1/m/parkie/lots`);
+    console.log(`   Parkie Web Admin: http://localhost:${port}/admin`);
     console.log(`   Tiger Status: http://localhost:${port}/v1/core/tiger/status`);
     console.log(`   Tiger Aggregates: http://localhost:${port}/v1/m/parkie/analytics/hourly`);
     console.log(`   Open Data: http://localhost:${port}/v1/core/open-data/export`);

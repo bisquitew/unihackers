@@ -1,10 +1,11 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -13,6 +14,8 @@ import {
 } from 'react-native';
 import { registeredModuleManifests } from '../index';
 import { sendChat, type ChatTurn, type ToolUse } from './api';
+import { ListenButton } from './voice/ListenButton';
+import { guessLang, speak, startRecording, stopSpeaking, transcribe, voiceAvailable, webVoiceSupported, type Recording } from './voice/voiceClient';
 
 interface Message {
   id: string;
@@ -41,6 +44,26 @@ export function AssistantScreen() {
   const [error, setError] = useState<{ text: string; failedMessage: string } | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
 
+  // Voice (web only for now): mic -> /stt -> chat, replies -> /tts. Never blocks the text chat.
+  const [voiceOn, setVoiceOn] = useState(false);
+  const [autoRead, setAutoRead] = useState(false);
+  const [mic, setMic] = useState<'idle' | 'recording' | 'transcribing'>('idle');
+  const [voiceError, setVoiceError] = useState('');
+  const recording = useRef<Recording | null>(null);
+  const autoReadRef = useRef(autoRead);
+  autoReadRef.current = autoRead;
+
+  useEffect(() => {
+    if (!webVoiceSupported()) return;
+    let alive = true;
+    voiceAvailable().then((ok) => alive && setVoiceOn(ok));
+    return () => {
+      alive = false;
+      recording.current?.cancel();
+      stopSpeaking();
+    };
+  }, []);
+
   const ask = async (text: string, previous: Message[]) => {
     const message = text.trim();
     if (!message || loading) return;
@@ -52,12 +75,47 @@ export function AssistantScreen() {
     try {
       const { reply, toolsUsed } = await sendChat(message, history);
       setMessages((current) => [...current, { id: newId(), role: 'model', text: reply, toolsUsed }]);
+      if (autoReadRef.current) {
+        speak(reply, guessLang(reply)).catch((e) => setVoiceError(e instanceof Error ? e.message : 'Vocea nu este disponibilă acum.'));
+      }
     } catch (e) {
       setError({ text: e instanceof Error ? e.message : 'Asistentul nu răspunde acum.', failedMessage: message });
     } finally {
       setLoading(false);
     }
   };
+
+  const toggleMic = async () => {
+    setVoiceError('');
+    if (mic === 'recording') {
+      const rec = recording.current;
+      recording.current = null;
+      if (!rec) return;
+      setMic('transcribing');
+      try {
+        const audio = await rec.stop();
+        const { text } = await transcribe(audio);
+        setMic('idle');
+        await ask(text, messagesRef.current);
+      } catch (e) {
+        setMic('idle');
+        setVoiceError(e instanceof Error ? e.message : 'Nu am înțeles înregistrarea.');
+      }
+      return;
+    }
+    if (mic !== 'idle' || loading) return;
+    stopSpeaking();
+    try {
+      recording.current = await startRecording(() => void toggleMicRef.current());
+      setMic('recording');
+    } catch {
+      setVoiceError('Nu pot folosi microfonul. Verifică permisiunea browserului.');
+    }
+  };
+  const toggleMicRef = useRef(toggleMic);
+  toggleMicRef.current = toggleMic;
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const retry = () => {
     if (!error) return;
@@ -92,6 +150,7 @@ export function AssistantScreen() {
                 Surse: {[...new Set(m.toolsUsed.map((t) => moduleTitle(t.moduleId)))].join(' · ')}
               </Text>
             ) : null}
+            {m.role === 'model' && voiceOn ? <ListenButton text={m.text} /> : null}
           </View>
         ))}
 
@@ -120,6 +179,24 @@ export function AssistantScreen() {
         ))}
       </ScrollView>
 
+      {voiceOn ? (
+        <View style={styles.voiceRow}>
+          <Text style={styles.voiceLabel}>🔊 Citește răspunsurile cu voce</Text>
+          <Switch
+            value={autoRead}
+            onValueChange={(v) => {
+              setAutoRead(v);
+              if (!v) stopSpeaking();
+            }}
+            accessibilityLabel="Citește răspunsurile cu voce"
+            trackColor={{ true: '#8d23be', false: '#3f3f46' }}
+            thumbColor="#ffffff"
+          />
+        </View>
+      ) : null}
+      {voiceError ? <Text style={styles.voiceError}>{voiceError}</Text> : null}
+      {mic === 'recording' ? <Text style={styles.recordingText}>● Te ascult… apasă din nou pe microfon când ai terminat (max. 30 s)</Text> : null}
+
       <View style={styles.inputRow}>
         <TextInput
           style={styles.input}
@@ -133,6 +210,17 @@ export function AssistantScreen() {
           blurOnSubmit
           returnKeyType="send"
         />
+        {voiceOn ? (
+          <TouchableOpacity
+            style={[styles.micButton, mic === 'recording' && styles.micRecording, (loading || mic === 'transcribing') && styles.disabled]}
+            onPress={toggleMic}
+            disabled={loading || mic === 'transcribing'}
+            accessibilityRole="button"
+            accessibilityLabel={mic === 'recording' ? 'Oprește înregistrarea și trimite' : 'Vorbește cu asistentul'}
+          >
+            {mic === 'transcribing' ? <ActivityIndicator color="#ffffff" size="small" /> : <Text style={styles.sendText}>{mic === 'recording' ? '⏹' : '🎤'}</Text>}
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity
           style={[styles.sendButton, (!input.trim() || loading) && styles.disabled]}
           onPress={() => ask(input, messages)}
@@ -173,4 +261,10 @@ const styles = StyleSheet.create({
   sendButton: { backgroundColor: '#8d23be', borderRadius: 12, width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
   sendText: { color: '#ffffff', fontSize: 18 },
   disabled: { opacity: 0.5 },
+  voiceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 4 },
+  voiceLabel: { color: '#d4d4d8', fontSize: 13 },
+  voiceError: { color: '#f87171', fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
+  recordingText: { color: '#f87171', fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
+  micButton: { backgroundColor: '#27272a', borderColor: '#3f3f46', borderWidth: 1, borderRadius: 12, width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
+  micRecording: { backgroundColor: '#7f1d1d', borderColor: '#ef4444' },
 });
