@@ -133,6 +133,7 @@ All inter-service and frontend-backend interactions are strictly typed via `@hub
   - `ProofOfAttendance (POAP)`: `id, event_id, recipient_wallet, badge_name, badge_image_url, tx_signature, issued_at`
   - `MintTicketPayload`: `{ event_id: string, event_title: string, recipient_wallet: string }`
   - `CheckInPayload`: `{ qr_payload: string, scanned_by: string }`
+  - `DoorCheckInFlow`: Real-time cryptographic Ed25519 signature verification via simulated staff door scanner, updating ticket status and automatically issuing on-chain POAP attendance NFT badges with direct Solana Explorer links.
 
 ---
 
@@ -176,6 +177,13 @@ All inter-service and frontend-backend interactions are strictly typed via `@hub
 | `GET` | `/v1/m/parkie/lots/:id` | Single lot metadata and camera config | Public |
 | `POST` | `/v1/m/parkie/detections` | Ingest CV camera detection frames `{ lot_id, detected_cars }` | AI Agent / Camera |
 | `POST` | `/v1/m/parkie/lots` | Register new parking lot | Owner / Admin |
+
+### [M09_WALLET & M01_EVENTS] Solana Devnet Endpoints
+| Method | Path | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/v1/m/solana/status` | Live Devnet cluster status, slot number, organizer balance, and faucet link | Public |
+| `POST` | `/v1/m/solana/tickets/mint` | Mints a verifiable ticket with on-chain SPL Memo broadcast | Public / RSVP |
+| `POST` | `/v1/m/solana/poap/mint` | Broadcasts real POAP attendance badge transaction to Solana Devnet on door check-in | Public / Staff |
 
 ### [M01_EVENTS] Endpoints
 | Method | Path | Description | Access |
@@ -285,6 +293,9 @@ All verification tools are included in `scripts/`:
 ```bash
 # Fast Local Verification (Auto-starts API, tests all 7 endpoints, exits 0)
 npm test
+
+# Real Solana Devnet Verification (Live slot, blockhash, organizer balance, and broadcast ticket/POAP transactions)
+npm run test:solana
 
 # Full 8-System Master Verification (Tests Contracts, Tiger Cloud, API, Outages, Detours, Parkie, Uploads, Workers)
 .venv/bin/python scripts/test_p2_full.py

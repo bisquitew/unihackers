@@ -7,6 +7,14 @@ import { transitService } from './modules/m05-transit/service.ts';
 import { parkieService } from './modules/parkie/service.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
+import {
+  getLiveDevnetStatus,
+  broadcastRealTicket,
+  broadcastRealPoap,
+  ORGANIZER_WALLET_ADDRESS,
+  mintDevnetTicket,
+  mintDevnetPoap,
+} from '../../../packages/solana/src/index.ts';
 
 const PORT = parseInt(process.env.PORT || '8000', 10);
 
@@ -287,6 +295,83 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, openData);
     }
 
+    // --- Solana Devnet Endpoints [M09_WALLET & M01_EVENTS] ---
+    if (pathname === '/v1/m/solana/status' && method === 'GET') {
+      const status = await getLiveDevnetStatus();
+      return sendJson(res, 200, {
+        ...status,
+        organizerWallet: ORGANIZER_WALLET_ADDRESS,
+        faucetUrl: 'https://faucet.solana.com',
+      });
+    }
+
+    if (pathname === '/v1/m/solana/tickets/mint' && method === 'POST') {
+      const body = await parseBody(req);
+      const { eventId, eventTitle, attendeeName, attendeeWallet } = body;
+      if (!eventId || !eventTitle) {
+        return sendJson(res, 400, { error: 'Missing required fields: eventId, eventTitle' });
+      }
+
+      const ticketId = `tkt-sol-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
+      const realTx = await broadcastRealTicket(
+        ticketId,
+        eventId,
+        eventTitle,
+        attendeeWallet || ORGANIZER_WALLET_ADDRESS
+      );
+
+      return sendJson(res, 200, {
+        ticketId,
+        eventId,
+        eventTitle,
+        ownerWallet: attendeeWallet || ORGANIZER_WALLET_ADDRESS,
+        attendeeName: attendeeName || 'Cetățean Timișoara',
+        txSignature: realTx.signature || `pending-${Date.now().toString(36)}`,
+        explorerUrl: realTx.explorerUrl,
+        isCheckedIn: false,
+        onChainConfirmed: realTx.onChainConfirmed,
+        slot: realTx.slot,
+        mintedAt: new Date().toISOString(),
+        message: realTx.message || realTx.error,
+        qrPayload: JSON.stringify({
+          hub: 'TimisoaraHub',
+          ticketId,
+          eventId,
+          wallet: attendeeWallet || ORGANIZER_WALLET_ADDRESS,
+          sig: (realTx.signature || 'pending').slice(0, 16),
+        }),
+      });
+    }
+
+    if (pathname === '/v1/m/solana/poap/mint' && method === 'POST') {
+      const body = await parseBody(req);
+      const { eventId, eventTitle, attendeeWallet, ticketId } = body;
+      if (!eventId) {
+        return sendJson(res, 400, { error: 'Missing required field: eventId' });
+      }
+
+      const realTx = await broadcastRealPoap(
+        eventId,
+        eventTitle || 'Eveniment Cultural Timișoara',
+        attendeeWallet || ORGANIZER_WALLET_ADDRESS,
+        ticketId || 'tkt-scan'
+      );
+
+      return sendJson(res, 200, {
+        poapId: `poap-${eventId}-${Date.now().toString(36)}`,
+        eventId,
+        eventTitle: eventTitle || 'Eveniment Cultural Timișoara',
+        attendeeWallet: attendeeWallet || ORGANIZER_WALLET_ADDRESS,
+        badgeName: `Timișoara Culture Explorer: ${eventTitle || 'Eveniment'}`,
+        txSignature: realTx.signature,
+        explorerUrl: realTx.explorerUrl,
+        onChainConfirmed: realTx.onChainConfirmed,
+        slot: realTx.slot,
+        issuedAt: new Date().toISOString(),
+        message: realTx.message || realTx.error,
+      });
+    }
+
     // 404
     return sendJson(res, 404, { error: 'Route not found', path: pathname });
   } catch (err: any) {
@@ -313,6 +398,7 @@ function startServer(port: number) {
     console.log(`   Tiger Status: http://localhost:${port}/v1/core/tiger/status`);
     console.log(`   Tiger Aggregates: http://localhost:${port}/v1/m/parkie/analytics/hourly`);
     console.log(`   Open Data: http://localhost:${port}/v1/core/open-data/export`);
+    console.log(`   Solana Status: http://localhost:${port}/v1/m/solana/status`);
   });
 }
 

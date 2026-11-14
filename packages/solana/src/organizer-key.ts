@@ -1,0 +1,11 @@
+// Persistent Ed25519 organizer keypair for Timișoara City Hub (Devnet)
+// Public Key: H6oCfQHkpFg6rUhZmx1e6szoRveAVFrN4ji7P4HJvPU1
+
+export const ORGANIZER_SECRET_KEY = new Uint8Array([
+  116, 15, 44, 159, 169, 114, 140, 107, 15, 165, 71, 142, 228, 7, 145, 19,
+  213, 167, 128, 104, 226, 29, 209, 27, 25, 28, 250, 253, 184, 60, 92, 155,
+  239, 55, 34, 116, 26, 110, 210, 72, 43, 0, 185, 26, 114, 90, 103, 98,
+  24, 217, 100, 124, 249, 245, 126, 124, 25, 11, 83, 63, 251, 157, 3, 78,
+]);
+
+export const ORGANIZER_PUBLIC_KEY = 'H6oCfQHkpFg6rUhZmx1e6szoRveAVFrN4ji7P4HJvPU1';
