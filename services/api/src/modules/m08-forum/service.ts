@@ -47,7 +47,19 @@ export class ForumService {
           ORDER BY pinned DESC, created_at DESC;
         `);
         if (rows && rows.length > 0) {
-          let list = rows.map(rowToPost);
+          // reports and comments are kept in memory next to the database rows, so they are laid over what the database returns
+          let list = rows.map(rowToPost).map((p) => {
+            const live = this.posts.find((x) => x.id === p.id);
+            if (!live) return p;
+            return {
+              ...p,
+              isReported: live.isReported,
+              reportCount: live.reportCount,
+              reportReasons: live.reportReasons,
+              comments: live.comments.length >= (p.comments?.length ?? 0) ? live.comments : p.comments,
+              commentsCount: Math.max(p.commentsCount ?? 0, live.commentsCount ?? 0),
+            };
+          });
           if (category && category !== 'all') {
             list = list.filter((p) => p.category === category);
           }
