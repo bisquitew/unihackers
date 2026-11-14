@@ -2,6 +2,7 @@ import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
 import {
   approveReportedPost, createAreaAlert, createOutage, fetchAreaAlerts, fetchAuditLogs, fetchDashboardOverview, fetchLots,
   captureCameraFrame, fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
+  parseNoticePhoto, confirmNotice,
 } from '../api.js';
 import { CameraCanvas } from '../components/CameraCanvas.js';
 import { art, cap, esc, row, statusText } from '../ui.js';
@@ -10,7 +11,7 @@ let adminCanvas = null;
 
 // The staff dashboard is one page with a side menu. Each entry is a section; only the open one is on screen.
 const SECTIONS = [
-  { group: 'City', items: [['overview', 'Overview'], ['alerts', 'Alerts']] },
+  { group: 'City', items: [['overview', 'Overview'], ['alerts', 'Alerts'], ['notice', 'Scan a notice']] },
   { group: 'Services', items: [['parking', 'Parking cameras']] },
   { group: 'Community', items: [['moderation', 'Moderation']] },
   { group: 'System', items: [['security', 'Security log'], ['database', 'Database']] },
@@ -54,7 +55,7 @@ export function mount(ctx, { showToast } = {}) {
     nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
     body.innerHTML = '<p class="muted">Loading…</p>';
     adminCanvas = null;
-    const section = { overview, alerts, parking, moderation, security, database }[open];
+    const section = { overview, alerts, notice, parking, moderation, security, database }[open];
     let html;
     try {
       html = await section.render(ctx);
@@ -224,6 +225,140 @@ const alerts = {
         } else {
           out.innerHTML = `<b class="bad">Could not publish.</b><p style="margin-top:4px">${esc(err.message)}</p>`;
         }
+        btn.disabled = false;
+      }
+    });
+  },
+};
+
+/* ---------------------------------------------------------- Scan a notice (P4) */
+// A photo of a notice taped to a door becomes a draft outage (Gemini reads it); staff check every field and publish.
+const NOTICE_PROVIDERS = [['colterm', 'Colterm (heating, hot water)'], ['aquatim', 'Aquatim (water, sewage)'], ['retele_electrice_banat', 'Rețele Electrice Banat (power)'], ['delgaz_grid', 'Delgaz Grid (gas)']];
+const NOTICE_TYPES = [['heating_and_hot_water', 'Heating and hot water'], ['hot_water_only', 'Hot water only'], ['cold_water', 'Cold water'], ['electricity', 'Electricity'], ['gas', 'Gas']];
+const NOTICE_STATUS = [['scheduled_maintenance', 'Planned works'], ['unplanned_breakdown', 'Breakdown']];
+const NOTICE_SEVERITY = [['low', 'Low'], ['medium', 'Medium'], ['high', 'High'], ['critical', 'Critical']];
+// when Gemini could not read a value, the list starts on an empty "choose" entry and the field is required
+const options = (list, value) =>
+  (list.some(([v]) => v === value) ? '' : '<option value="" selected>Choose…</option>') +
+  list.map(([v, label]) => `<option value="${v}" ${v === value ? 'selected' : ''}>${esc(label)}</option>`).join('');
+// ISO <-> the value of <input type="datetime-local"> (the browser's own time zone: the staff laptop in Timișoara)
+const toLocalInput = (iso) => {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const p = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+};
+const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
+
+const notice = {
+  async render() {
+    const mfa = hasMfa();
+    return `
+      <h1 class="page-title">Scan a notice</h1>
+      <p class="page-sub">Take or pick a photo of a printed notice from a utility company. Gemini reads it and fills in a draft; you check it and publish it as an outage.</p>
+      <div class="cols section">
+        <div class="stack">
+          <label class="btn btn-primary" for="nFile" style="align-self:flex-start;cursor:pointer">Take or choose a photo</label>
+          <input type="file" id="nFile" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" hidden>
+          <img id="nPreview" alt="The notice photo" hidden style="max-width:100%;max-height:420px;border-radius:18px;box-shadow:var(--ring)">
+          <div class="result" id="nStatus" hidden></div>
+        </div>
+        <div>
+          <form class="stack" id="nForm" hidden>
+            <div class="section-head"><h2>Draft: check before publishing</h2></div>
+            <div class="notice" id="nWarnings" hidden></div>
+            <div class="two">
+              <label class="field"><span>Provider</span><select id="nProvider" required></select></label>
+              <label class="field"><span>What stops</span><select id="nType" required></select></label>
+            </div>
+            <div class="two">
+              <label class="field"><span>Kind</span><select id="nStatusSel"></select></label>
+              <label class="field"><span>How serious</span><select id="nSeverity"></select></label>
+            </div>
+            <label class="field"><span>Title</span><input id="nTitle" maxlength="140" required></label>
+            <label class="field"><span>Description</span><textarea id="nDesc" rows="3" maxlength="600" required></textarea></label>
+            <label class="field"><span>Areas, separated by commas</span><input id="nAreas" required></label>
+            <label class="field"><span>Streets, one per line</span><textarea id="nStreets" rows="3"></textarea></label>
+            <div class="two">
+              <label class="field"><span>Starts</span><input type="datetime-local" id="nStart"></label>
+              <label class="field"><span>Back by</span><input type="datetime-local" id="nEnd"></label>
+            </div>
+            <div class="mfa ${mfa ? 'ok' : 'warn'}"><span>${mfa ? 'Second check done for this session.' : 'Publishing needs a second check first.'}</span>${mfa ? '' : '<button class="btn btn-secondary btn-sm" type="button" id="nMfa">Verify with passkey</button>'}</div>
+            <div><button class="btn btn-primary" type="submit" id="nPublish">Publish alert</button></div>
+            <div class="result" id="nResult" hidden></div>
+          </form>
+        </div>
+      </div>`;
+  },
+  mount(ctx, showToast, redraw) {
+    const $ = (id) => document.getElementById(id);
+    const say = (html) => { $('nStatus').hidden = false; $('nStatus').innerHTML = html; };
+    $('nMfa')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); redraw(); });
+
+    const fill = (d) => {
+      $('nProvider').innerHTML = options(NOTICE_PROVIDERS, d.provider);
+      $('nType').innerHTML = options(NOTICE_TYPES, d.type);
+      $('nStatusSel').innerHTML = options(NOTICE_STATUS, d.status);
+      $('nSeverity').innerHTML = options(NOTICE_SEVERITY, d.severity);
+      $('nTitle').value = d.title || '';
+      $('nDesc').value = d.description || '';
+      $('nAreas').value = (d.affected_areas || []).join(', ');
+      $('nStreets').value = (d.affected_streets || []).join('\n');
+      $('nStart').value = toLocalInput(d.start_time);
+      $('nEnd').value = toLocalInput(d.estimated_restore_time);
+    };
+
+    $('nFile').addEventListener('change', async () => {
+      const file = $('nFile').files?.[0];
+      if (!file) return;
+      $('nPreview').src = URL.createObjectURL(file);
+      $('nPreview').hidden = false;
+      $('nForm').hidden = true;
+      $('nResult').hidden = true;
+      say('<span class="muted">Gemini is reading the notice…</span>');
+      try {
+        const r = await parseNoticePhoto(file);
+        if (!r.isNotice || !r.draft) {
+          say(`<b class="bad">This does not look like a utility notice.</b><p style="margin-top:4px">${esc(r.reason || 'Try a clearer photo of the whole notice.')}</p>`);
+          return;
+        }
+        fill(r.draft);
+        const warnings = r.warnings || [];
+        $('nWarnings').hidden = warnings.length === 0;
+        $('nWarnings').innerHTML = warnings.length ? `<b>Check these:</b> ${warnings.map(esc).join(' · ')}` : '';
+        $('nForm').hidden = false;
+        say(`<b class="ok">Draft ready.</b><p style="margin-top:4px">${warnings.length ? 'Gemini flagged a few things to check.' : 'Check every field, then publish.'} Nothing is published until you press the button.</p>`);
+      } catch (err) {
+        say(`<b class="bad">Could not read the photo.</b><p style="margin-top:4px">${esc(err.status === 503 || err.status === 429 ? 'Gemini is busy right now. Wait a few seconds and try again.' : err.message)}</p>`);
+      }
+    });
+
+    $('nForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const out = $('nResult');
+      const btn = $('nPublish');
+      btn.disabled = true;
+      out.hidden = false;
+      out.innerHTML = '<span class="muted">Publishing…</span>';
+      try {
+        const { outage } = await confirmNotice(getCurrentToken(), {
+          provider: $('nProvider').value,
+          type: $('nType').value,
+          status: $('nStatusSel').value,
+          severity: $('nSeverity').value,
+          title: $('nTitle').value,
+          description: $('nDesc').value,
+          affected_areas: $('nAreas').value.split(',').map((s) => s.trim()).filter(Boolean),
+          affected_streets: $('nStreets').value.split('\n').map((s) => s.trim()).filter(Boolean),
+          start_time: fromLocalInput($('nStart').value),
+          estimated_restore_time: fromLocalInput($('nEnd').value),
+        });
+        out.innerHTML = `<b class="ok">Published.</b><p style="margin-top:4px">"${esc(outage?.title || $('nTitle').value)}" is live for residents in the app's outages and alerts.</p>`;
+        showToast?.('Alert published.');
+      } catch (err) {
+        out.innerHTML = err.status === 403 && /mfa/i.test(`${err.message} ${err.data?.error || ''}`)
+          ? '<b class="bad">A second check is needed.</b><p style="margin-top:4px">Verify with your passkey, then publish again.</p>'
+          : `<b class="bad">Could not publish.</b><p style="margin-top:4px">${esc(err.message)}</p>`;
         btn.disabled = false;
       }
     });
