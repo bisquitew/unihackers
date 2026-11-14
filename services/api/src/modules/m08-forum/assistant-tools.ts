@@ -1,4 +1,4 @@
-import { forumService } from './service';
+import { forumService } from './service.ts';
 
 export const forumAssistantTools = [
   {

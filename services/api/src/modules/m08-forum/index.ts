@@ -1,7 +1,7 @@
-import { forumRoutes } from './routes';
-import { forumAssistantTools } from './assistant-tools';
-import { forumService, ForumService } from './service';
-import type { ApiModule } from '../../types';
+import { forumRoutes } from './routes.ts';
+import { forumAssistantTools } from './assistant-tools.ts';
+import { forumService, ForumService } from './service.ts';
+import type { ApiModule } from '../../types.ts';
 
 export const apiModule: ApiModule = {
   id: 'm08-forum',

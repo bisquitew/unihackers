@@ -1,7 +1,7 @@
-import { eventsRoutes } from './routes';
-import { eventsAssistantTools } from './assistant-tools';
-import { eventsService, EventsService } from './service';
-import type { ApiModule } from '../../types';
+import { eventsRoutes } from './routes.ts';
+import { eventsAssistantTools } from './assistant-tools.ts';
+import { eventsService, EventsService } from './service.ts';
+import type { ApiModule } from '../../types.ts';
 
 export const apiModule: ApiModule = {
   id: 'm01-events',

@@ -1,4 +1,4 @@
-import { buddyService } from './service';
+import { buddyService } from './service.ts';
 
 export const buddyAssistantTools = [
   {

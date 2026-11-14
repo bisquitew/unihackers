@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { eventsService } from './service';
-import { CreateEventInput, RSVPInput } from './types';
+import { eventsService } from './service.ts';
+import type { CreateEventInput, RSVPInput } from './types.ts';
 
 export const eventsRoutes = new Hono();
 

@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { walletService } from './service';
-import { MintTicketPayload, CheckInPayload } from './types';
+import { walletService } from './service.ts';
+import type { MintTicketPayload, CheckInPayload } from './types.ts';
 
 export const walletRoutes = new Hono();
 

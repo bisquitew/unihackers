@@ -1,4 +1,4 @@
-import { SolanaTicketRecord } from './types';
+import type { SolanaTicketRecord } from './types.ts';
 
 export const seedTickets: SolanaTicketRecord[] = [
   {

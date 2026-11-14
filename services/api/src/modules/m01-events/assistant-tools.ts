@@ -1,4 +1,4 @@
-import { eventsService } from './service';
+import { eventsService } from './service.ts';
 
 export const eventsAssistantTools = [
   {

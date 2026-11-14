@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { forumService } from './service';
-import { CreatePostInput, ReportPostInput } from './types';
+import { forumService } from './service.ts';
+import type { CreatePostInput, ReportPostInput } from './types.ts';
 
 export const forumRoutes = new Hono();
 

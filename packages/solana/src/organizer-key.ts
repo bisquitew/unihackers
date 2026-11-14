@@ -1,4 +1,3 @@
-// Keypair generation requires crypto.getRandomValues (built-in in modern Node.js and web).
 import { Keypair } from '@solana/web3.js';
 
 // Public Address for Timișoara Cultural Hub (Safe for public GitHub repositories)
