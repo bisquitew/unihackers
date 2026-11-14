@@ -29,3 +29,4 @@ console.log('   - client.solana.getStatus:', typeof client.solana.getStatus);
 console.log('   - createApiClient (generic):', typeof createApiClient);
 
 console.log('🎉 @hub/api-client verified successfully!');
+
