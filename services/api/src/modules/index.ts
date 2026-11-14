@@ -5,6 +5,7 @@ import m08Forum from './m08-forum/index.ts';
 import m09Wallet from './m09-wallet/index.ts';
 import m10Assistant from './m10-assistant/index.ts';
 import m11Feedback from './m11-feedback/index.ts';
+import m02VisitorInfo from './m02-visitor-info/index.ts';
 import { utilitiesApiModule } from './m04-utilities/index.ts';
 import { transitApiModule } from './m05-transit/index.ts';
 import { parkieApiModule } from './parkie/index.ts';
@@ -23,7 +24,7 @@ function createStubModule(id: string): ApiModule {
 
 export const registeredModules: ApiModule[] = [
   m01Events,
-  createStubModule('m02-visitor-info'),
+  m02VisitorInfo,                              // [M02_VISITOR_INFO] - P4
   createStubModule('m03-safety'),
   utilitiesApiModule as unknown as ApiModule,  // [M04_UTILITIES] - P2
   transitApiModule as unknown as ApiModule,    // [M05_TRANSIT] - P2
