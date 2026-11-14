@@ -7,6 +7,8 @@ export interface TicketBadgeProps {
   txSignature: string;
   explorerUrl: string;
   isCheckedIn: boolean;
+  onShowQR?: () => void;
+  onCheckIn?: () => void;
 }
 
 export function TicketBadge({
@@ -15,6 +17,8 @@ export function TicketBadge({
   txSignature,
   explorerUrl,
   isCheckedIn,
+  onShowQR,
+  onCheckIn,
 }: TicketBadgeProps) {
   const handleOpenExplorer = () => {
     Linking.openURL(explorerUrl);
@@ -23,7 +27,7 @@ export function TicketBadge({
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.badge}>🎟️ SOLANA DEVNET POAP</Text>
+        <Text style={styles.badge}>🎟️ SOLANA DEVNET BILET</Text>
         <Text style={[styles.status, isCheckedIn && styles.statusCheckedIn]}>
           {isCheckedIn ? '✓ Check-in Confirmat' : 'Valid la intrare'}
         </Text>
@@ -39,9 +43,24 @@ export function TicketBadge({
         </Text>
       </View>
 
-      <TouchableOpacity style={styles.explorerBtn} onPress={handleOpenExplorer}>
-        <Text style={styles.explorerBtnText}>🔍 Vezi pe Solana Explorer (Devnet) →</Text>
-      </TouchableOpacity>
+      {/* Action Buttons Row */}
+      <View style={styles.btnRow}>
+        {onShowQR && (
+          <TouchableOpacity style={styles.qrBtn} onPress={onShowQR}>
+            <Text style={styles.qrBtnText}>📱 Afișează QR</Text>
+          </TouchableOpacity>
+        )}
+
+        {!isCheckedIn && onCheckIn && (
+          <TouchableOpacity style={styles.checkInBtn} onPress={onCheckIn}>
+            <Text style={styles.checkInBtnText}>⚡ Check-in Ușă</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={styles.explorerBtn} onPress={handleOpenExplorer}>
+          <Text style={styles.explorerBtnText}>🔍 Explorer →</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -69,12 +88,39 @@ const styles = StyleSheet.create({
   },
   txLabel: { color: '#94a3b8', fontSize: 10, fontWeight: '600' },
   txSig: { color: '#c7d2fe', fontSize: 10, fontFamily: 'monospace', marginTop: 2 },
-  explorerBtn: {
-    marginTop: 10,
-    backgroundColor: '#312e81',
+  btnRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  qrBtn: {
+    flex: 1,
+    backgroundColor: '#3b0764',
+    borderColor: '#7e22ce',
+    borderWidth: 1,
     paddingVertical: 8,
     borderRadius: 8,
     alignItems: 'center',
   },
-  explorerBtnText: { color: '#e0e7ff', fontSize: 11, fontWeight: '700' },
+  qrBtnText: { color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
+  checkInBtn: {
+    flex: 1,
+    backgroundColor: '#14532d',
+    borderColor: '#16a34a',
+    borderWidth: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  checkInBtnText: { color: '#86efac', fontSize: 11, fontWeight: '700' },
+  explorerBtn: {
+    backgroundColor: '#1e1b4b',
+    borderColor: '#4338ca',
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  explorerBtnText: { color: '#c7d2fe', fontSize: 11, fontWeight: '700' },
 });

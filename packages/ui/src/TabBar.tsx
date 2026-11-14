@@ -16,7 +16,7 @@ type TabBarProps = {
   };
 };
 
-const tabs: Record<string, { label: string; Icon: React.ComponentType<{ size?: number; weight?: 'bold' | 'fill'; color?: string }> }> = {
+const tabs: Record<string, { label: string; Icon: React.ComponentType<any> }> = {
   index: { label: 'Home', Icon: House },
   map: { label: 'Map', Icon: MapTrifold },
   community: { label: 'Community', Icon: ChatsCircle },

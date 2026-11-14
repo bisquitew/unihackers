@@ -12,7 +12,8 @@
     "dev:app:wifi": "expo start --host 10.109.24.138",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "test:solana": "node --experimental-strip-types ../../scripts/test-solana-real.ts"
   },
   "dependencies": {
     "@expo-google-fonts/figtree": "0.4.1",
