@@ -88,9 +88,12 @@ def post(path, data, token="dev_resident"):
     except Exception as e:
         return None, str(e)
 
-def put_raw(url, data_bytes, content_type="image/jpeg"):
+def put_raw(url, data_bytes, content_type="image/jpeg", token="dev_resident"):
     req = urllib.request.Request(url, data=data_bytes, method="PUT")
     req.add_header("Content-Type", content_type)
+    # uploads need a signed-in user since 1387d78/f125070
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req) as response:
             return response.status, response.read().decode()
@@ -274,8 +277,9 @@ def main():
         status, colors = get("/v1/m/parkie/lots/colors")
         print(f"✅ [PARKIE] /v1/m/parkie/lots/colors -> {len(colors)} lightweight color items streamed")
 
-        # Update detection via CV agent simulation
-        status, updated_lot = post("/v1/m/parkie/detections", {"lot_id": "lot-unirii-01", "detected_cars": 42})
+        # Update detection via CV agent simulation (camera detections are staff-only since 1387d78)
+        status, updated_lot = post("/v1/m/parkie/detections", {"lot_id": "lot-unirii-01", "detected_cars": 42}, token="dev_admin")
+        assert status == 200, f"Expected 200 from parkie detections, got {status}: {updated_lot}"
         print(f"   🚗 CV Detection Update (Piața Unirii): {updated_lot.get('available_spots')}/{updated_lot.get('capacity')} spots left [{updated_lot.get('status_color').upper()}]")
 
         status, nearest = get("/v1/m/parkie/nearest?lat=45.7581&lng=21.2290&limit=3")
