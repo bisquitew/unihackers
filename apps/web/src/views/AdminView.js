@@ -1,397 +1,302 @@
 import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
-import { approveReportedPost, createOutage, fetchAuditLogs, fetchLots, fetchReportedPosts, fetchTigerStatus, fetchDashboardOverview, removeReportedPost, saveLotPlots, createAreaAlert } from '../api.js';
+import {
+  approveReportedPost, createAreaAlert, createOutage, fetchAreaAlerts, fetchAuditLogs, fetchDashboardOverview, fetchLots,
+  fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
+} from '../api.js';
 import { CameraCanvas } from '../components/CameraCanvas.js';
-import { esc } from '../ui.js';
+import { art, cap, esc, row, statusText } from '../ui.js';
 
 let adminCanvas = null;
 
-/** The staff dashboard: parking camera calibration, publishing outages, the security log and the database status. */
+// The staff dashboard is one page with a side menu. Each entry is a section; only the open one is on screen.
+const SECTIONS = [
+  { group: 'City', items: [['overview', 'Overview'], ['alerts', 'Alerts']] },
+  { group: 'Services', items: [['parking', 'Parking cameras']] },
+  { group: 'Community', items: [['moderation', 'Moderation']] },
+  { group: 'System', items: [['security', 'Security log'], ['database', 'Database']] },
+];
+
+// Neighbourhoods a danger or works zone can be centred on
+const AREAS = [
+  ['Circumvalațiunii', 45.762, 21.218], ['Cetate', 45.7537, 21.2272], ['Complex Studențesc', 45.748, 21.241], ['Mehala', 45.768, 21.202],
+  ['Fabric', 45.758, 21.251], ['Iosefin', 45.745, 21.205], ['Elisabetin', 45.7412, 21.2261],
+];
+// What is next to what, for the "who will be told" preview. The server works out the real list when the alert is published.
+const NEXT_TO = {
+  Circumvalațiunii: ['Cetate', 'Mehala'], Cetate: ['Circumvalațiunii', 'Fabric', 'Iosefin'], 'Complex Studențesc': ['Elisabetin', 'Fabric'],
+  Mehala: ['Circumvalațiunii'], Fabric: ['Cetate', 'Complex Studențesc'], Iosefin: ['Cetate', 'Elisabetin'], Elisabetin: ['Iosefin', 'Complex Studențesc'],
+};
+
+const kpi = (value, label, color = '') => `<div class="stat"><b ${color ? `style="color:var(--${color})"` : ''}>${esc(value)}</b><span>${esc(label)}</span></div>`;
+const plain = (t = '') => String(t).replace(/^[^\p{L}\p{N}]+/u, '');
+
+/** The staff dashboard, for city staff on the website. */
 export async function render(ctx) {
-  const mfa = hasMfa();
-  const [lots, auditLogs, tiger, overview] = await Promise.all([fetchLots(), fetchAuditLogs(8), fetchTigerStatus(), fetchDashboardOverview()]);
-  // the API answers status 'connected' when Tiger Cloud is live, 'mock' when it shows simulated numbers
-  const tigerLive = tiger?.status === 'connected';
-  const tigerKpis = overview?.kpis?.timescale_tiger_cloud;
-  const env = overview?.kpis?.environment;
-  const community = overview?.kpis?.community_reports;
-  const storedIn = (c) => (c?.storage === 'postgres' ? 'stored in a Tiger Cloud hypertable' : 'kept in memory (no database)');
-
   return `<div class="page wide">
-    <div style="margin-bottom:28px">
-      <h1 class="page-title">Staff dashboard</h1>
-      <p class="page-sub">Signed in as ${esc(ctx.user.name)}. These tools are only available to city staff, on the website.</p>
-    </div>
-
-    <div class="admin-subnav" role="tablist">
-      <button class="admin-sublink active" role="tab" data-subtab="parkie-calib">Parking cameras</button>
-      <button class="admin-sublink" role="tab" data-subtab="area-alerts">🚨 Danger & Works Radius</button>
-      <button class="admin-sublink" role="tab" data-subtab="outages-mfa">Publish an outage</button>
-      <button class="admin-sublink" role="tab" data-subtab="moderation">Moderation</button>
-      <button class="admin-sublink" role="tab" data-subtab="audit-logs">Security log</button>
-      <button class="admin-sublink" role="tab" data-subtab="tiger-db">Database</button>
-    </div>
-
-    <div class="admin-subcontent" id="subtab-parkie-calib">
-      <div class="workspace-toolbar">
-        <div class="toolbar-group">
-          <select id="adminLotSelect" class="form-control" style="width:260px" aria-label="Parking lot">
-            ${lots.map((l) => `<option value="${esc(l.id)}">${esc(l.name)} (${l.available_spots}/${l.capacity})</option>`).join('')}
-          </select>
-          <button class="btn btn-secondary btn-md btn-active" id="adminSelectModeBtn">Select</button>
-          <button class="btn btn-secondary btn-md" id="adminDrawModeBtn">Draw a spot</button>
-          <button class="btn btn-secondary btn-md" id="adminAddGridBtn">Add 5 in a grid</button>
-        </div>
-        <button class="btn btn-primary btn-md" id="adminSavePlotsBtn">Save and calibrate</button>
-      </div>
-
-      <div class="viewport-container">
-        <div class="camera-stage">
-          <div class="camera-feed-wrapper">
-            <canvas id="adminCameraCanvas" width="800" height="450"></canvas>
-          </div>
-        </div>
-        <aside class="inspector-panel">
-          <div>
-            <div class="inspector-title" id="adminInspectorTitle">No spot selected</div>
-            <div class="form-group"><label for="adminPlotId">Spot ID</label><input type="text" id="adminPlotId" class="form-control" disabled></div>
-            <div class="form-group"><label for="adminPlotType">Type</label>
-              <select id="adminPlotType" class="form-control" disabled>
-                <option value="standard">Standard</option><option value="ev">EV charging</option><option value="disabled">Accessible</option>
-              </select></div>
-            <div class="form-group"><label for="adminPlotStatus">Status</label>
-              <select id="adminPlotStatus" class="form-control" disabled>
-                <option value="available">Free</option><option value="occupied">Occupied</option>
-              </select></div>
-            <div class="stack">
-              <button class="btn btn-secondary btn-md btn-block" id="adminToggleOccupancyBtn" disabled>Test occupancy</button>
-              <button class="btn btn-danger btn-md btn-block" id="adminDeletePlotBtn" disabled>Delete spot</button>
-            </div>
-          </div>
-          <div>
-            <div class="inspector-title">Camera source</div>
-            <input type="text" id="adminCameraUrl" class="form-control" placeholder="rtsp://cam.timisoara-hub.ro/live" aria-label="RTSP camera URL">
-          </div>
-        </aside>
-      </div>
-    </div>
-
-    <!-- Tab 2: Danger & Works Area Alerts with Radius & Neighbour Signaling -->
-    <div class="admin-subcontent" id="subtab-area-alerts" style="display:none">
-      <div class="form-panel-card">
-        <div class="panel-header">
-          <h3>🚨 Issue Danger Perimeter or Construction Work Area Alert</h3>
-          <p>Maps the incident radius, computes overlapping Timișoara neighbourhoods, and instantly notifies nearest residents.</p>
-        </div>
-        <div class="stack" style="max-width: 640px;">
-          <label class="field"><span>Alert Kind</span>
-            <select id="newAlertKind">
-              <option value="danger">🚨 Danger (Gas leak, fire hazard, structural collapse, safety notice)</option>
-              <option value="construction">🚧 Construction (Roadworks, STPT track renewal, underground excavation)</option>
-            </select>
-          </label>
-          <label class="field"><span>Title</span><input id="newAlertTitle" placeholder="ex: Pasajul Jiul gas leak perimeter"></label>
-          <label class="field"><span>Description & citizen guidance</span>
-            <textarea id="newAlertDesc" rows="3" placeholder="Provide instructions for residents inside the perimeter..."></textarea>
-          </label>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-            <label class="field"><span>Center Neighbourhood</span>
-              <select id="newAlertArea">
-                <option value="Circumvalațiunii" data-lat="45.7620" data-lng="21.2180">Circumvalațiunii</option>
-                <option value="Cetate (Centru)" data-lat="45.7578" data-lng="21.2290">Cetate (Centru)</option>
-                <option value="Complex Studențesc" data-lat="45.7480" data-lng="21.2410">Complex Studențesc</option>
-                <option value="Mehala" data-lat="45.7680" data-lng="21.2020">Mehala</option>
-                <option value="Fabric" data-lat="45.7580" data-lng="21.2510">Fabric</option>
-                <option value="Iosefin" data-lat="45.7450" data-lng="21.2050">Iosefin</option>
-                <option value="Girocului" data-lat="45.7320" data-lng="21.2350">Calea Girocului</option>
-              </select>
-            </label>
-            <label class="field"><span>Severity</span>
-              <select id="newAlertSeverity">
-                <option value="critical">Critical — Immediate safety action</option>
-                <option value="high">High — Significant area impact</option>
-                <option value="medium">Medium — Moderate work zone</option>
-              </select>
-            </label>
-          </div>
-          <div class="field">
-            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
-              <span>Perimeter Radius</span>
-              <b id="radiusLabel" style="color:var(--color-ink)">700 meters</b>
-            </div>
-            <input type="range" id="newAlertRadius" min="150" max="2500" step="50" value="700" style="width:100%">
-          </div>
-          <div id="affectedNeighboursPreview" style="background:var(--color-tint, rgba(0,0,0,0.04));border-radius:8px;padding:12px;font-size:13px">
-            <b>📡 Automatic Neighbour Signaling:</b>
-            <div style="margin-top:4px" class="muted">Residents in Circumvalațiunii, Cetate, Gara de Nord will receive prioritized alerts.</div>
-          </div>
-          <button class="btn btn-primary btn-md" id="publishAreaAlertBtn">📡 Broadcast Perimeter & Signal Neighbours</button>
-          <div class="result" id="areaAlertResult" hidden></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-subcontent" id="subtab-outages-mfa" style="display:none">
-      <div class="form-panel-card">
-        <div class="panel-header">
-          <h3>Publish an outage</h3>
-          <p>A high-privilege action. It needs a second check (step-up MFA, RFC 9470); without it the server answers with a challenge.</p>
-        </div>
-        <div class="mfa-status-banner ${mfa ? 'banner-verified' : 'banner-warning'}">
-          <span>${mfa ? 'Second check done for this session.' : 'No second check yet. Publishing will ask for one.'}</span>
-          ${!mfa ? '<button class="btn btn-secondary btn-sm" id="upgradeMfaPasskeyBtn">Verify with passkey</button>' : ''}
-        </div>
-        <div class="stack">
-          <label class="field"><span>Title</span><input id="newOutageTitle" value="Colterm: main pipe works on Circumvalațiunii"></label>
-          <label class="field"><span>Operator</span><select id="newOutageProvider"><option value="colterm">Colterm</option><option value="aquatim">Aquatim</option></select></label>
-          <label class="field"><span>Affected areas</span><input id="newOutageAreas" value="Circumvalațiunii, Mehala"></label>
-          <label class="field"><span>Description</span><textarea id="newOutageDesc" rows="3">A pipe renewal project will temporarily cut hot water.</textarea></label>
-          <button class="btn btn-primary btn-md" id="publishOutageBtn">Publish outage</button>
-          <div class="result" id="outagePublishResult" hidden></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-subcontent" id="subtab-moderation" style="display:none">
-      <div class="form-panel-card" style="max-width:none">
-        <div class="panel-header"><h3>Reported posts</h3><p>Posts residents flagged in the forum. Keep a post to dismiss the reports, or remove it for good.</p></div>
-        <div class="list" id="moderationList"><div class="empty">Loading the queue…</div></div>
-      </div>
-    </div>
-
-    <div class="admin-subcontent" id="subtab-audit-logs" style="display:none">
-      <div class="form-panel-card">
-        <div class="panel-header">
-          <h3>Security log</h3>
-          <p>Every privileged action and MFA decision is recorded here, in memory and on the server.</p>
-        </div>
-        <div class="list">
-          ${auditLogs.map((l) => `<div class="row" style="padding:10px 4px">
-            <div class="body">
-              <div class="title"><code>${esc(l.action)}</code> · <b>${esc(l.outcome)}</b></div>
-              <div class="detail">${esc(l.user_email || 'anonymous')} · ${esc(l.user_role || 'guest')}</div>
-            </div>
-            <div class="side muted" style="font-size:12px">${new Date(l.created_at).toLocaleTimeString()}</div>
-          </div>`).join('') || '<div class="empty">No security events yet.</div>'}
-        </div>
-      </div>
-    </div>
-
-    <div class="admin-subcontent" id="subtab-tiger-db" style="display:none">
-      <div class="form-panel-card">
-        <div class="panel-header">
-          <h3>Database status</h3>
-          <p>The time-series database runs on TimescaleDB. Live aggregates power the city metrics and the parking charts.</p>
-        </div>
-        ${tigerLive ? '' : '<p class="muted" style="margin-bottom:16px"><b>Simulated:</b> the API has no database connection, so the numbers below are example values, not live data.</p>'}
-        <div class="cols">
-          <div>
-            <div class="detail-card"><div class="muted">Version</div><b style="font-size:18px">${esc(tiger?.version || '—')}</b></div>
-            <div class="detail-card"><div class="muted">Connected</div><b style="font-size:18px">${tigerLive ? 'Live on Tiger Cloud' : tiger ? 'Fallback (simulated)' : 'API unreachable'}</b></div>
-            <div class="detail-card"><div class="muted">Compression (chunks)</div><b style="font-size:18px">${esc(tigerKpis?.compression_ratio || '—')}</b></div>
-          </div>
-          <div>
-            <div class="detail-card"><div class="muted">Active hypertables</div><b style="font-size:18px">${tiger?.hypertables?.length ?? '—'}</b>
-              <div class="muted" style="font-size:13px">${esc((tigerKpis?.hypertable_names || []).join(', '))}</div></div>
-            <div class="detail-card"><div class="muted">Continuous aggregates</div><b style="font-size:18px">${tiger?.continuous_aggregates?.length ?? '—'}</b></div>
-          </div>
-        </div>
-        ${env ? `<div class="cols even" style="margin-top:16px">
-          <div class="detail-card"><div class="muted">PM2.5, last 24 h</div><b style="font-size:18px">${esc(env.air_quality_avg_pm25)} µg/m³</b>
-            <div class="muted" style="font-size:13px">${env.source === 'tiger' ? `from the hourly continuous aggregate, ${esc(env.sensor_areas)} areas` : 'simulated value'}</div></div>
-          <div class="detail-card"><div class="muted">Noise, last 24 h</div><b style="font-size:18px">${esc(env.avg_noise_db)} dB</b>
-            <div class="muted" style="font-size:13px">${env.source === 'tiger' ? 'from the hourly continuous aggregate' : 'simulated value'}</div></div>
-        </div>` : ''}
-        ${community ? `<div class="cols even" style="margin-top:16px">
-          <div class="detail-card"><div class="muted">Smell reports, 7 days</div><b style="font-size:18px">${esc(community.smell.last_7_days)}</b>
-            <div class="muted" style="font-size:13px">${esc(community.smell.real)} from residents, ${esc(community.smell.demo)} demo · ${storedIn(community.smell)}</div></div>
-          <div class="detail-card"><div class="muted">Safety reports, 7 days</div><b style="font-size:18px">${esc(community.safety.last_7_days)}</b>
-            <div class="muted" style="font-size:13px">${esc(community.safety.real)} from residents, ${esc(community.safety.demo)} demo · ${storedIn(community.safety)}</div></div>
-        </div>` : ''}
-      </div>
+    <div class="dash">
+      <aside class="dash-nav" aria-label="Dashboard sections">
+        <div class="who"><strong>${esc(ctx.user.name)}</strong><span class="muted">City staff</span></div>
+        ${SECTIONS.map((g) => `<div class="group"><span>${g.group}</span>${g.items.map(([id, label]) => `<button data-section="${id}">${label}</button>`).join('')}</div>`).join('')}
+      </aside>
+      <div class="dash-body" id="dashBody"><p class="muted">Loading…</p></div>
     </div>
   </div>`;
 }
 
-export function mount(ctx, { saveLotPlots, showToast }) {
-  document.querySelectorAll('.admin-sublink').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.admin-sublink').forEach((b) => b.classList.remove('active'));
-      document.querySelectorAll('.admin-subcontent').forEach((c) => { c.style.display = 'none'; });
-      btn.classList.add('active');
-      const content = document.getElementById(`subtab-${btn.dataset.subtab}`);
-      if (content) content.style.display = 'block';
-    });
-  });
+export function mount(ctx, { showToast } = {}) {
+  const body = document.getElementById('dashBody');
+  const nav = document.querySelectorAll('.dash-nav [data-section]');
+  let open = 'overview';
+  let token = 0;
 
-  const canvasEl = document.getElementById('adminCameraCanvas');
-  if (canvasEl) {
-    adminCanvas = new CameraCanvas(canvasEl, { onPlotSelected: (plot) => updateInspector(plot), onPlotsChanged: () => {} });
-    fetchLots().then((lots) => {
-      const lotSelect = document.getElementById('adminLotSelect');
-      if (lots.length) adminCanvas.setLot(lots[0]);
-      lotSelect?.addEventListener('change', (e) => {
-        const selected = lots.find((l) => l.id === e.target.value);
-        if (selected) adminCanvas.setLot(selected);
-      });
+  const draw = async () => {
+    const mine = ++token;
+    nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
+    body.innerHTML = '<p class="muted">Loading…</p>';
+    adminCanvas = null;
+    const section = { overview, alerts, parking, moderation, security, database }[open];
+    let html;
+    try {
+      html = await section.render(ctx);
+    } catch (err) {
+      console.error(err);
+      html = `<div class="empty">Could not load this section. ${esc(err.message)}</div>`;
+    }
+    if (mine !== token) return;
+    body.innerHTML = html;
+    section.mount?.(ctx, showToast, draw);
+  };
+  nav.forEach((b) => b.addEventListener('click', () => { open = b.dataset.section; draw(); }));
+  draw();
+  return () => { token += 1; adminCanvas = null; };
+}
+
+/* ---------------------------------------------------------------- Overview */
+const overview = {
+  async render() {
+    const o = await fetchDashboardOverview();
+    const k = o?.kpis;
+    if (!k) return '<h1 class="page-title">Overview</h1><div class="empty">The city figures are not available right now.</div>';
+    const env = k.environment || {};
+    const infra = k.infrastructure_alerts || {};
+    const reports = k.community_reports || {};
+    const weekReports = (reports.smell?.last_7_days || 0) + (reports.safety?.last_7_days || 0);
+    return `
+      <h1 class="page-title">Overview</h1>
+      <p class="page-sub">How the city is doing right now.</p>
+      <div class="stats">
+        ${kpi(k.parking.total_available_spots, 'Free parking spots', 'mint')}
+        ${kpi(infra.active_utility_outages ?? 0, 'Active outages', 'apricot')}
+        ${kpi(infra.active_transit_detours ?? 0, 'Transit detours', 'blue')}
+        ${kpi(weekReports, 'Resident reports this week')}
+      </div>
+      <div class="cols even section">
+        <div>
+          <div class="section-head"><h2>Most crowded parking</h2></div>
+          <div class="list">${(k.parking.most_congested_lots || []).map((l) => row({
+            num: l.available_spots, numTone: l.status_color === 'red' ? 'apricot' : 'mint', title: esc(l.name), detail: `of ${l.capacity} spots free`,
+            meter: { pct: (l.available_spots / l.capacity) * 100, color: l.status_color === 'red' ? 'red' : l.status_color === 'yellow' ? 'yellow' : '' },
+          })).join('') || '<div class="empty">No lots yet.</div>'}</div>
+        </div>
+        <div>
+          <div class="section-head"><h2>Air and noise</h2></div>
+          <div class="list">
+            ${row({ num: env.air_quality_avg_pm25 ?? '–', title: 'Air quality (PM2.5)', detail: `${esc(statusText(env.air_quality_status || ''))} · average across ${esc(env.sensor_areas ?? '?')} sensor areas` })}
+            ${row({ num: env.avg_noise_db ?? '–', title: 'Noise (dB)', detail: 'Average across the monitored neighbourhoods' })}
+          </div>
+        </div>
+      </div>`;
+  },
+};
+
+/* ------------------------------------------------------------------ Alerts */
+const alerts = {
+  async render() {
+    const [outages, zones] = await Promise.all([fetchOutages(), fetchAreaAlerts({ status: 'active' })]);
+    const mfa = hasMfa();
+    return `
+      <h1 class="page-title">Alerts</h1>
+      <p class="page-sub">Tell residents about an outage, a danger or works. It shows on the map and in their alerts.</p>
+      <div class="cols section">
+        <div>
+          <div class="section-head"><h2>New alert</h2></div>
+          <div class="segmented" role="tablist" aria-label="Kind of alert" id="alertKind">
+            <button class="on" data-kind="danger" role="tab">Danger zone</button>
+            <button data-kind="construction" role="tab">Works zone</button>
+            <button data-kind="outage" role="tab">Outage</button>
+          </div>
+          <form class="stack" id="alertForm" style="margin-top:18px">
+            <label class="field"><span>Title</span><input id="aTitle" maxlength="120" required></label>
+            <label class="field"><span id="aDescLabel">What residents should do</span><textarea id="aDesc" rows="3" maxlength="600" required></textarea></label>
+
+            <div id="zoneFields" class="stack">
+              <div class="two">
+                <label class="field"><span>Centred on</span><select id="aArea">${AREAS.map(([n, lat, lng]) => `<option value="${esc(n)}" data-lat="${lat}" data-lng="${lng}">${esc(n)}</option>`).join('')}</select></label>
+                <label class="field"><span>How serious</span><select id="aSeverity"><option value="critical">Critical: keep away now</option><option value="high" selected>High: big impact</option><option value="medium">Medium: some impact</option></select></label>
+              </div>
+              <div class="field"><div class="between"><span>Radius</span><b id="aRadiusLabel">700 m</b></div><input type="range" id="aRadius" min="150" max="2500" step="50" value="700" style="width:100%"><span id="aRadiusHint"></span></div>
+              <div class="notice" id="aWho"></div>
+            </div>
+
+            <div id="outageFields" class="stack" hidden>
+              <div class="two">
+                <label class="field"><span>Provider</span><select id="oProvider"><option value="colterm">Colterm (heating, hot water)</option><option value="aquatim">Aquatim (water, sewage)</option></select></label>
+                <label class="field"><span>Affected areas, separated by commas</span><input id="oAreas" placeholder="Circumvalațiunii, Mehala"></label>
+              </div>
+              <div class="mfa ${mfa ? 'ok' : 'warn'}"><span>${mfa ? 'Second check done for this session.' : 'Publishing an outage needs a second check first.'}</span>${mfa ? '' : '<button class="btn btn-secondary btn-sm" type="button" id="upgradeMfa">Verify with passkey</button>'}</div>
+            </div>
+
+            <div><button class="btn btn-primary" type="submit" id="aSubmit">Publish alert</button></div>
+            <div class="result" id="aResult" hidden></div>
+          </form>
+        </div>
+
+        <div>
+          <div class="section-head"><h2>Active now</h2></div>
+          <div class="list">
+            ${zones.map((z) => row({
+              art: art('safety', 52), title: esc(plain(z.title)),
+              detail: `${z.type === 'danger' ? 'Danger zone' : 'Works zone'} · ${z.radius_meters} m · ${esc((z.affected_neighbourhoods || []).join(', '))}`,
+              side: `<span class="tag ${z.type === 'danger' ? 'apricot' : 'blue'}">${esc(cap(z.severity || ''))}</span>`,
+            })).join('')}
+            ${outages.map((o) => row({
+              art: art('utilities', 52), title: esc(o.title),
+              detail: `Outage · ${esc(cap(o.provider))} · ${esc((o.affected_areas || []).join(', '))}`,
+              side: `<span class="tag apricot">${esc(statusText(o.status || 'active'))}</span>`,
+            })).join('')}
+            ${zones.length + outages.length === 0 ? '<div class="empty">No active alerts.</div>' : ''}
+          </div>
+        </div>
+      </div>`;
+  },
+  mount(ctx, showToast, redraw) {
+    let kind = 'danger';
+    const $ = (id) => document.getElementById(id);
+    const setKind = (k) => {
+      kind = k;
+      document.querySelectorAll('#alertKind button').forEach((b) => b.classList.toggle('on', b.dataset.kind === k));
+      $('zoneFields').hidden = k === 'outage';
+      $('outageFields').hidden = k !== 'outage';
+      $('aDescLabel').textContent = k === 'danger' ? 'What residents should do' : k === 'construction' ? 'What is happening and who is affected' : 'What is affected and when it should be back';
+    };
+    document.querySelectorAll('#alertKind button').forEach((b) => b.addEventListener('click', () => setKind(b.dataset.kind)));
+
+    const preview = () => {
+      const radius = Number($('aRadius').value);
+      const area = $('aArea').value;
+      $('aRadiusLabel').textContent = `${radius} m`;
+      $('aRadiusHint').textContent = `About ${Math.max(1, Math.round(radius / 80))} min on foot from the centre to the edge.`;
+      const near = radius > 500 ? NEXT_TO[area] || [] : [];
+      $('aWho').innerHTML = `Residents in <b>${esc([area, ...near].join(', '))}</b> will be told.`;
+    };
+    $('aRadius').addEventListener('input', preview);
+    $('aArea').addEventListener('change', preview);
+    preview();
+    $('upgradeMfa')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); redraw(); });
+
+    $('alertForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const out = $('aResult');
+      const btn = $('aSubmit');
+      btn.disabled = true;
+      out.hidden = false;
+      out.innerHTML = '<span class="muted">Publishing…</span>';
+      try {
+        if (kind === 'outage') {
+          await createOutage(getCurrentToken(), {
+            title: $('aTitle').value, provider: $('oProvider').value, description: $('aDesc').value,
+            affected_areas: $('oAreas').value.split(',').map((s) => s.trim()).filter(Boolean),
+          });
+          out.innerHTML = '<b class="ok">Published.</b><p style="margin-top:4px">The outage is live for residents.</p>';
+        } else {
+          const opt = $('aArea').options[$('aArea').selectedIndex];
+          const created = await createAreaAlert(getCurrentToken(), {
+            title: $('aTitle').value, description: $('aDesc').value, type: kind, severity: $('aSeverity').value,
+            latitude: Number(opt.dataset.lat), longitude: Number(opt.dataset.lng), radius_meters: Number($('aRadius').value), neighbourhood: opt.value,
+          });
+          out.innerHTML = `<b class="ok">Published.</b><p style="margin-top:4px">${esc(created.affected_residents_count || 0)} residents in ${esc((created.affected_neighbourhoods || []).join(', '))} were told.</p>`;
+        }
+        showToast?.('Alert published.');
+        setTimeout(redraw, 1800);
+      } catch (err) {
+        if (err.status === 403 && String(err.message).toLowerCase().includes('mfa')) {
+          out.innerHTML = '<b class="bad">A second check is needed.</b><p style="margin-top:4px">Verify with your passkey, then publish again.</p>';
+        } else {
+          out.innerHTML = `<b class="bad">Could not publish.</b><p style="margin-top:4px">${esc(err.message)}</p>`;
+        }
+        btn.disabled = false;
+      }
     });
-    const modeBtns = { select: document.getElementById('adminSelectModeBtn'), draw: document.getElementById('adminDrawModeBtn') };
+  },
+};
+
+/* ----------------------------------------------------------------- Parking */
+const parking = {
+  async render() {
+    const lots = await fetchLots();
+    return `
+      <h1 class="page-title">Parking cameras</h1>
+      <p class="page-sub">Mark each parking spot on the camera picture so free spots are counted correctly.</p>
+      <div class="workspace-toolbar" style="margin-top:24px">
+        <div class="toolbar-group">
+          <select id="adminLotSelect" class="form-control" style="width:260px" aria-label="Parking lot">${lots.map((l) => `<option value="${esc(l.id)}">${esc(l.name)} (${l.available_spots}/${l.capacity})</option>`).join('')}</select>
+          <button class="btn btn-secondary btn-md btn-active" id="adminSelectModeBtn">Select</button>
+          <button class="btn btn-secondary btn-md" id="adminDrawModeBtn">Draw a spot</button>
+          <button class="btn btn-secondary btn-md" id="adminAddGridBtn">Add 5 in a row</button>
+        </div>
+        <button class="btn btn-primary btn-md" id="adminSavePlotsBtn">Save</button>
+      </div>
+      <div class="viewport-container">
+        <div class="camera-stage"><div class="camera-feed-wrapper"><canvas id="adminCameraCanvas" width="800" height="450"></canvas></div></div>
+        <aside class="inspector-panel">
+          <div>
+            <div class="inspector-title" id="adminInspectorTitle">No spot selected</div>
+            <div class="form-group"><label for="adminPlotId">Spot name</label><input type="text" id="adminPlotId" class="form-control" disabled></div>
+            <div class="form-group"><label for="adminPlotType">Type</label><select id="adminPlotType" class="form-control" disabled><option value="standard">Standard</option><option value="ev">EV charging</option><option value="disabled">Accessible</option></select></div>
+            <div class="form-group"><label for="adminPlotStatus">Status</label><select id="adminPlotStatus" class="form-control" disabled><option value="available">Free</option><option value="occupied">Occupied</option></select></div>
+            <div class="stack"><button class="btn btn-secondary btn-md btn-block" id="adminToggleOccupancyBtn" disabled>Test occupancy</button><button class="btn btn-danger btn-md btn-block" id="adminDeletePlotBtn" disabled>Delete spot</button></div>
+          </div>
+          <div><div class="inspector-title">Camera address</div><input type="text" id="adminCameraUrl" class="form-control" placeholder="rtsp://camera.example/live" aria-label="Camera address"></div>
+        </aside>
+      </div>`;
+  },
+  mount(ctx, showToast) {
+    const $ = (id) => document.getElementById(id);
+    adminCanvas = new CameraCanvas($('adminCameraCanvas'), { onPlotSelected: (plot) => updateInspector(plot), onPlotsChanged: () => {} });
+    fetchLots().then((lots) => {
+      if (lots.length) adminCanvas?.setLot(lots[0]);
+      $('adminLotSelect')?.addEventListener('change', (e) => { const l = lots.find((x) => x.id === e.target.value); if (l) adminCanvas?.setLot(l); });
+    });
     const setMode = (m) => {
       adminCanvas.setMode(m);
-      modeBtns.select?.classList.toggle('btn-active', m === 'select');
-      modeBtns.draw?.classList.toggle('btn-active', m === 'draw');
+      $('adminSelectModeBtn').classList.toggle('btn-active', m === 'select');
+      $('adminDrawModeBtn').classList.toggle('btn-active', m === 'draw');
     };
-    modeBtns.select?.addEventListener('click', () => setMode('select'));
-    modeBtns.draw?.addEventListener('click', () => setMode('draw'));
-    document.getElementById('adminAddGridBtn')?.addEventListener('click', () => adminCanvas.addGridSlots(5));
-    document.getElementById('adminSavePlotsBtn')?.addEventListener('click', async () => {
+    $('adminSelectModeBtn').addEventListener('click', () => setMode('select'));
+    $('adminDrawModeBtn').addEventListener('click', () => setMode('draw'));
+    $('adminAddGridBtn').addEventListener('click', () => adminCanvas.addGridSlots(5));
+    $('adminSavePlotsBtn').addEventListener('click', async () => {
       const plots = adminCanvas.getPlots();
-      const lotSelect = document.getElementById('adminLotSelect');
       try {
-        await saveLotPlots(lotSelect.value, { slots_data: plots, camera_url: document.getElementById('adminCameraUrl').value.trim() || null, capacity: plots.length });
-        showToast?.(`Saved. ${plots.length} spots configured.`);
+        await saveLotPlots($('adminLotSelect').value, { slots_data: plots, camera_url: $('adminCameraUrl').value.trim() || null, capacity: plots.length });
+        showToast?.(`Saved. ${plots.length} spots.`);
       } catch (err) {
         showToast?.(`Could not save: ${err.message}`);
       }
     });
-    document.getElementById('adminPlotId')?.addEventListener('input', (e) => adminCanvas.updateSelectedPlot({ id: e.target.value }));
-    document.getElementById('adminPlotType')?.addEventListener('change', (e) => adminCanvas.updateSelectedPlot({ type: e.target.value }));
-    document.getElementById('adminPlotStatus')?.addEventListener('change', (e) => adminCanvas.updateSelectedPlot({ status: e.target.value }));
-    document.getElementById('adminToggleOccupancyBtn')?.addEventListener('click', () => {
+    $('adminPlotId').addEventListener('input', (e) => adminCanvas.updateSelectedPlot({ id: e.target.value }));
+    $('adminPlotType').addEventListener('change', (e) => adminCanvas.updateSelectedPlot({ type: e.target.value }));
+    $('adminPlotStatus').addEventListener('change', (e) => adminCanvas.updateSelectedPlot({ status: e.target.value }));
+    $('adminToggleOccupancyBtn').addEventListener('click', () => {
       const plot = adminCanvas.getSelectedPlot();
       if (!plot) return;
       const next = plot.status === 'occupied' ? 'available' : 'occupied';
       adminCanvas.updateSelectedPlot({ status: next });
-      document.getElementById('adminPlotStatus').value = next;
+      $('adminPlotStatus').value = next;
     });
-    document.getElementById('adminDeletePlotBtn')?.addEventListener('click', () => adminCanvas.deleteSelectedPlot());
-  }
-
-  // Area Danger & Construction Alert Form
-  const radiusSlider = document.getElementById('newAlertRadius');
-  const radiusLabel = document.getElementById('radiusLabel');
-  const areaSelect = document.getElementById('newAlertArea');
-  const previewBox = document.getElementById('affectedNeighboursPreview');
-
-  const updateRadiusPreview = () => {
-    if (!radiusSlider || !radiusLabel) return;
-    const radius = radiusSlider.value;
-    radiusLabel.textContent = `${radius} meters`;
-    const areaName = areaSelect?.value || 'Circumvalațiunii';
-    let suggestedNeighbours = [areaName];
-    if (radius > 500) {
-      if (areaName.includes('Circumvalațiunii')) suggestedNeighbours.push('Cetate (Centru)', 'Gara de Nord', 'Mehala');
-      else if (areaName.includes('Complex')) suggestedNeighbours.push('Elisabetin', 'Fabric', 'Soarelui');
-      else if (areaName.includes('Cetate')) suggestedNeighbours.push('Circumvalațiunii', 'Fabric', 'Iosefin');
-      else suggestedNeighbours.push('Cartiere limitrofe');
-    }
-    if (previewBox) {
-      previewBox.innerHTML = `<b>📡 Automatic Neighbour Signaling:</b><div style="margin-top:4px" class="muted">Residents in <b>${suggestedNeighbours.join(', ')}</b> will receive prioritized alerts and live radius mapping.</div>`;
-    }
-  };
-
-  radiusSlider?.addEventListener('input', updateRadiusPreview);
-  areaSelect?.addEventListener('change', updateRadiusPreview);
-
-  document.getElementById('publishAreaAlertBtn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('publishAreaAlertBtn');
-    const out = document.getElementById('areaAlertResult');
-    const title = document.getElementById('newAlertTitle')?.value?.trim();
-    const desc = document.getElementById('newAlertDesc')?.value?.trim();
-    const type = document.getElementById('newAlertKind')?.value || 'danger';
-    const severity = document.getElementById('newAlertSeverity')?.value || 'high';
-    const radius = parseInt(radiusSlider?.value || '700', 10);
-    const selectedOption = areaSelect?.options[areaSelect.selectedIndex];
-    const lat = parseFloat(selectedOption?.getAttribute('data-lat') || '45.7620');
-    const lng = parseFloat(selectedOption?.getAttribute('data-lng') || '21.2180');
-    const neighbourhood = selectedOption?.value || 'Circumvalațiunii';
-
-    if (!title || !desc) {
-      if (out) { out.hidden = false; out.innerHTML = '<b class="bad">Please enter both a title and description.</b>'; }
-      return;
-    }
-
-    btn.disabled = true;
-    out.hidden = false;
-    out.innerHTML = '<span class="muted">Broadcasting alert...</span>';
-
-    try {
-      const created = await createAreaAlert(getCurrentToken(), {
-        title,
-        description: desc,
-        type,
-        severity,
-        latitude: lat,
-        longitude: lng,
-        radius_meters: radius,
-        neighbourhood
-      });
-
-      out.innerHTML = `<b class="ok">Published & Signaled.</b><p style="margin-top:4px">Perimeter radius: <b>${created.radius_meters}m</b>. Signaled neighbours: <b>${(created.affected_neighbourhoods || []).join(', ')}</b> (${created.affected_residents_count || 0} residents notified).</p>`;
-      showToast?.('Perimeter alert published.');
-    } catch (err) {
-      out.innerHTML = `<b class="bad">Could not publish alert:</b> ${esc(err.message)}`;
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  // moderation queue: loaded when the tab is opened, and after every decision
-  const loadQueue = async () => {
-    const box = document.getElementById('moderationList');
-    if (!box) return;
-    try {
-      const posts = await fetchReportedPosts();
-      box.innerHTML = posts.length
-        ? posts.map((p) => `
-          <div class="row" style="align-items:flex-start">
-            <div class="body">
-              <div class="title">${esc(p.title)}</div>
-              <div class="detail">${esc((p.content || '').slice(0, 200))}</div>
-              <div class="detail">By ${esc(p.authorName)} · flagged ${p.reportCount} ${p.reportCount === 1 ? 'time' : 'times'}${p.reportReasons?.length ? `: ${esc(p.reportReasons.join('; '))}` : ''}</div>
-            </div>
-            <div class="toolbar-group">
-              <button class="btn btn-secondary btn-sm" data-keep="${esc(p.id)}">Keep</button>
-              <button class="btn btn-danger btn-sm" data-remove="${esc(p.id)}">Remove</button>
-            </div>
-          </div>`).join('')
-        : '<div class="empty">Nothing flagged. The forum is clean.</div>';
-      box.querySelectorAll('[data-keep]').forEach((b) => b.addEventListener('click', async () => { await approveReportedPost(b.dataset.keep); showToast?.('Post kept.'); loadQueue(); }));
-      box.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', async () => { await removeReportedPost(b.dataset.remove); showToast?.('Post removed.'); loadQueue(); }));
-    } catch (err) {
-      box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
-    }
-  };
-  document.querySelector('[data-subtab="moderation"]')?.addEventListener('click', loadQueue);
-
-  document.getElementById('upgradeMfaPasskeyBtn')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); });
-
-  document.getElementById('publishOutageBtn')?.addEventListener('click', async () => {
-    const btn = document.getElementById('publishOutageBtn');
-    const out = document.getElementById('outagePublishResult');
-    btn.disabled = true;
-    out.hidden = false;
-    try {
-      const created = await createOutage(getCurrentToken(), {
-        title: document.getElementById('newOutageTitle').value,
-        provider: document.getElementById('newOutageProvider').value,
-        affected_areas: document.getElementById('newOutageAreas').value.split(',').map((s) => s.trim()),
-        description: document.getElementById('newOutageDesc').value,
-      });
-      out.innerHTML = `<b class="ok">Published.</b><p style="margin-top:4px">Outage <code>${esc(created.id)}</code> is live for residents.</p>`;
-    } catch (err) {
-      if (err.status === 403 && String(err.message).includes('MFA')) {
-        out.innerHTML = `<b class="bad">A second check is needed.</b><p style="margin:4px 0 10px">${esc(err.message)}</p><button class="btn btn-secondary btn-sm" id="stepUpNowBtn">Verify with passkey</button>`;
-        document.getElementById('stepUpNowBtn')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); });
-      } else {
-        out.innerHTML = `<b class="bad">Could not publish.</b><p style="margin-top:4px">${esc(err.message)}</p>`;
-      }
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
-  return () => { adminCanvas = null; };
-}
+    $('adminDeletePlotBtn').addEventListener('click', () => adminCanvas.deleteSelectedPlot());
+  },
+};
 
 function updateInspector(plot) {
   const $ = (id) => document.getElementById(id);
@@ -402,3 +307,75 @@ function updateInspector(plot) {
   $('adminPlotStatus').value = on ? plot.status || 'available' : 'available';
   for (const id of ['adminPlotId', 'adminPlotType', 'adminPlotStatus', 'adminToggleOccupancyBtn', 'adminDeletePlotBtn']) $(id).disabled = !on;
 }
+
+/* -------------------------------------------------------------- Moderation */
+const moderation = {
+  async render() {
+    return `<h1 class="page-title">Moderation</h1>
+      <p class="page-sub">Forum posts that residents flagged. Keep a post to dismiss the flags, or remove it for good.</p>
+      <div class="list section" id="moderationList"><div class="empty">Loading the queue…</div></div>`;
+  },
+  mount(ctx, showToast) {
+    const box = document.getElementById('moderationList');
+    const load = async () => {
+      try {
+        const posts = await fetchReportedPosts();
+        box.innerHTML = posts.length
+          ? posts.map((p) => `
+            <div class="row" style="align-items:flex-start">
+              <div class="art">${art('forum', 52)}</div>
+              <div class="body">
+                <div class="title">${esc(p.title)}</div>
+                <div class="detail">${esc((p.content || '').slice(0, 220))}</div>
+                <div class="detail">By ${esc(p.authorName)} · flagged ${p.reportCount} ${p.reportCount === 1 ? 'time' : 'times'}${p.reportReasons?.length ? ` (${esc(p.reportReasons.join('; '))})` : ''}</div>
+              </div>
+              <div class="toolbar-group"><button class="btn btn-secondary btn-sm" data-keep="${esc(p.id)}">Keep</button><button class="btn btn-danger btn-sm" data-remove="${esc(p.id)}">Remove</button></div>
+            </div>`).join('')
+          : '<div class="empty">Nothing flagged. The forum is clean.</div>';
+        box.querySelectorAll('[data-keep]').forEach((b) => b.addEventListener('click', async () => { await approveReportedPost(b.dataset.keep); showToast?.('Post kept.'); load(); }));
+        box.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', async () => { await removeReportedPost(b.dataset.remove); showToast?.('Post removed.'); load(); }));
+      } catch (err) {
+        box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+      }
+    };
+    load();
+  },
+};
+
+/* ---------------------------------------------------------------- Security */
+const security = {
+  async render() {
+    const logs = (await fetchAuditLogs(20)) || [];
+    return `<h1 class="page-title">Security log</h1>
+      <p class="page-sub">Every sign-in decision and privileged action, newest first.</p>
+      <div class="list section">${logs.map((l) => row({
+        title: esc(l.action),
+        detail: `${esc(l.user_email || 'Anonymous')} · ${esc(l.user_role || 'guest')}`,
+        side: `<span class="tag ${String(l.outcome).toLowerCase().startsWith('allow') || String(l.outcome).toLowerCase() === 'success' ? 'mint' : 'apricot'}">${esc(statusText(l.outcome || ''))}</span> <span class="muted" style="font-size:13px">${esc(new Date(l.created_at).toLocaleTimeString())}</span>`,
+      })).join('') || '<div class="empty">Nothing logged yet.</div>'}</div>`;
+  },
+};
+
+/* ---------------------------------------------------------------- Database */
+const database = {
+  async render() {
+    const [t, o] = await Promise.all([fetchTigerStatus(), fetchDashboardOverview()]);
+    const live = t?.status === 'connected';
+    const tk = o?.kpis?.timescale_tiger_cloud;
+    const comm = o?.kpis?.community_reports;
+    const where = (c) => (c?.storage === 'postgres' ? 'saved in the database' : 'kept in memory only');
+    return `<h1 class="page-title">Database</h1>
+      <p class="page-sub">The time-series database behind sensors, parking and audit events.${live ? '' : ' The API has no database connection right now, so the figures below are examples.'}</p>
+      <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+        ${kpi(live ? 'Connected' : t ? 'Example data' : 'Unreachable', 'Status', live ? 'mint' : 'apricot')}
+        ${kpi(t?.hypertables?.length ?? '–', 'Time-series tables')}
+        ${kpi(t?.continuous_aggregates?.length ?? '–', 'Live summaries')}
+      </div>
+      <div class="list section">
+        ${row({ title: 'Version', detail: esc(t?.version || 'Not reported') })}
+        ${row({ title: 'Compression', detail: esc(tk?.compression_ratio || 'Not reported') })}
+        ${comm ? row({ title: 'Smell reports, last 7 days', detail: `${esc(comm.smell.last_7_days)} (${esc(comm.smell.real)} from residents) · ${where(comm.smell)}` }) : ''}
+        ${comm ? row({ title: 'Safety reports, last 7 days', detail: `${esc(comm.safety.last_7_days)} (${esc(comm.safety.real)} from residents) · ${where(comm.safety)}` }) : ''}
+      </div>`;
+  },
+};

@@ -158,4 +158,5 @@ registerDictionary('ro', {
   'Expected back about {}': 'Revenire estimată în jurul orei {}', 'Restore time to be confirmed': 'Ora de revenire va fi confirmată', 'Keep away from the area': 'Evită zona', 'Works in progress': 'Lucrări în desfășurare',
   '{} · {} m around': '{} · {} m în jur', 'until {}': 'până la {}', 'Until Dec': 'Până în decembrie', 'Severity: {}': 'Gravitate: {}', 'Expected to end {}': 'Se estimează că se termină {}', 'End date to be confirmed': 'Data de final va fi confirmată',
   'Reported {}': 'Raportat {}', 'Announced': 'Anunțat',
+  'Keep away from the area · {} m around': 'Evită zona · {} m în jur', 'Works in progress · {} m around': 'Lucrări în desfășurare · {} m în jur',
 });
