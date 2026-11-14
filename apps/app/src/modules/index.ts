@@ -4,6 +4,7 @@ import { manifest as m08Manifest } from './m08-forum/manifest';
 import { manifest as m09Manifest } from './m09-wallet/manifest';
 import { manifest as m10Manifest } from './m10-assistant/manifest';
 import { manifest as m11Manifest } from './m11-feedback/manifest';
+import { manifest as m02Manifest } from './m02-visitor-info/manifest';
 import { utilitiesManifest } from './m04-utilities/manifest';
 import { transitManifest } from './m05-transit/manifest';
 
@@ -31,7 +32,7 @@ function createStubManifest(id: string, title: string, owner: 'P1' | 'P2' | 'P3'
 
 export const registeredModuleManifests: ModuleManifest[] = [
   m01Manifest as unknown as ModuleManifest,
-  createStubManifest('m02-visitor-info', 'Ghid Turistic', 'P4', 'info', '/m/visitor-info'),
+  m02Manifest, // [M02_VISITOR_INFO] - P4
   createStubManifest('m03-safety', 'Siguranță Urbană', 'P4', 'shield', '/m/safety'),
   utilitiesManifest, // [M04_UTILITIES] - Owned by P2
   transitManifest,   // [M05_TRANSIT] - Owned by P2
