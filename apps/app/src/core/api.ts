@@ -13,6 +13,8 @@ export function apiBaseUrl(): string {
   const configured = process.env.EXPO_PUBLIC_API_URL;
   if (configured) return configured.replace(/\/+$/, '');
   if (Platform.OS === 'web') {
+    // the web build also renders pages on the server first, where there is no window: use localhost there
+    if (typeof window === 'undefined' || !window.location) return 'http://localhost:8000';
     const { protocol, hostname } = window.location;
     return `${protocol}//${hostname}:8000`;
   }
