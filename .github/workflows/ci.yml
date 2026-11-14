@@ -25,6 +25,10 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install Dependencies
+        run: |
+          npm install
+
       - name: Verify Contracts Barrel Export
         run: |
           node --experimental-strip-types -e 'import * as contracts from "./packages/contracts/src/index.ts"; console.log("Contracts loaded:", Object.keys(contracts).length, "exports");'

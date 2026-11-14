@@ -57,9 +57,9 @@ export interface TigerCompressionStats {
 
 export const TigerStatusResponseSchema = z.object({
   status: z.enum(['connected', 'offline', 'mock'] as const),
-  engine: z.literal('TimescaleDB (PostgreSQL)'),
+  engine: z.string(),
   version: z.string(),
-  cloud_provider: z.literal('Tiger Data Cloud'),
+  cloud_provider: z.string(),
   host: z.string(),
   hypertables: z.array(TigerHypertableInfoSchema),
   continuous_aggregates: z.array(TigerContinuousAggregateInfoSchema),
