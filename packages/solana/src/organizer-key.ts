@@ -19,7 +19,7 @@ function resolveSecretKey(): Uint8Array {
       if (clean.startsWith('[')) {
         return new Uint8Array(JSON.parse(clean));
       }
-      return new Uint8Array(clean.split(',').map((n) => parseInt(n.trim(), 10)));
+      return new Uint8Array(clean.split(',').map((n: string) => parseInt(n.trim(), 10)));
     } catch (e) {
       console.warn('[Solana] Could not parse SOLANA_ORGANIZER_SECRET_KEY from env:', e);
     }
