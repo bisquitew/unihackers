@@ -2,27 +2,29 @@
 
 Owner: P4. Updated with every P4 feature or fix. Hashes are short commit ids; "pending" means changed in the working tree but not committed yet.
 
-Last updated: 2026-11-14 · working branch: `p4/integration`
+Last updated: 2026-11-14 · working branch: `p4/visitor-info`
+
+Commit ids are from main's rewritten history (commit-message cleanup on 2026-11-14); older ids no longer exist.
 
 ## Tasks
 
 | Task | Status | Branch | Commits | Date |
 | --- | --- | --- | --- | --- |
-| Living Labs docs: survey spec, Sheets cleaning script, feedback log | done | `p4/feedback`, `p4/integration` | `d7beb77`, answers per city `d7d22e1` | 2026-11-13/14 |
-| m11-feedback: in-app feedback, survey `/ingest`, summary, changelog, screens, migration | done | `p4/feedback` | `95458b6`, strict-mode fix `ecce165`, header fix `2a73e08` | 2026-11-13/14 |
-| m10-assistant: Gemini chat with function calling over all modules' tools, chat screen | done | `p4/assistant` | `9b3adec` (SDK), `e63c362` (API), `05117ff` (screen), `c08f87f` (registry), `ea7db20` (language + rate limit), header fix `2a73e08` | 2026-11-13/14 |
-| Integration fixes: app/workers dependencies, react-native-web | done | `fix/api-startup` | `80f8d30`, `0b05e5a`, `7623ffe` | 2026-11-13 |
-| Integration fixes: workers on Windows, P2 test scripts on Windows | done | `p4/integration` | `f0d49cf`, `213e919` | 2026-11-14 |
-| Integration fixes: place matching without diacritics (m04 outages, m05 stops, parkie areas) | done | `p4/integration` | `080bd34`, `151a891`, `bb15ccf` | 2026-11-14 |
-| Integration fixes: `packages/ui` typecheck, TabBar `absoluteFill` | done | `p4/integration` | `13d7641`, `f35e2f3` | 2026-11-14 |
-| Merges of main into P4 branches | done | `p4/feedback`, `p4/integration` | `eca0b1d`, `b233493`, `96639b3`, `17d791b`, `c025e75`, merge of main `b992da3` pending (`.env.example` conflict resolved) | 2026-11-13/14 |
-| Integration fix after merging main: `core/db.ts` typecheck (`pool` typed with a type-only `pg` import) | done | `p4/integration` | pending | 2026-11-14 |
-| P4 progress file | done | `p4/integration` | `cca9489` | 2026-11-14 |
-| Survey link in the feedback screen | done | `p4/integration` | `f6a3f9b` | 2026-11-14 |
-| Home screen links: ask bar and Assistant tile → assistant, Feedback tile | done | `p4/integration` | `0cdafe4` | 2026-11-14 |
-| Living Labs survey live: form, Sheet, cleaning script, trigger and QR code set up; survey is being shared | done | `p4/integration` | QR code `docs/living-labs/survey-qr.png` pending | 2026-11-14 |
-| PR into main | to do | `p4/integration` | open with `gh pr create` after `gh auth login` | — |
-| m02-visitor-info: practical info RO/EN, assistant tools | to do | — | — | — |
+| Living Labs docs: survey spec, Sheets cleaning script, feedback log | done | `p4/feedback`, `p4/integration` | `691820c`, answers per city `f59fad8` | 2026-11-13/14 |
+| m11-feedback: in-app feedback, survey `/ingest`, summary, changelog, screens, migration | done | `p4/feedback` | `270c462`, strict-mode fix `1bb4655`, header fix `fd294ef` | 2026-11-13/14 |
+| m10-assistant: Gemini chat with function calling over all modules' tools, chat screen | done | `p4/assistant` | `640a698` (SDK), `6578516` (API), `58112df` (screen), `8e9ba0f` (registry), `e7faaf8` (language + rate limit), header fix `fd294ef` | 2026-11-13/14 |
+| Integration fixes: app/workers dependencies, react-native-web | done | `fix/api-startup` | `2fff24f`, `3f8d2e6`, `73b03f4` | 2026-11-13 |
+| Integration fixes: workers on Windows, P2 test scripts on Windows | done | `p4/integration` | `a66bbdc`, `3510869` | 2026-11-14 |
+| Integration fixes: place matching without diacritics (m04 outages, m05 stops, parkie areas) | done | `p4/integration` | `076089f`, `2c5f642`, `fb31c67` | 2026-11-14 |
+| Integration fixes: `packages/ui` typecheck, TabBar `absoluteFill` | done | `p4/integration` | `aa36c44`, `f2c769c` | 2026-11-14 |
+| Merges of main into P4 branches | done | `p4/feedback`, `p4/integration` | `a8918c4`, `61bb911`, `6562c2a`, `45d794b`, `63fbea3`, `985668a` (`.env.example` conflict resolved) | 2026-11-13/14 |
+| Integration fix after merging main: `core/db.ts` typecheck (`pool` typed with a type-only `pg` import) | done | `p4/integration` | `75b87a7` | 2026-11-14 |
+| P4 progress file | done | `p4/integration` | `20707a0`, `e8a85f3` | 2026-11-14 |
+| Survey link in the feedback screen | done | `p4/integration` | `615a399` | 2026-11-14 |
+| Home screen links: ask bar and Assistant tile → assistant, Feedback tile | done | `p4/integration` | `ff3abb1` | 2026-11-14 |
+| Living Labs survey live: form, Sheet, cleaning script, trigger and QR code set up; survey is being shared | done | `p4/integration` | QR code `23c1387` | 2026-11-14 |
+| PR into main | done | `p4/integration` | PR #1, merged as `c3f77e5` | 2026-11-14 |
+| m02-visitor-info: 9 RO/EN entries parsed from `docs/visitor-info/content.md` into `seed.ts` (`generate-seed.ts`), list/detail/categories API, `search_visitor_info` assistant tool + prompt line, screen with category chips, RO/EN toggle and "check before you travel" badge, home tile, migration | done | `p4/visitor-info` | pending | 2026-11-14 |
 | m06-smell: one-tap reports, hypertable, map layer, wind | to do | — | needs `DATABASE_URL` from P2 and a map component from P1 | — |
 | One API server (merge `server.ts` into `index.ts`) | to do | — | owner P2; plan in "Known issues" | — |
 | ElevenLabs voice: spoken assistant replies, alerts, tour | to do | — | — | — |
@@ -45,6 +47,7 @@ cd apps/app && npx expo start --web
 
 - `.env` needs `GEMINI_API_KEY` (assistant) and `FEEDBACK_INGEST_TOKEN` (survey ingest); see `.env.example`.
 - On a phone, set `EXPO_PUBLIC_API_URL=http://<laptop-LAN-IP>:3001` in `apps/app/.env`.
+- Visitor info text lives in `docs/visitor-info/content.md`. After editing it, regenerate the seed: `cd services/api && npx tsx src/modules/m02-visitor-info/generate-seed.ts`.
 - P2's tests: `npm test` and `python3 scripts/test_p2_full.py` (they start the old `server.ts` on port 8000 themselves).
 
 ## Known issues
@@ -55,6 +58,7 @@ cd apps/app && npx expo start --web
 | Docker/Vultr deploy has no P3 or P4 modules (it runs `server.ts`) | P2 | Same as above |
 | Tiger Data is simulated (`[MOCK]`), no `DATABASE_URL` locally | P2 | Share the connection string |
 | `pnpm-lock.yaml` on main doesn't include `@google/genai` (api) or `@types/react` (ui) | P2 / P1 | Regenerate the lockfile after merging |
+| `apps/app` typecheck: 7 errors in `src/core/Auth0SecurityCard.tsx` (uses `radii.md`/`radii.sm`/`shadows.card`, which `@hub/ui` tokens don't have) | Auth0 author (`6ae326f`) | Use existing tokens (`radii.input`, `radii.group`, `shadows.lift`) or add the tokens to `packages/ui` with P1 |
 | `apps/app` typecheck: `Buffer` not found in `packages/solana/src/real-solana.ts` (2 errors; the app's mint path doesn't call it) | P3 | `import { Buffer } from 'buffer'` in that file |
 | Solana organizer secret key: main now reads it from `.env` and deleted `organizer-keypair.json`, but the old devnet key is still in git history | P3 | Treat the old key as public; use a new key for anything beyond devnet |
 | Forum, events, buddy and wallet screens show hardcoded data, not the API | P3 | Fetch from `/v1/m/...` |
