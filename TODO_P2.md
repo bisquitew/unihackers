@@ -66,14 +66,8 @@ flowchart TD
 
 ---
 
-### Task 2: Push Notifications Engine (Expo Notifications)
-> **Goal:** When an outage or detour happens, notify affected residents in under 2 seconds.
-
-- [ ] **2.1. Push Dispatcher (`services/api/src/core/notifications.ts`)**
-  - Implement real `notify()` dispatch to Expo Push API (`https://exp.host/--/api/v2/push/send`).
-  - Match resident saved places (`core_saved_places`) against outage affected areas and transit detours.
-- [ ] **2.2. In-App Notification Center (`GET /v1/core/notifications`)**
-  - Query unread notifications per user with mark-as-read `PATCH /v1/core/notifications/:id/read`.
+### Task 2: Push Notifications Engine (Expo Notifications) — [ON HOLD: Waiting for P1 client dependencies]
+> **Status:** Backend in-app notification center & event bus ready in `services/api/src/core/notifications.ts`. Paused on client integration until P1 (Mobile Lead) installs and configures `expo-notifications` permissions in `apps/app`.
 
 ---
 
@@ -81,13 +75,20 @@ flowchart TD
 > **Sponsor Prize:** Glue It Together  
 > **Judges Want:** Mashup of public data, AI (Gemini 1.5 Flash), scheduled jobs, and push alerts.
 
-- [ ] **3.1. Gemini 1.5 Flash Colterm Extractor (`services/workers/src/ingestion/coltermIngestion.ts`)**
-  - Wire `@google/genai` or direct Gemini REST call using `GEMINI_API_KEY`.
-  - Provide structured system instruction: unstructured Romanian announcement → JSON `{ provider, type, affected_areas, affected_streets, start_time, estimated_restore_time }`.
-  - Keep deterministic regex fallback active if offline.
-- [ ] **3.2. Scheduled Cron Runner (`services/workers/src/index.ts`)**
-  - Set up 15-minute cron timer polling Colterm press releases and STPT traffic advisories.
-  - Automatically call `POST /v1/m/utilities/outages` and `POST /v1/m/transit/detours`.
+- [x] **3.1. Gemini 1.5 Flash Utility Notice Extractor (`services/workers/src/ingestion/coltermIngestion.ts`)**
+  - Integrated Gemini 1.5 Flash prompt-engineered JSON extraction for raw Colterm and Aquatim press releases.
+  - Robust Romanian NLP regex heuristic fallback for offline zero-key execution.
+  - Authenticates via Auth0 for AI Agents (`dev_ai_agent`) to publish directly to `POST /v1/m/utilities/outages`.
+- [x] **3.2. STPT Transit Diversion Worker (`services/workers/src/ingestion/transitIngestion.ts`)**
+  - Ingests public transit diversion notices (Tram Line 5 suspension, Line E2 detours) with replacement bus instructions.
+  - Publishes to `POST /v1/m/transit/detours` with Auth0 M2M principal.
+- [x] **3.3. Environmental IoT Sensor Pulses (`services/workers/src/ingestion/sensorIngestion.ts`)**
+  - Ingests real-time air quality (PM2.5), noise (dB), and odor readings into TimescaleDB `city_metric_events` hypertable via `POST /v1/core/metrics/ingest`.
+- [x] **3.4. Background Cron Orchestrator & CLI Runner (`services/workers/src/index.ts`)**
+  - Orchestrates all ingestion workers with configurable interval timer (`config.ingestionIntervalMs`).
+  - Supports single-cycle execution flag (`--once`) for CI and test verification.
+- [x] **3.5. Automated Test Suite (`scripts/test_workers.py`)**
+  - Automated verification script executable via `npm run test:workers`. Verified 100% green.
 
 ---
 
@@ -95,13 +96,15 @@ flowchart TD
 > **Sponsor Prize:** High-Performance Projects on Vultr  
 > **Judges Want:** One-click deployment, containerized architecture, S3 storage.
 
-- [ ] **4.1. Multi-Stage Dockerfile (`Dockerfile`)**
-  - Lean Node.js 22 alpine image running `@hub/api` with stripped types.
-  - Dedicated target for `workers` background processor.
-- [ ] **4.2. Docker Compose Orchestration (`docker-compose.yml`)**
-  - Orchestrate `api`, `workers`, and local PostgreSQL/TimescaleDB container.
-- [ ] **4.3. Vultr Cloud Deployment Script (`infra/vultr/deploy.sh`)**
-  - Single-command script to pull, build, and deploy containers on a Vultr VPS instance.
+- [x] **4.1. Multi-Stage Dockerfiles (`services/api/Dockerfile`, `services/workers/Dockerfile`)**
+  - Lean Node.js 22 alpine images running `@hub/api` and `@hub/workers` with stripped types.
+  - Production workspace package installation and link optimization.
+- [x] **4.2. Docker Compose Orchestration (`docker-compose.yml`)**
+  - Multi-container orchestration linking `api` and `workers` with automated healthchecks (`wget -qO- /health`).
+  - Persistent volume for uploaded media files.
+- [x] **4.3. Vultr Cloud Deployment Script & Guides (`infra/vultr/deploy.sh`, `infra/vultr/README.md`)**
+  - Single-command deployment script to pull, build, and deploy containers on a Vultr VPS instance.
+  - Vultr S3 Object Storage presigned SigV4 URLs configured in `services/api/src/core/storage.ts`.
 
 ---
 
@@ -109,12 +112,12 @@ flowchart TD
 > **Sponsor Prize:** Stream Deck Mini  
 > **Judges Want:** Timescale continuous aggregates driving live dashboards & open data.
 
-- [ ] **5.1. Real-Time Server-Sent Events (SSE) Stream (`GET /v1/m/parkie/stream`)**
-  - Stream live parking updates directly to frontend maps when CV detection events occur.
-- [ ] **5.2. Open Data City Export Formats**
-  - Add optional CSV export support to `GET /v1/core/open-data/export?format=csv` for municipal analysts.
-- [ ] **5.3. Support Person 4's City Dashboard (`[M12_DASHBOARD]`)**
-  - Provide ready-to-render hourly aggregation payloads for environmental charts (PM2.5, noise, smell) and parking demand heatmaps.
+- [x] **5.1. Real-Time Server-Sent Events (SSE) Stream (`GET /v1/m/parkie/stream`)**
+  - Stream live parking updates directly to frontend maps when CV detection events occur via `eventBus.on('parkie.detection_updated')`.
+- [x] **5.2. Open Data City Export Formats (`GET /v1/core/open-data/export?format=csv`)**
+  - Add CSV export support formatting continuous aggregates into standard tabular CSV for municipal analysts and open data portals.
+- [x] **5.3. Support Person 4's City Dashboard (`[M12_DASHBOARD]`)**
+  - Provide ready-to-render hourly aggregation payloads for environmental charts (PM2.5, noise) and parking demand heatmaps via `GET /v1/m/dashboard/overview` and `GET /v1/core/analytics/heatmap`.
 
 ---
 

@@ -12,6 +12,12 @@ export const eventBus = {
     EVENT_LISTENERS.set(topic, existing);
   },
 
+  off(topic: string, handler: EventHandler) {
+    const existing = EVENT_LISTENERS.get(topic);
+    if (!existing) return;
+    EVENT_LISTENERS.set(topic, existing.filter((h) => h !== handler));
+  },
+
   async emit(topic: string, payload: Record<string, any>): Promise<CoreEvent> {
     const event: CoreEvent = {
       id: crypto.randomUUID(),

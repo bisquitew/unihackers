@@ -1,16 +1,17 @@
-FROM node:22-alpine
+FROM node:22-alpine AS runner
 
 WORKDIR /app
+
 ENV NODE_ENV=production
 ENV PORT=8000
 
-COPY package.json pnpm-workspace.yaml ./
-COPY packages/contracts ./packages/contracts
+# Copy root manifest and workspaces
+COPY package*.json ./
+COPY packages ./packages
 COPY services/api ./services/api
 
-# Link @hub/contracts
-RUN mkdir -p services/api/node_modules/@hub && \
-    ln -sf ../../../packages/contracts services/api/node_modules/@hub/contracts
+# Install production dependencies for API and contracts
+RUN npm install --omit=dev
 
 EXPOSE 8000
 

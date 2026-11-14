@@ -12,9 +12,19 @@ services:
       - NODE_ENV=production
       - AUTH0_DOMAIN=${AUTH0_DOMAIN:-timisoara-hub.eu.auth0.com}
       - AUTH0_AUDIENCE=${AUTH0_AUDIENCE:-https://api.timisoara-hub.ro}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@db:5432/timisoara_hub}
-    depends_on:
-      - db
+      - DATABASE_URL=${DATABASE_URL:-}
+      - VULTR_STORAGE_KEY=${VULTR_STORAGE_KEY:-}
+      - VULTR_STORAGE_SECRET=${VULTR_STORAGE_SECRET:-}
+      - VULTR_STORAGE_BUCKET=${VULTR_STORAGE_BUCKET:-timisoara-hub-media}
+      - VULTR_STORAGE_REGION=${VULTR_STORAGE_REGION:-fra1}
+    volumes:
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
 
   workers:
@@ -24,21 +34,12 @@ services:
     environment:
       - API_BASE_URL=http://api:8000
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - AUTH_TOKEN=dev_ai_agent
+      - INGESTION_INTERVAL_MS=600000
     depends_on:
-      - api
-    restart: unless-stopped
-
-  db:
-    image: timescale/timescaledb-ha:pg16
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=timisoara_hub
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    volumes:
-      - tiger_data:/home/postgres/pgdata/data
+      api:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:
-  tiger_data:
+  uploads_data:

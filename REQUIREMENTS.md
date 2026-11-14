@@ -299,7 +299,10 @@ All schemas are located under `db/` and executed via `scripts/migrate.sh`:
   - Automatically emits `outage.created` events and dispatches notifications.
 - **STPT Transit Roadworks Worker ([transitIngestion.ts](file:///home/bisquitew/UNIHACK2026/unihackers/services/workers/src/ingestion/transitIngestion.ts)):**
   - Monitors municipal roadworks and public transport diversions.
-  - Dispatches `transit.detour_updated` events.
+  - Dispatches `transit.detour_updated` events with Auth0 AI Agent M2M credentials.
+- **Environmental Sensor Ingestion Worker ([sensorIngestion.ts](file:///home/bisquitew/UNIHACK2026/unihackers/services/workers/src/ingestion/sensorIngestion.ts)):**
+  - Ingests mock pulses of real-time air quality (PM2.5), noise (dB), and odor readings into TimescaleDB `city_metric_events` hypertable.
+  - Feeds continuous aggregates (`city_metrics_hourly_stats`) automatically.
 
 ---
 
@@ -313,6 +316,9 @@ npm test
 
 # Auth0 Interactive Security & Step-Up MFA Judge Demonstration
 npm run demo:auth0
+
+# Netrom Glue Ingestion Engine Automated Verification
+npm run test:workers
 
 # Real Solana Devnet Verification (Live slot, blockhash, organizer balance, and broadcast ticket/POAP transactions)
 npm run test:solana

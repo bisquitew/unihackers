@@ -299,13 +299,46 @@ def main():
             sample_m = metrics[0]
             print(f"   🌿 Sample: {sample_m.get('bucket')} | Area: {sample_m.get('area_id')} -> Avg PM2.5: {sample_m.get('avg_value')} µg/m³")
 
-        # 11. Open Data Export
+        # 11. Open Data Export (JSON & CSV)
         status, open_data = get("/v1/core/open-data/export")
         print(f"✅ /v1/core/open-data/export -> '{open_data.get('title')}' ({open_data.get('license')})")
         print(f"   🏛️ Published datasets: {list(open_data.get('data', {}).keys())}")
 
+        req_csv = urllib.request.Request(f"{BASE_URL}/v1/core/open-data/export?format=csv")
+        with urllib.request.urlopen(req_csv) as resp_csv:
+            csv_content = resp_csv.read().decode('utf-8')
+            csv_lines = [l for l in csv_content.splitlines() if l.strip()]
+            print(f"✅ /v1/core/open-data/export?format=csv -> HTTP {resp_csv.status} ({len(csv_lines)} rows including headers)")
+            if csv_lines:
+                print(f"   📊 CSV Header: {csv_lines[0]}")
+
+        # 12. Parkie SSE Live Stream Check
+        req_sse = urllib.request.Request(f"{BASE_URL}/v1/m/parkie/stream")
+        with urllib.request.urlopen(req_sse, timeout=3) as resp_sse:
+            content_type = resp_sse.headers.get("Content-Type", "")
+            chunk = resp_sse.readline().decode('utf-8') + resp_sse.readline().decode('utf-8')
+            print(f"✅ /v1/m/parkie/stream -> SSE Stream open (Content-Type: {content_type})")
+            print(f"   📡 Initial Event Preview: {chunk.strip()[:60]}...")
+
+        # 13. [M12_DASHBOARD] City Officials Overview & Heatmap Analytics
+        print("\n" + "=" * 60)
+        print("🏛️ TESTING M12 OFFICIALS DASHBOARD & SPATIAL ANALYTICS")
         print("=" * 60)
-        print("🎉 ALL P2 CORE SYSTEMS & TIGER DATA SPONSOR SUITE VERIFIED 100%!")
+        status, overview = get("/v1/m/dashboard/overview")
+        print(f"✅ /v1/m/dashboard/overview -> City: {overview.get('city')}")
+        kpis = overview.get('kpis', {})
+        parking_kpis = kpis.get('parking', {})
+        env_kpis = kpis.get('environment', {})
+        print(f"   🅿️ Parking Occupancy: {parking_kpis.get('occupancy_rate_pct')}% across {parking_kpis.get('total_lots')} lots ({parking_kpis.get('total_available_spots')} spots free)")
+        print(f"   🌿 Environmental Status: PM2.5 = {env_kpis.get('air_quality_avg_pm25')} µg/m³ ({env_kpis.get('air_quality_status')}) | Noise = {env_kpis.get('avg_noise_db')} dB")
+
+        status, heatmap = get("/v1/core/analytics/heatmap")
+        parking_pts = heatmap.get('parking_heatpoints', [])
+        env_pts = heatmap.get('environmental_heatpoints', [])
+        print(f"✅ /v1/core/analytics/heatmap -> {len(parking_pts)} parking heatpoints + {len(env_pts)} environmental heatpoints")
+
+        print("=" * 60)
+        print("🎉 ALL P2 CORE SYSTEMS, SSE & TIGER DATA SPONSOR SUITE VERIFIED 100%!")
         print("=" * 60)
     finally:
         if server_proc:
