@@ -1,3 +1,6 @@
+import type { MapLayer } from '@hub/map';
+import { eventsMapLayer } from './mapLayer';
+
 export interface ModuleManifest {
   id: string;
   title: string;
@@ -5,6 +8,8 @@ export interface ModuleManifest {
   status: 'draft' | 'beta' | 'live';
   icon: string;
   entryRoute: string;
+  /** Pins this module adds to the Map tab. */
+  mapLayer?: () => MapLayer;
 }
 
 export const manifest: ModuleManifest = {
@@ -14,4 +19,5 @@ export const manifest: ModuleManifest = {
   status: 'live',
   icon: 'calendar',
   entryRoute: '/m/events',
+  mapLayer: eventsMapLayer,
 };

@@ -1,650 +1,403 @@
-import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  Linking,
-} from 'react-native';
-import { MintedTicketResult, PoapResult } from '@hub/solana';
-import { TicketBadge } from './TicketBadge';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { useRouter } from 'expo-router';
+import type { MintedTicketResult, PoapResult } from '@hub/solana';
+import { Chip, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons } from '@hub/ui';
+import { ModulePage } from '../../core/ModulePage';
+import { WhenBlock } from '../../core/WhenBlock';
+import { eventsStore } from '../m01-events/eventsStore';
+import { QRCodeView } from './QRCodeView';
 import { ticketStore } from './ticketStore';
-import { TicketQRModal } from './TicketQRModal';
-import { ScannerModal } from './ScannerModal';
 
-export function WalletScreen() {
-  const [walletState, setWalletState] = useState(ticketStore.getState());
-  const [activeTab, setActiveTab] = useState<'tickets' | 'poap' | 'staff'>('tickets');
+type Section = 'tickets' | 'badges' | 'door';
+const SECTIONS: { id: Section; label: string }[] = [
+  { id: 'tickets', label: 'Tickets' },
+  { id: 'badges', label: 'Badges' },
+  { id: 'door', label: 'Door check-in' },
+];
+const FAUCET = 'https://faucet.solana.com';
 
-  // Modal states
-  const [qrModalTicket, setQrModalTicket] = useState<MintedTicketResult | null>(null);
-  const [scanModalTicket, setScanModalTicket] = useState<MintedTicketResult | null>(null);
+const short = (s: string, head = 8, tail = 6) => (s.length > head + tail + 3 ? `${s.slice(0, head)}...${s.slice(-tail)}` : s);
+const openUrl = (url: string) => {
+  if (typeof window !== 'undefined' && typeof window.open === 'function') window.open(url, '_blank');
+  else void Linking.openURL(url);
+};
+const copyText = async (text: string) => {
+  try {
+    await (navigator as any).clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+};
+const canCopy = typeof navigator !== 'undefined' && !!(navigator as any).clipboard?.writeText;
 
-  useEffect(() => {
-    const unsubscribe = ticketStore.subscribe(() => {
-      setWalletState({ ...ticketStore.getState() });
-    });
-    return unsubscribe;
-  }, []);
+export function WalletScreen({ embedded, onOpenEvents }: { embedded?: boolean; onOpenEvents?: () => void }) {
+  const router = useRouter();
+  const { height: windowHeight } = useWindowDimensions();
+  const sheetMax = Math.round(windowHeight * 0.74);
 
-  const handleCopyWallet = () => {
-    if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
-      (navigator as any).clipboard.writeText(walletState.walletAddress);
-    }
-    Alert.alert(
-      'Wallet Address Copied 📋',
-      `Solana Devnet Public Key:\n\n${walletState.walletAddress}\n\nNetwork: Solana Devnet (Official Cluster)`
-    );
-  };
+  const [wallet, setWallet] = useState(ticketStore.getState());
+  useEffect(() => ticketStore.subscribe(() => setWallet({ ...ticketStore.getState() })), []);
+  const events = eventsStore.getEvents();
+  const whenOf = (eventId: string) => events.find((e) => e.id === eventId)?.dateTime;
 
-  const handleOpenFaucet = () => {
-    if (typeof window !== 'undefined' && window.open) {
-      window.open('https://faucet.solana.com', '_blank');
-    } else {
-      Linking.openURL('https://faucet.solana.com');
-    }
+  const [section, setSection] = useState<Section>('tickets');
+  const [ticket, setTicket] = useState<MintedTicketResult | null>(null);
+  const [badge, setBadge] = useState<PoapResult | null>(null);
+  const [scanning, setScanning] = useState<MintedTicketResult | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
-    if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
-      (navigator as any).clipboard.writeText(walletState.walletAddress).catch(() => {});
-    }
-
-    Alert.alert(
-      'Solana Devnet Faucet 🚰',
-      `Opening faucet.solana.com...\n\nYour wallet address was copied to clipboard:\n${walletState.walletAddress}\n\nPaste it into the faucet website and click Confirm Airdrop!\n(Note: Devnet faucet limits to 2 requests per 8 hours. 1 request gives 1 SOL, which covers ~200,000 transactions!)`
-    );
-  };
-
-  const handleSimulateScan = (ticket: MintedTicketResult) => {
-    setScanModalTicket(ticket);
-  };
-
-  const activeTickets = walletState.tickets.filter((t) => !t.isCheckedIn);
-  const checkedInTickets = walletState.tickets.filter((t) => t.isCheckedIn);
+  const pending = wallet.tickets.filter((t) => !t.isCheckedIn);
+  const used = wallet.tickets.filter((t) => t.isCheckedIn);
+  const browseEvents = () => (onOpenEvents ? onOpenEvents() : router.push('/m/events' as any));
 
   return (
-    <View style={styles.container}>
-      {/* Solana Wallet Header Card */}
-      <View style={styles.walletHeaderCard}>
-        <View style={styles.walletTopRow}>
-          <View style={styles.solBadge}>
-            <Text style={styles.solBadgeIcon}>◎</Text>
-            <Text style={styles.solBadgeText}>SOLANA DEVNET</Text>
-          </View>
-          <View style={styles.networkStatus}>
-            <View style={styles.greenDot} />
-            <Text style={styles.networkText}>Online</Text>
-          </View>
-        </View>
+    <ModulePage title="Wallet" embedded={embedded}>
+      <View style={styles.head}>
+        <Text variant="rowDetail" color="mutedForeground" style={{ flex: 1 }}>
+          {wallet.tickets.length} {wallet.tickets.length === 1 ? 'ticket' : 'tickets'}, {wallet.poaps.length} {wallet.poaps.length === 1 ? 'badge' : 'badges'}
+        </Text>
+        <SecondaryButton label="Wallet details" size="md" onPress={() => setDetailsOpen(true)} />
+      </View>
 
-        <Text style={styles.walletLabel}>Timișoara Civic Hub Wallet</Text>
-        <TouchableOpacity style={styles.addressBox} onPress={handleCopyWallet}>
-          <Text style={styles.addressText} numberOfLines={1}>
-            {walletState.walletAddress}
-          </Text>
-          <Text style={styles.copyIcon}>📋</Text>
-        </TouchableOpacity>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={styles.chipsContent}>
+        {SECTIONS.map((s) => (
+          <Chip key={s.id} label={s.label} selected={section === s.id} onPress={() => setSection(s.id)} />
+        ))}
+      </ScrollView>
 
-        {/* Live Slot & Blockhash */}
-        <View style={styles.liveDevnetInfo}>
-          <Text style={styles.liveDevnetText}>
-            ⚡ Slot: {walletState.liveSlot ? `#${walletState.liveSlot}` : 'Connecting...'}
-          </Text>
-          {walletState.latestBlockhash ? (
-            <Text style={styles.liveDevnetText} numberOfLines={1}>
-              Hash: {walletState.latestBlockhash.slice(0, 16)}...
+      {/* tickets */}
+      {section === 'tickets' ? (
+        wallet.tickets.length === 0 ? (
+          <View style={styles.empty}>
+            <Text variant="subheading" accessibilityRole="header">
+              No tickets yet
             </Text>
-          ) : null}
-        </View>
-
-        {/* Balance & Stats Row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>On-Chain Balance</Text>
-            <Text style={styles.statValue}>{walletState.solBalance.toFixed(3)} SOL</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Tickets Minted</Text>
-            <Text style={styles.statValue}>{walletState.tickets.length}</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>POAP Badges</Text>
-            <Text style={styles.statValueGold}>{walletState.poaps.length}</Text>
-          </View>
-        </View>
-
-        {/* Faucet & Refresh Buttons Row */}
-        <View style={styles.faucetRow}>
-          <TouchableOpacity
-            style={styles.faucetBtn}
-            onPress={handleOpenFaucet}
-          >
-            <Text style={styles.faucetBtnText}>🚰 Request SOL from Faucet</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.refreshBtn}
-            onPress={async () => {
-              const res = await ticketStore.syncWithLiveDevnet();
-              Alert.alert(
-                'Synchronized with Solana Devnet 🟢',
-                `Current Slot: #${res.liveSlot}\nOn-Chain Balance: ${res.solBalance.toFixed(4)} SOL\nCluster: api.devnet.solana.com`
-              );
-            }}
-          >
-            <Text style={styles.refreshBtnText}>🔄 Refresh Balance</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Faucet Guidance Banner */}
-        {walletState.solBalance < 0.000005 ? (
-          <View style={styles.faucetBanner}>
-            <View style={styles.faucetBannerHeader}>
-              <Text style={styles.faucetBannerIcon}>🚰</Text>
-              <Text style={styles.faucetBannerTitle}>0 SOL Balance on Devnet</Text>
-            </View>
-            <Text style={styles.faucetBannerDesc}>
-              To broadcast real on-chain transactions to Solana Devnet:
+            <Text variant="body" color="mutedForeground" style={{ textAlign: 'center' }}>
+              Get a ticket from an event and it will show up here, ready to scan at the door.
             </Text>
-            <Text style={styles.faucetStep}>1. Open https://faucet.solana.com</Text>
-            <Text style={styles.faucetStep}>2. Paste your address (copied automatically)</Text>
-            <Text style={styles.faucetStep}>3. Click "Confirm Airdrop" (1 free Devnet SOL)</Text>
-            <View style={styles.faucetActionsRow}>
-              <TouchableOpacity
-                style={styles.faucetActionBtn}
-                onPress={handleOpenFaucet}
-              >
-                <Text style={styles.faucetActionBtnText}>🌐 Open Faucet</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.faucetCopyBtn} onPress={handleCopyWallet}>
-                <Text style={styles.faucetCopyBtnText}>📋 Copy Address</Text>
-              </TouchableOpacity>
-            </View>
+            <TextButton label="Browse events" size="md" onPress={browseEvents} />
           </View>
         ) : (
-          <View style={styles.fundedBanner}>
-            <Text style={styles.fundedBannerText}>
-              🟢 Wallet funded with {walletState.solBalance.toFixed(3)} SOL. Every ticket and check-in is broadcast live on Solana Devnet!
+          <RowGroup>
+            {wallet.tickets.map((t) => (
+              <Row key={t.ticketId} onPress={() => setTicket(t)} accessibilityLabel={`${t.eventTitle}, ${t.isCheckedIn ? 'used' : 'valid for entry'}. Show ticket`}>
+                <WhenBlock dateTime={whenOf(t.eventId)} />
+                <Row.Body>
+                  <Row.Title>{t.eventTitle}</Row.Title>
+                  <Row.Detail>{t.isCheckedIn ? 'Used at the door' : 'Valid for entry'}</Row.Detail>
+                </Row.Body>
+                <Row.Trailing>
+                  {t.isCheckedIn ? (
+                    <icons.CheckCircle size={22} weight="fill" color={colors.mutedForeground} />
+                  ) : (
+                    <icons.QrCode size={24} weight="bold" color={colors.foreground} />
+                  )}
+                </Row.Trailing>
+              </Row>
+            ))}
+          </RowGroup>
+        )
+      ) : null}
+
+      {/* badges */}
+      {section === 'badges' ? (
+        wallet.poaps.length === 0 ? (
+          <View style={styles.empty}>
+            <Text variant="subheading" accessibilityRole="header">
+              No badges yet
+            </Text>
+            <Text variant="body" color="mutedForeground" style={{ textAlign: 'center' }}>
+              You earn a badge when your ticket is scanned at the door. It proves you were there.
             </Text>
           </View>
-        )}
-      </View>
+        ) : (
+          <RowGroup>
+            {wallet.poaps.map((p) => {
+              const d = new Date(p.issuedAt);
+              return (
+                <Row key={p.poapId} onPress={() => setBadge(p)} accessibilityLabel={`${p.badgeName}, ${p.eventTitle}. Show badge`}>
+                  <Row.Date day={d.toLocaleDateString('en-GB', { month: 'short' })} date={String(d.getDate())} />
+                  <Row.Body>
+                    <Row.Title>{p.badgeName}</Row.Title>
+                    <Row.Detail>{p.eventTitle}</Row.Detail>
+                  </Row.Body>
+                </Row>
+              );
+            })}
+          </RowGroup>
+        )
+      ) : null}
 
-      {/* Navigation Filter Tabs */}
-      <View style={styles.tabsRow}>
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'tickets' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('tickets')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'tickets' && styles.tabBtnTextActive]}>
-            🎟️ Tickets ({walletState.tickets.length})
+      {/* door check-in (for hosts) */}
+      {section === 'door' ? (
+        <View>
+          <Text variant="body" color="mutedForeground" style={styles.note}>
+            For event hosts: scan a guest's ticket at the door to let them in and give them an attendance badge. This is a demo with the tickets in this wallet.
           </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'poap' && styles.tabBtnActive]}
-          onPress={() => setActiveTab('poap')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'poap' && styles.tabBtnTextActive]}>
-            🏅 POAP Badges ({walletState.poaps.length})
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tabBtn, activeTab === 'staff' && styles.tabBtnStaffActive]}
-          onPress={() => setActiveTab('staff')}
-        >
-          <Text style={[styles.tabBtnText, activeTab === 'staff' && styles.tabBtnTextStaffActive]}>
-            ⚡ Staff Scanner
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* TAB 1: TICKETS */}
-      {activeTab === 'tickets' && (
-        <ScrollView style={styles.content}>
-          <Text style={styles.sectionTitle}>Active Cultural Tickets</Text>
-          {walletState.tickets.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyIcon}>🎟️</Text>
-              <Text style={styles.emptyTitle}>No tickets minted yet</Text>
-              <Text style={styles.emptySub}>
-                Head to Cultural Events and tap "RSVP" to mint a verified ticket on Solana Devnet!
+          {pending.length === 0 ? (
+            <View style={styles.empty}>
+              <Text variant="subheading" accessibilityRole="header">
+                Everyone is checked in
+              </Text>
+              <Text variant="body" color="mutedForeground" style={{ textAlign: 'center' }}>
+                Get a ticket for another event to try the scan again.
               </Text>
             </View>
           ) : (
-            walletState.tickets.map((t) => (
-              <TicketBadge
-                key={t.ticketId}
-                ticketId={t.ticketId}
-                eventTitle={t.eventTitle}
-                txSignature={t.txSignature}
-                explorerUrl={t.explorerUrl}
-                isCheckedIn={t.isCheckedIn}
-                onShowQR={() => setQrModalTicket(t)}
-                onCheckIn={() => setScanModalTicket(t)}
-              />
-            ))
-          )}
-        </ScrollView>
-      )}
-
-      {/* TAB 2: POAP BADGES */}
-      {activeTab === 'poap' && (
-        <ScrollView style={styles.content}>
-          <Text style={styles.sectionTitle}>Proof of Attendance Badges (POAP)</Text>
-          <Text style={styles.poapInfoSub}>
-            On-chain badges minted on Solana Devnet proving your verified physical attendance at Timișoara cultural events.
-          </Text>
-
-          {walletState.poaps.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyIcon}>🏅</Text>
-              <Text style={styles.emptyTitle}>No POAP badges yet</Text>
-              <Text style={styles.emptySub}>
-                When your ticket QR is scanned at the venue door, your POAP badge is instantly minted on-chain!
-              </Text>
-            </View>
-          ) : (
-            walletState.poaps.map((p) => (
-              <View key={p.poapId} style={styles.poapCard}>
-                <View style={styles.poapHeaderRow}>
-                  <Text style={styles.poapBadgePill}>🏅 VERIFIED ATTENDANCE</Text>
-                  <Text style={styles.poapDate}>
-                    {new Date(p.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </Text>
-                </View>
-
-                <Text style={styles.poapBadgeTitle}>{p.badgeName}</Text>
-                <Text style={styles.poapEventSub}>Event: {p.eventTitle}</Text>
-
-                <View style={styles.poapTxBox}>
-                  <Text style={styles.poapTxLabel}>Solana Transaction Signature:</Text>
-                  <Text style={styles.poapTxText} numberOfLines={2}>
-                    {p.txSignature}
-                  </Text>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.poapExplorerBtn}
-                  onPress={() => Linking.openURL(p.explorerUrl)}
-                >
-                  <Text style={styles.poapExplorerBtnText}>
-                    🔍 Verify on Solana Explorer (Devnet) →
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
-        </ScrollView>
-      )}
-
-      {/* TAB 3: STAFF SCANNER DEMO */}
-      {activeTab === 'staff' && (
-        <ScrollView style={styles.content}>
-          <View style={styles.staffHeaderBanner}>
-            <Text style={styles.staffBannerTitle}>📱 Venue Door Scanner Console (Staff Demo)</Text>
-            <Text style={styles.staffBannerSub}>
-              Simulates the venue check-in QR scanner used by event hosts (Faber, Scârț, D’arc). Verifies cryptographic ticket signatures on Solana Devnet and mints POAP badges in real time.
-            </Text>
-          </View>
-
-          <Text style={styles.sectionTitle}>Tickets pending door verification ({activeTickets.length})</Text>
-
-          {activeTickets.length === 0 ? (
-            <View style={styles.emptyBox}>
-              <Text style={styles.emptyIcon}>✨</Text>
-              <Text style={styles.emptyTitle}>All tickets validated!</Text>
-              <Text style={styles.emptySub}>
-                No pending tickets in wallet. To test again, RSVP to another event in Cultural Events.
-              </Text>
-            </View>
-          ) : (
-            activeTickets.map((t) => (
-              <View key={t.ticketId} style={styles.staffTicketCard}>
-                <View style={styles.staffTicketInfo}>
-                  <Text style={styles.staffTicketTitle}>{t.eventTitle}</Text>
-                  <Text style={styles.staffTicketAttendee}>Attendee: {t.attendeeName}</Text>
-                  <Text style={styles.staffTicketId}>ID: {t.ticketId}</Text>
-                </View>
-
-                <TouchableOpacity
-                  style={styles.staffScanBtn}
-                  onPress={() => handleSimulateScan(t)}
-                >
-                  <Text style={styles.staffScanBtnText}>⚡ Scan & Mint POAP</Text>
-                </TouchableOpacity>
-              </View>
-            ))
-          )}
-
-          {checkedInTickets.length > 0 && (
-            <>
-              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Already validated tickets ({checkedInTickets.length})</Text>
-              {checkedInTickets.map((t) => (
-                <View key={t.ticketId} style={styles.staffValidatedCard}>
-                  <Text style={styles.staffValidatedTitle}>{t.eventTitle}</Text>
-                  <Text style={styles.staffValidatedStatus}>✓ Checked in at door • POAP Minted</Text>
-                </View>
+            <RowGroup>
+              {pending.map((t) => (
+                <Row key={t.ticketId}>
+                  <Row.Body>
+                    <Row.Title>{t.eventTitle}</Row.Title>
+                    <Row.Detail>{t.attendeeName}</Row.Detail>
+                  </Row.Body>
+                  <Row.Trailing>
+                    <SecondaryButton label="Scan" size="md" onPress={() => setScanning(t)} />
+                  </Row.Trailing>
+                </Row>
               ))}
-            </>
+            </RowGroup>
           )}
+          {used.length > 0 ? (
+            <>
+              <Text variant="section" accessibilityRole="header" style={{ marginTop: 26, paddingHorizontal: 4 }}>
+                Already checked in
+              </Text>
+              <RowGroup>
+                {used.map((t) => (
+                  <Row key={t.ticketId}>
+                    <Row.Body>
+                      <Row.Title>{t.eventTitle}</Row.Title>
+                      <Row.Detail>Checked in, badge given</Row.Detail>
+                    </Row.Body>
+                  </Row>
+                ))}
+              </RowGroup>
+            </>
+          ) : null}
+        </View>
+      ) : null}
+
+      {/* one ticket */}
+      <Sheet modal visible={!!ticket} onClose={() => setTicket(null)} accessibilityLabel="Ticket">
+        {ticket ? <TicketSheet ticket={ticket} maxHeight={sheetMax} onScan={() => { setScanning(ticket); setTicket(null); }} /> : null}
+      </Sheet>
+
+      {/* one badge */}
+      <Sheet modal visible={!!badge} onClose={() => setBadge(null)} accessibilityLabel="Badge">
+        {badge ? <BadgeSheet badge={badge} maxHeight={sheetMax} /> : null}
+      </Sheet>
+
+      {/* door scan */}
+      <Sheet modal visible={!!scanning} onClose={() => setScanning(null)} accessibilityLabel="Door check-in">
+        {scanning ? <DoorScan key={scanning.ticketId} ticket={scanning} onDone={() => setScanning(null)} /> : null}
+      </Sheet>
+
+      {/* the technical side, for anyone who wants it */}
+      <Sheet modal visible={detailsOpen} onClose={() => setDetailsOpen(false)} accessibilityLabel="Wallet details">
+        <ScrollView style={{ maxHeight: sheetMax }} contentContainerStyle={{ gap: 12 }} showsVerticalScrollIndicator={false}>
+          <WalletDetails wallet={wallet} />
         </ScrollView>
-      )}
+      </Sheet>
+    </ModulePage>
+  );
+}
 
-      {/* Ticket QR Modal */}
-      <TicketQRModal
-        visible={!!qrModalTicket}
-        ticket={qrModalTicket}
-        onClose={() => setQrModalTicket(null)}
-        onSimulateScan={(t) => handleSimulateScan(t)}
-      />
+function Facts({ rows }: { rows: { label: string; value: string; mono?: boolean }[] }) {
+  return (
+    <RowGroup>
+      {rows.map((r) => (
+        <View key={r.label} style={styles.fact}>
+          <Text variant="caption" color="mutedForeground">
+            {r.label}
+          </Text>
+          <Text variant="rowDetail" color="foreground" selectable style={r.mono ? styles.mono : undefined}>
+            {r.value}
+          </Text>
+        </View>
+      ))}
+    </RowGroup>
+  );
+}
 
-      {/* Scanner Simulator Modal */}
-      <ScannerModal
-        visible={!!scanModalTicket}
-        ticket={scanModalTicket}
-        onClose={() => setScanModalTicket(null)}
-        onSuccess={(poap) => {
-          Alert.alert(
-            '🏅 POAP Minted Successfully!',
-            `Received on-chain attendance badge:\n"${poap.badgeName}"\n\nVerified on Solana Devnet!`
-          );
-        }}
-      />
+function TicketSheet({ ticket, maxHeight, onScan }: { ticket: MintedTicketResult; maxHeight: number; onScan: () => void }) {
+  const [technical, setTechnical] = useState(false);
+  return (
+    <ScrollView style={{ maxHeight }} contentContainerStyle={{ gap: 14 }} showsVerticalScrollIndicator={false}>
+      <View>
+        <Text variant="heading" accessibilityRole="header">
+          {ticket.eventTitle}
+        </Text>
+        <Text variant="body" color={ticket.isCheckedIn ? 'mutedForeground' : 'success'}>
+          {ticket.isCheckedIn ? 'Used at the door' : 'Valid for entry. Show this code at the door.'}
+        </Text>
+      </View>
+      <QRCodeView value={ticket.qrPayload} size={220} />
+      <Text variant="rowDetail" color="mutedForeground" style={{ textAlign: 'center' }}>
+        {ticket.attendeeName}
+      </Text>
+      {!ticket.isCheckedIn ? <SecondaryButton label="Try the door scan" size="lg" onPress={onScan} accessibilityHint="A demo of what the host does at the door" /> : null}
+      <TextButton label={technical ? 'Hide technical details' : 'Show technical details'} size="md" onPress={() => setTechnical(!technical)} />
+      {technical ? (
+        <View style={{ gap: 8 }}>
+          <Facts
+            rows={[
+              { label: 'Ticket ID', value: ticket.ticketId, mono: true },
+              { label: 'Owner wallet', value: short(ticket.ownerWallet, 10, 8), mono: true },
+              { label: 'Transaction on Solana devnet', value: ticket.txSignature, mono: true },
+            ]}
+          />
+          <TextButton label="View on Solana Explorer" size="md" onPress={() => openUrl(ticket.explorerUrl)} />
+        </View>
+      ) : null}
+    </ScrollView>
+  );
+}
+
+function BadgeSheet({ badge, maxHeight }: { badge: PoapResult; maxHeight: number }) {
+  return (
+    <ScrollView style={{ maxHeight }} contentContainerStyle={{ gap: 12 }} showsVerticalScrollIndicator={false}>
+      <icons.CheckCircle size={40} weight="fill" color={colors.success} />
+      <Text variant="heading" accessibilityRole="header">
+        {badge.badgeName}
+      </Text>
+      <Text variant="body" color="mutedForeground">
+        You were at {badge.eventTitle} on {new Date(badge.issuedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}.
+      </Text>
+      <Facts rows={[{ label: 'Transaction on Solana devnet', value: badge.txSignature, mono: true }]} />
+      <TextButton label="View on Solana Explorer" size="md" onPress={() => openUrl(badge.explorerUrl)} />
+    </ScrollView>
+  );
+}
+
+/** The host's door scan, simulated step by step: scan, check the ticket is genuine, hand out the badge. */
+function DoorScan({ ticket, onDone }: { ticket: MintedTicketResult; onDone: () => void }) {
+  const [step, setStep] = useState(0);
+  const [badge, setBadge] = useState<PoapResult | null>(null);
+  const [error, setError] = useState<string | null>(ticket.isCheckedIn ? 'This ticket was already used.' : null);
+
+  useEffect(() => {
+    if (ticket.isCheckedIn) return;
+    let alive = true;
+    (async () => {
+      setStep(1);
+      await new Promise((r) => setTimeout(r, 700));
+      if (!alive) return;
+      setStep(2);
+      await new Promise((r) => setTimeout(r, 800));
+      if (!alive) return;
+      setStep(3);
+      const res = await ticketStore.checkInTicket(ticket.ticketId);
+      if (!alive) return;
+      if (res.success && res.poap) {
+        setBadge(res.poap);
+        setStep(4);
+      } else setError(res.error || 'We could not check this ticket. Try again.');
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [ticket]);
+
+  const label = step === 1 ? 'Scanning the ticket' : step === 2 ? 'Checking the ticket is genuine' : 'Giving the attendance badge';
+
+  if (error)
+    return (
+      <View style={{ gap: 12 }}>
+        <icons.WarningCircle size={40} weight="fill" color={colors.warning} />
+        <Text variant="heading" accessibilityRole="header">
+          Not let in
+        </Text>
+        <Text variant="body" color="mutedForeground">
+          {error}
+        </Text>
+        <PrimaryButton label="Done" size="lg" onPress={onDone} />
+      </View>
+    );
+  if (step === 4 && badge)
+    return (
+      <View style={{ gap: 12 }}>
+        <icons.CheckCircle size={40} weight="fill" color={colors.success} />
+        <Text variant="heading" accessibilityRole="header">
+          Welcome in
+        </Text>
+        <Text variant="body" color="mutedForeground">
+          {ticket.attendeeName} is checked in and earned the badge "{badge.badgeName}".
+        </Text>
+        <PrimaryButton label="Done" size="lg" onPress={onDone} />
+      </View>
+    );
+  return (
+    <View style={{ gap: 12, alignItems: 'center', paddingVertical: 16 }}>
+      <ActivityIndicator color={colors.foreground} />
+      <Text variant="subheading" accessibilityRole="header" accessibilityLiveRegion="polite">
+        {label}
+      </Text>
+      <Text variant="rowDetail" color="mutedForeground">
+        {ticket.eventTitle}
+      </Text>
     </View>
   );
 }
 
+function WalletDetails({ wallet }: { wallet: ReturnType<typeof ticketStore.getState> }) {
+  const [copied, setCopied] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [synced, setSynced] = useState<string | null>(null);
+  const copy = async () => {
+    if (await copyText(wallet.walletAddress)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+  const refresh = async () => {
+    setBusy(true);
+    try {
+      const res = await ticketStore.syncWithLiveDevnet();
+      setSynced(`Updated. Balance ${res.solBalance.toFixed(3)} SOL.`);
+    } catch {
+      setSynced('Could not reach the network. Try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Text variant="heading" accessibilityRole="header">
+        Wallet details
+      </Text>
+      <Text variant="body" color="mutedForeground">
+        Your tickets and badges are recorded on Solana devnet, a practice network. The coins here are free test coins with no real value.
+      </Text>
+      <Facts
+        rows={[
+          { label: 'Balance', value: `${wallet.solBalance.toFixed(3)} SOL (test coins)` },
+          { label: 'Address', value: wallet.walletAddress, mono: true },
+          { label: 'Network position', value: wallet.liveSlot ? `Slot #${wallet.liveSlot}` : 'Connecting' },
+        ]}
+      />
+      <View style={{ gap: 8 }}>
+        {canCopy ? <SecondaryButton label={copied ? 'Copied' : 'Copy address'} size="lg" onPress={copy} /> : null}
+        <SecondaryButton label="Refresh balance" size="lg" loading={busy} onPress={refresh} />
+        {synced ? (
+          <Text variant="rowDetail" color="mutedForeground" style={{ textAlign: 'center' }} accessibilityLiveRegion="polite">
+            {synced}
+          </Text>
+        ) : null}
+        {wallet.solBalance < 0.01 ? <TextButton label="Get free test coins" size="lg" onPress={() => openUrl(FAUCET)} accessibilityHint="Opens the Solana devnet faucet" /> : null}
+      </View>
+    </>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b' },
-
-  // Wallet Header
-  walletHeaderCard: {
-    backgroundColor: '#12101e',
-    borderColor: '#4338ca',
-    borderWidth: 1,
-    borderRadius: 16,
-    margin: 16,
-    padding: 18,
-    shadowColor: '#6366f1',
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-  },
-  walletTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  solBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#312e81',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-  },
-  solBadgeIcon: { color: '#818cf8', fontSize: 13, fontWeight: '900' },
-  solBadgeText: { color: '#c7d2fe', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  networkStatus: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  greenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#4ade80' },
-  networkText: { color: '#a1a1aa', fontSize: 11, fontWeight: '600' },
-
-  walletLabel: { color: '#a5b4fc', fontSize: 11, fontWeight: 'bold', marginTop: 12 },
-  addressBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#0c0a17',
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    marginTop: 4,
-    borderWidth: 1,
-    borderColor: '#312e81',
-  },
-  addressText: { color: '#e0e7ff', fontSize: 12, fontFamily: 'monospace' },
-  copyIcon: { fontSize: 12 },
-
-  liveDevnetInfo: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    backgroundColor: '#0c0a17',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
-    borderRadius: 6,
-    marginTop: 6,
-    borderWidth: 1,
-    borderColor: '#1e1b4b',
-  },
-  liveDevnetText: { color: '#a5b4fc', fontSize: 10, fontFamily: 'monospace' },
-
-  faucetRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 12,
-  },
-  faucetBtn: {
-    flex: 1,
-    backgroundColor: '#3b0764',
-    borderColor: '#7e22ce',
-    borderWidth: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  faucetBtnText: { color: '#f3e8ff', fontSize: 11, fontWeight: '700' },
-  refreshBtn: {
-    flex: 1,
-    backgroundColor: '#1e1b4b',
-    borderColor: '#4338ca',
-    borderWidth: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  refreshBtnText: { color: '#c7d2fe', fontSize: 11, fontWeight: '700' },
-
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 14,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#1e1b4b',
-  },
-  statItem: { alignItems: 'center', flex: 1 },
-  statLabel: { color: '#94a3b8', fontSize: 10, fontWeight: '600' },
-  statValue: { color: '#ffffff', fontSize: 15, fontWeight: 'bold', marginTop: 2 },
-  statValueGold: { color: '#facc15', fontSize: 15, fontWeight: 'bold', marginTop: 2 },
-  statDivider: { width: 1, height: 24, backgroundColor: '#1e1b4b' },
-
-  // Tabs
-  tabsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 8,
-    gap: 6,
-  },
-  tabBtn: {
-    flex: 1,
-    backgroundColor: '#18181b',
-    paddingVertical: 8,
-    borderRadius: 10,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  tabBtnActive: { backgroundColor: '#312e81', borderColor: '#6366f1' },
-  tabBtnStaffActive: { backgroundColor: '#451a03', borderColor: '#b45309' },
-  tabBtnText: { color: '#a1a1aa', fontSize: 11, fontWeight: '600' },
-  tabBtnTextActive: { color: '#ffffff', fontWeight: 'bold' },
-  tabBtnTextStaffActive: { color: '#fef08a', fontWeight: 'bold' },
-
-  content: { flex: 1, paddingHorizontal: 16 },
-  sectionTitle: { color: '#ffffff', fontSize: 15, fontWeight: 'bold', marginBottom: 8, marginTop: 4 },
-
-  // Empty State
-  emptyBox: {
-    backgroundColor: '#18181b',
-    borderRadius: 14,
-    padding: 24,
-    alignItems: 'center',
-    marginTop: 14,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  emptyIcon: { fontSize: 36, marginBottom: 8 },
-  emptyTitle: { color: '#ffffff', fontSize: 15, fontWeight: 'bold' },
-  emptySub: { color: '#a1a1aa', fontSize: 12, textAlign: 'center', marginTop: 4, lineHeight: 16 },
-
-  // POAP Card
-  poapInfoSub: { color: '#a1a1aa', fontSize: 11, marginBottom: 12, lineHeight: 15 },
-  poapCard: {
-    backgroundColor: '#1c1917',
-    borderColor: '#78350f',
-    borderWidth: 1.5,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-  },
-  poapHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  poapBadgePill: {
-    backgroundColor: '#451a03',
-    color: '#facc15',
-    fontSize: 9,
-    fontWeight: '800',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  poapDate: { color: '#78716c', fontSize: 10 },
-  poapBadgeTitle: { color: '#fde68a', fontSize: 14, fontWeight: 'bold', marginTop: 8 },
-  poapEventSub: { color: '#d6d3d1', fontSize: 12, marginTop: 2 },
-  poapTxBox: {
-    backgroundColor: '#0c0a09',
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#292524',
-  },
-  poapTxLabel: { color: '#78716c', fontSize: 9, fontWeight: '600' },
-  poapTxText: { color: '#facc15', fontSize: 10, fontFamily: 'monospace', marginTop: 2 },
-  poapExplorerBtn: {
-    backgroundColor: '#451a03',
-    borderColor: '#92400e',
-    borderWidth: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  poapExplorerBtnText: { color: '#fde68a', fontSize: 11, fontWeight: 'bold' },
-
-  // Staff Console
-  staffHeaderBanner: {
-    backgroundColor: '#2e1065',
-    borderColor: '#7e22ce',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-  },
-  staffBannerTitle: { color: '#f3e8ff', fontSize: 13, fontWeight: 'bold' },
-  staffBannerSub: { color: '#e9d5ff', fontSize: 11, marginTop: 4, lineHeight: 15 },
-  staffTicketCard: {
-    backgroundColor: '#18181b',
-    borderColor: '#27272a',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  staffTicketInfo: { flex: 1, marginRight: 10 },
-  staffTicketTitle: { color: '#ffffff', fontSize: 13, fontWeight: 'bold' },
-  staffTicketAttendee: { color: '#c084fc', fontSize: 11, marginTop: 2 },
-  staffTicketId: { color: '#71717a', fontSize: 10, marginTop: 2, fontFamily: 'monospace' },
-  staffScanBtn: {
-    backgroundColor: '#16a34a',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  staffScanBtnText: { color: '#ffffff', fontSize: 11, fontWeight: 'bold' },
-
-  staffValidatedCard: {
-    backgroundColor: '#141416',
-    borderColor: '#27272a',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  staffValidatedTitle: { color: '#a1a1aa', fontSize: 12 },
-  staffValidatedStatus: { color: '#4ade80', fontSize: 10, fontWeight: 'bold' },
-
-  // Faucet Warning / Funded Banners
-  faucetBanner: {
-    backgroundColor: '#451a03',
-    borderColor: '#d97706',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 14,
-  },
-  faucetBannerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  faucetBannerIcon: { fontSize: 14, marginRight: 6 },
-  faucetBannerTitle: { color: '#fbbf24', fontSize: 12, fontWeight: 'bold' },
-  faucetBannerDesc: { color: '#fef3c7', fontSize: 11, marginBottom: 6, lineHeight: 15 },
-  faucetStep: { color: '#fde68a', fontSize: 10, marginLeft: 4, marginBottom: 2 },
-  faucetActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-  },
-  faucetActionBtn: {
-    flex: 1,
-    backgroundColor: '#d97706',
-    paddingVertical: 7,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  faucetActionBtnText: { color: '#000000', fontSize: 11, fontWeight: 'bold' },
-  faucetCopyBtn: {
-    flex: 1,
-    backgroundColor: '#78350f',
-    borderColor: '#b45309',
-    borderWidth: 1,
-    paddingVertical: 7,
-    borderRadius: 6,
-    alignItems: 'center',
-  },
-  faucetCopyBtnText: { color: '#fde68a', fontSize: 11, fontWeight: 'bold' },
-
-  fundedBanner: {
-    backgroundColor: '#052e16',
-    borderColor: '#16a34a',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 10,
-    marginTop: 12,
-  },
-  fundedBannerText: { color: '#4ade80', fontSize: 11, fontWeight: '600', lineHeight: 15 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, paddingHorizontal: 4 },
+  chips: { marginTop: 14, marginHorizontal: -16, flexGrow: 0 },
+  chipsContent: { gap: 8, paddingHorizontal: 16, paddingBottom: 6 },
+  note: { marginTop: 12, paddingHorizontal: 4 },
+  empty: { alignItems: 'center', gap: 8, paddingVertical: 48, paddingHorizontal: 24 },
+  fact: { paddingVertical: 12, gap: 2 },
+  mono: { fontFamily: 'Courier', fontSize: 13, lineHeight: 18 },
 });

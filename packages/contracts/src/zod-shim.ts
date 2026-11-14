@@ -2,9 +2,13 @@
 
 let realZod: any = null;
 try {
+  // Synchronous safe require fallback without top-level await (fixes Expo Web / SSR bundling)
   // @ts-ignore
-  const zodModule = await import('zod');
-  realZod = zodModule.z || zodModule.default || zodModule;
+  const req = typeof require === 'function' ? require : null;
+  if (req) {
+    const zodModule = req('zod');
+    realZod = zodModule.z || zodModule.default || zodModule;
+  }
 } catch {
   // Fallback to lightweight shim
 }

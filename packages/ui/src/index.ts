@@ -15,3 +15,4 @@ export * from './AskBar';
 export * from './TabBar';
 export * from './illustrations';
 export * as icons from './icons';
+export * from './Segmented';

@@ -16,13 +16,20 @@
     "dev:web": "node apps/web/server.mjs",
     "dev:app:tunnel": "npm run start --prefix apps/app -- --tunnel ngrok",
     "dev:app:wifi": "npm run start --prefix apps/app -- --host 10.109.24.138",
+    "db:inspect": "node scripts/inspect-db.mjs",
+    "db:seed:users": "node scripts/seed-users.mjs",
+    "test:auth": "node scripts/test-e2e-auth.mjs",
+    "verify:all": "node scripts/verify-all.mjs",
     "test:solana": "node --experimental-strip-types scripts/test-solana-real.ts",
     "test:p2": "python3 scripts/test_p2.py",
     "test:workers": "python3 scripts/test_workers.py",
     "demo:auth0": "python3 scripts/demo_auth0.py",
     "start": "node --experimental-strip-types services/api/src/server.ts",
     "build": "npm run build --workspaces --if-present",
-    "test": "python3 scripts/test_p2.py"
+    "test": "python3 scripts/test_p2.py",
+    "check:deps": "node scripts/check-deps.mjs",
+    "postinstall": "node scripts/check-deps.mjs --warn",
+    "dev:app:tunnel:stable": "node scripts/dev-app-tunnel.mjs"
   },
   "keywords": [
     "timisoara",
@@ -31,6 +38,14 @@
   ],
   "author": "UniHackers Team",
   "license": "MIT",
+  "//": "dependencies below pin the one copy of the native app stack (Expo SDK 58) at the repo root. Shared packages (packages/ui, map) declare react-native as a peer; without these, npm hoisted stale Expo 51 / React Native 0.74 copies to the root and the app bundled two engines. Keep these ranges in step with apps/app/package.json.",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "^2.2.0",
+    "expo": "^58.0.25",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-native": "^0.88.1"
+  },
   "devDependencies": {
     "@expo/ngrok": "^4.1.3",
     "typescript": "^5.6.3"

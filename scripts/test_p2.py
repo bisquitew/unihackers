@@ -45,17 +45,11 @@ def ensure_server():
 
     print("ℹ️  Server not running. Auto-starting local instance for verification...")
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    node_bin = os.path.expanduser("~/.nvm/versions/node/v26.13.1/bin/node")
-    if not os.path.exists(node_bin):
-        node_bin = "node"
-
-    env = os.environ.copy()
-    env["PATH"] = f"{os.path.expanduser('~/.nvm/versions/node/v26.13.1/bin')}:{env.get('PATH', '')}"
-
+    node_bin = "node"
     server_proc = subprocess.Popen(
         [node_bin, "--experimental-strip-types", "services/api/src/server.ts"],
         cwd=root_dir,
-        env=env,
+        shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )

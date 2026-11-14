@@ -1,138 +1,55 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, StatusBar } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { WalletScreen } from '../../src/modules/m09-wallet/WalletScreen';
+import { Screen, Segmented, Text } from '@hub/ui';
 import { EventsScreen } from '../../src/modules/m01-events/EventsScreen';
-import { BuddyScreen } from '../../src/modules/m07-buddy/BuddyScreen';
 import { ForumScreen } from '../../src/modules/m08-forum/ForumScreen';
-import { BuddyModal } from '../../src/modules/m07-buddy/BuddyModal';
+import { BuddyScreen } from '../../src/modules/m07-buddy/BuddyScreen';
+import { WalletScreen } from '../../src/modules/m09-wallet/WalletScreen';
+import { WebAccessGate } from '../../src/core/WebAccessGate';
 
+type Section = 'events' | 'forum' | 'buddies' | 'wallet';
+const SECTIONS: { id: Section; label: string }[] = [
+  { id: 'events', label: 'Events' },
+  { id: 'forum', label: 'Forum' },
+  { id: 'buddies', label: 'Buddies' },
+  { id: 'wallet', label: 'Wallet' },
+];
+
+/**
+ * Community: the four social modules as sections of one white page. Each section is its own module's screen, rendered
+ * as bare content; the page, the title and the section switcher live here. Links in (from the map, from Home) pick the
+ * section with ?tab= and an event with ?event=.
+ */
 export default function CommunityTab() {
-  const params = useLocalSearchParams<{ tab?: string }>();
-  const [subTab, setSubTab] = useState<'events' | 'forum' | 'buddies' | 'wallet'>('events');
-  const [buddyModalData, setBuddyModalData] = useState<{ eventId: string; eventTitle: string } | null>(null);
-
-  useEffect(() => {
-    if (params.tab && ['events', 'forum', 'buddies', 'wallet'].includes(params.tab)) {
-      setSubTab(params.tab as any);
-    }
-  }, [params.tab]);
-
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
-      
-      {/* Top 4-Module Navigation Switcher */}
-      <View style={styles.header}>
-        <View style={styles.subTabBar}>
-          <TouchableOpacity
-            style={[styles.subTabItem, subTab === 'events' && styles.subTabItemActive]}
-            onPress={() => setSubTab('events')}
-          >
-            <Text style={[styles.subTabText, subTab === 'events' && styles.subTabTextActive]}>
-              🎭 Events
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.subTabItem, subTab === 'forum' && styles.subTabItemActive]}
-            onPress={() => setSubTab('forum')}
-          >
-            <Text style={[styles.subTabText, subTab === 'forum' && styles.subTabTextActive]}>
-              💬 Forum
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.subTabItem, subTab === 'buddies' && styles.subTabItemActive]}
-            onPress={() => setSubTab('buddies')}
-          >
-            <Text style={[styles.subTabText, subTab === 'buddies' && styles.subTabTextActive]}>
-              🤝 Buddies
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.subTabItem, subTab === 'wallet' && styles.subTabItemActive]}
-            onPress={() => setSubTab('wallet')}
-          >
-            <Text style={[styles.subTabText, subTab === 'wallet' && styles.subTabTextActive]}>
-              🎟️ Wallet
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Main Active Slice Content */}
-      <View style={styles.content}>
-        {subTab === 'events' && (
-          <EventsScreen
-            onSelectBuddyForEvent={(eventId, eventTitle) =>
-              setBuddyModalData({ eventId, eventTitle })
-            }
-          />
-        )}
-        {subTab === 'forum' && <ForumScreen />}
-        {subTab === 'buddies' && <BuddyScreen />}
-        {subTab === 'wallet' && <WalletScreen />}
-      </View>
-
-      {/* Quick Event Buddy Modal */}
-      {buddyModalData && (
-        <BuddyModal
-          visible={!!buddyModalData}
-          eventId={buddyModalData.eventId}
-          eventTitle={buddyModalData.eventTitle}
-          onClose={() => setBuddyModalData(null)}
-        />
-      )}
-    </SafeAreaView>
+    <WebAccessGate featureName="comunitatea, forumul civic și portofelul Solana">
+      <CommunityContent />
+    </WebAccessGate>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#09090b',
-  },
-  header: {
-    backgroundColor: '#09090b',
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#27272a',
-  },
-  subTabBar: {
-    flexDirection: 'row',
-    backgroundColor: '#18181b',
-    borderRadius: 12,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  subTabItem: {
-    flex: 1,
-    paddingVertical: 7,
-    alignItems: 'center',
-    borderRadius: 8,
-  },
-  subTabItemActive: {
-    backgroundColor: '#3b0764',
-    borderWidth: 1,
-    borderColor: '#7e22ce',
-  },
-  subTabText: {
-    color: '#a1a1aa',
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  subTabTextActive: {
-    color: '#f3e8ff',
-    fontWeight: '700',
-  },
-  content: {
-    flex: 1,
-    backgroundColor: '#09090b',
-  },
-});
+function CommunityContent() {
+  const params = useLocalSearchParams<{ tab?: string; event?: string }>();
+  const [section, setSection] = useState<Section>('events');
+
+  useEffect(() => {
+    if (params.tab && SECTIONS.some((s) => s.id === params.tab)) setSection(params.tab as Section);
+  }, [params.tab]);
+
+  return (
+    <Screen>
+      <Text variant="title" accessibilityRole="header" style={{ fontSize: 30, lineHeight: 34, paddingHorizontal: 4 }}>
+        Community
+      </Text>
+      <View style={{ marginTop: 14 }}>
+        <Segmented options={SECTIONS} value={section} onChange={setSection} accessibilityLabel="Community sections" />
+      </View>
+
+      {section === 'events' ? <EventsScreen embedded openEventId={params.event} onOpenWallet={() => setSection('wallet')} /> : null}
+      {section === 'forum' ? <ForumScreen embedded /> : null}
+      {section === 'buddies' ? <BuddyScreen embedded /> : null}
+      {section === 'wallet' ? <WalletScreen embedded onOpenEvents={() => setSection('events')} /> : null}
+    </Screen>
+  );
+}
