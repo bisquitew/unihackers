@@ -1,10 +1,11 @@
 import { GoogleGenAI } from '@google/genai';
 
-export enum FunctionCallingConfigMode {
-  AUTO = 'AUTO',
-  NONE = 'NONE',
-  ANY = 'ANY',
-}
+export const FunctionCallingConfigMode = {
+  AUTO: 'AUTO',
+  NONE: 'NONE',
+  ANY: 'ANY',
+} as const;
+export type FunctionCallingConfigMode = (typeof FunctionCallingConfigMode)[keyof typeof FunctionCallingConfigMode];
 type Content = any;
 type FunctionCall = any;
 type GenerateContentConfig = any;

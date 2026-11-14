@@ -1,11 +1,12 @@
-export enum Type {
-  STRING = 'STRING',
-  NUMBER = 'NUMBER',
-  INTEGER = 'INTEGER',
-  BOOLEAN = 'BOOLEAN',
-  ARRAY = 'ARRAY',
-  OBJECT = 'OBJECT',
-}
+export const Type = {
+  STRING: 'STRING',
+  NUMBER: 'NUMBER',
+  INTEGER: 'INTEGER',
+  BOOLEAN: 'BOOLEAN',
+  ARRAY: 'ARRAY',
+  OBJECT: 'OBJECT',
+} as const;
+export type Type = (typeof Type)[keyof typeof Type];
 export type FunctionDeclaration = any;
 export type Schema = any;
 import type { ApiModule } from '../../types.ts';

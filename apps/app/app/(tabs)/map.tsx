@@ -24,6 +24,7 @@ import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton,
 // The hue dot on a switched-on layer chip. Blue = getting around and city information, mint = people and services, ink = yours.
 const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500 };
 import { allMapLayers } from '../../src/core/map-layers';
+import { getMapLayersVersion, onMapLayersChanged } from '../../src/core/map-layers/changes';
 
 const TAB_BAR_BODY = 68; // height of the floating tab bar (see packages/ui/src/TabBar.tsx); it sits above the bottom safe area
 const PLACE_BAR_H = 140; // the "Choose the spot" bar, shown while the user places a pin
@@ -40,7 +41,9 @@ export default function MapScreen() {
   /* ---------- data: the user's pins, the community's, and layers contributed by modules ---------- */
   const mine = usePersonalPins();
   const community = useCommunityPins();
-  const moduleLayers = React.useMemo(() => allMapLayers(), []);
+  // Re-collect module layers when a module says its pins changed (e.g. fetched after this tab mounted).
+  const layersVersion = React.useSyncExternalStore(onMapLayersChanged, getMapLayersVersion, getMapLayersVersion);
+  const moduleLayers = React.useMemo(() => allMapLayers(), [layersVersion]);
   const layers: MapLayer[] = React.useMemo(
     () => [
       { id: 'mine', title: 'Your pins', pins: mine.pins, defaultVisible: true },

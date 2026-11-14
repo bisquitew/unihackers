@@ -7,8 +7,8 @@ import type {
   ModuleVotes,
   RatingStats,
   SurveyPayload,
-} from './types';
-import { seedChangelog, seedFeedback } from './seed';
+} from './types.ts';
+import { seedChangelog, seedFeedback } from './seed.ts';
 
 const newId = () => `fb-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
 

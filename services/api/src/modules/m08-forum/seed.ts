@@ -1,4 +1,4 @@
-import { ForumPost } from './types';
+import type { ForumPost } from './types.ts';
 
 export const seedForumPosts: ForumPost[] = [
   {

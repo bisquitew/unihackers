@@ -2,7 +2,7 @@
 
 Owner: P4. Updated with every P4 feature or fix. Hashes are short commit ids; "pending" means changed in the working tree but not committed yet.
 
-Last updated: 2026-11-14 · working branch: `p4/visitor-info`
+Last updated: 2026-11-14 · working branch: `p4/smell`
 
 Commit ids are from main's rewritten history (commit-message cleanup on 2026-11-14); older ids no longer exist.
 
@@ -24,12 +24,13 @@ Commit ids are from main's rewritten history (commit-message cleanup on 2026-11-
 | Home screen links: ask bar and Assistant tile → assistant, Feedback tile | done | `p4/integration` | `ff3abb1` | 2026-11-14 |
 | Living Labs survey live: form, Sheet, cleaning script, trigger and QR code set up; survey is being shared | done | `p4/integration` | QR code `23c1387` | 2026-11-14 |
 | PR into main | done | `p4/integration` | PR #1, merged as `c3f77e5` | 2026-11-14 |
-| m02-visitor-info: 9 RO/EN entries parsed from `docs/visitor-info/content.md` into `seed.ts` (`generate-seed.ts`), list/detail/categories API, `search_visitor_info` assistant tool + prompt line, screen with category chips, RO/EN toggle and "check before you travel" badge, home tile, migration | done | `p4/visitor-info` | pending | 2026-11-14 |
-| m06-smell: one-tap reports, hypertable, map layer, wind | to do | — | needs `DATABASE_URL` from P2 and a map component from P1 | — |
+| m02-visitor-info: 9 RO/EN entries parsed from `docs/visitor-info/content.md` into `seed.ts` (`generate-seed.ts`), list/detail/categories API, `search_visitor_info` assistant tool + prompt line, screen with category chips, RO/EN toggle and "check before you travel" badge, home tile, migration | done | `p4/visitor-info` | `27e6dba` (API + tool), `1147662` (prompt), `c6c92c1` (screen), `80d987f` (home tile), `264735d` (progress); merged into main as `2c8e5f2` | 2026-11-14 |
+| m06-smell: one-tap reports (type, intensity, area or location), repository with memory / Postgres (`core/db.ts`) + fallback, ~60 demo reports (`isDemo`, `?includeDemo=false`), pins / areas / timeseries / wind (Open-Meteo, 10 min cache, mock fallback) / source hint / health API, `get_smell_reports` tool + prompt topic, screen with wind arrow, hint, area bars and 24 h chart, demo toggle and label, home tile, hypertable migration (not run) | done | `p4/smell` | `a8bf8df` (API), `e7f39be` (prompt), `0186fca` (screen), `0d50a7f` (home tile), `4ead1d4` (progress); merges of main `980c9bf`, `03dd34e` | 2026-11-14 |
+| m06-smell on P1's shared map: `manifest.mapLayer` returns a `MapLayer` (`@hub/map`) of `smell` pins from a cache filled from `/pins` (with `isDemo`), refreshed after a report; P1 side: `core/map-layers/changes.ts` + one `useSyncExternalStore` line in `map.tsx` so pins that arrive after the Map tab mounted are drawn | done | `p4/smell` | pending | 2026-11-14 |
 | One API server (merge `server.ts` into `index.ts`) | to do | — | owner P2; plan in "Known issues" | — |
 | ElevenLabs voice: spoken assistant replies, alerts, tour | to do | — | — | — |
 | m03-safety: reports + Gemini summary per area | to do | — | — | — |
-| m12-dashboard: web dashboard for officials | to do | — | needs real Tiger Data | — |
+| m12-dashboard: dashboard analytics for officials | taken over by P2 | — | P2 implemented it in `0e3a331` (`services/api/src/modules/m12-dashboard/`); no longer a P4 task | 2026-11-14 |
 | Pitch evidence: Living Labs numbers, changelog, demo script | to do | — | from `/v1/m/feedback/summary` and `docs/living-labs/living-labs-log.md` | — |
 
 ## How to run
@@ -49,6 +50,32 @@ cd apps/app && npx expo start --web
 - On a phone, set `EXPO_PUBLIC_API_URL=http://<laptop-LAN-IP>:3001` in `apps/app/.env`.
 - Visitor info text lives in `docs/visitor-info/content.md`. After editing it, regenerate the seed: `cd services/api && npx tsx src/modules/m02-visitor-info/generate-seed.ts`.
 - P2's tests: `npm test` and `python3 scripts/test_p2_full.py` (they start the old `server.ts` on port 8000 themselves).
+- If `npx` fails inside the repo with "Cannot read properties of null (reading 'package')" (see Known issues), start the web app from PowerShell instead:
+  `cd apps/app; $env:NODE_PATH="$PWD\..\..\node_modules\.pnpm\node_modules"; node node_modules\expo\bin\cli start --web`
+- m06-smell storage: `GET /v1/m/smell/health` says whether reports go to Postgres or memory and why.
+
+## Shared map: how m06 smell pins reach P1's Map tab
+
+P1's contract (`apps/app/src/core/map-layers/index.ts`, `collectModuleLayers`): `manifest.mapLayer` is a `MapLayer` from `@hub/map`,
+or a synchronous function returning one. m06 uses the function form (`apps/app/src/modules/m06-smell/mapLayer.ts`):
+
+- a small pins cache, filled from `GET /v1/m/smell/pins?hours=24&includeDemo=true` when the app starts, refreshed after a report is sent
+  and whenever the map asks for the layer and the cache is older than 60 s;
+- each pin: `kind: 'smell'`, `layerId: 'm06-smell'`, `coordinate`, title `Miros: <type>`, subtitle `<Type>, intensitate n/5`,
+  `href: '/m/smell'`, `owner: 'community'`, `visibility: 'public'`, `demo` from the API's `isDemo` (the map shows "Sample data for the demo.").
+
+**Change in P1's files (tell P1):** the Map tab built its module layers once (`useMemo(() => allMapLayers(), [])`), so pins fetched after the
+tab mounted, or a new report, never appeared. Fix:
+
+1. New file `apps/app/src/core/map-layers/changes.ts` (no imports): `onMapLayersChanged(listener)`, `getMapLayersVersion()`, `notifyMapLayersChanged()`.
+2. `apps/app/app/(tabs)/map.tsx`: one import, and
+   ```tsx
+   const layersVersion = React.useSyncExternalStore(onMapLayersChanged, getMapLayersVersion, getMapLayersVersion);
+   const moduleLayers = React.useMemo(() => allMapLayers(), [layersVersion]);
+   ```
+   `useSyncExternalStore` (not a `useEffect` subscription) because the first fetch can finish between the first render and the subscription.
+
+Any other module with remote pins can do the same: cache, then call `notifyMapLayersChanged()` after each fetch.
 
 ## Known issues
 
@@ -58,11 +85,14 @@ cd apps/app && npx expo start --web
 | Docker/Vultr deploy has no P3 or P4 modules (it runs `server.ts`) | P2 | Same as above |
 | Tiger Data is simulated (`[MOCK]`), no `DATABASE_URL` locally | P2 | Share the connection string |
 | `pnpm-lock.yaml` on main doesn't include `@google/genai` (api) or `@types/react` (ui) | P2 / P1 | Regenerate the lockfile after merging |
-| `apps/app` typecheck: 7 errors in `src/core/Auth0SecurityCard.tsx` (uses `radii.md`/`radii.sm`/`shadows.card`, which `@hub/ui` tokens don't have) | Auth0 author (`6ae326f`) | Use existing tokens (`radii.input`, `radii.group`, `shadows.lift`) or add the tokens to `packages/ui` with P1 |
+| `apps/app` typecheck: 17 errors in P1's new `packages/map` (`react` types and `react-native-svg` not resolvable from that package; implicit `any`s that follow) | P1 | Add `@types/react` and `react-native-svg` to `packages/map/package.json` (same fix as `packages/ui` earlier) |
+| `packages/ui/src/Sheet.tsx` uses `StyleSheet.absoluteFillObject`, removed in RN 0.88 (typecheck error; at runtime the spread is empty, so the sheet's scrim may not cover the screen) | P1 | `...StyleSheet.absoluteFill`, as in `TabBar.tsx` |
 | `apps/app` typecheck: `Buffer` not found in `packages/solana/src/real-solana.ts` (2 errors; the app's mint path doesn't call it) | P3 | `import { Buffer } from 'buffer'` in that file |
 | Solana organizer secret key: main now reads it from `.env` and deleted `organizer-keypair.json`, but the old devnet key is still in git history | P3 | Treat the old key as public; use a new key for anything beyond devnet |
 | Forum, events, buddy and wallet screens show hardcoded data, not the API | P3 | Fetch from `/v1/m/...` |
-| Map, Community and Profile tabs are "Coming soon"; no map component yet (m06 needs one) | P1 | Shared `<Map>` |
+| The map engine loads MapLibre and tiles from the internet (unpkg); offline it shows its "offline" panel | P1 | Keep in mind for the demo venue's Wi-Fi |
+| m06 Postgres storage is untested against a real database (no `DATABASE_URL`); memory mode and the unreachable-database fallback are tested | P2 / P4 | Run `db/modules/m06-smell/migrations/0001_init_smell.sql` on Tiger Data, set `DATABASE_URL`, check `/v1/m/smell/health` says `postgres` |
+| `npx` fails inside the repo ("Cannot read properties of null (reading 'package')", npm reading pnpm's symlinks), and pnpm's Git Bash shims in `node_modules/.bin` use `/mnt/d/...` paths, so `expo` started from Git Bash cannot find `babel-preset-expo` | P1 (app deps) | Add `babel-preset-expo` to `apps/app` devDependencies (it is used in `babel.config.js` but not declared); until then use the PowerShell command in "How to run" |
 | Seed Colterm outage restore time (13 Nov 22:00) is in the past | P2 | Refresh seed dates |
 | Gemini free tier rate-limits quick repeated questions (503 with a "wait a few seconds" message) | P4 | Space questions out in the demo |
 | Missing `favicon.ico` (404 on web) | P1 | Add one |
