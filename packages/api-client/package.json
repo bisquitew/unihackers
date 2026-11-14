@@ -9,5 +9,6 @@
   },
   "dependencies": {
     "@hub/contracts": "*"
-  }
+  },
+  "type": "module"
 }
