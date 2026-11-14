@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ListenButton } from '../m10-assistant/voice/ListenButton';
+import { NoticeScanLink } from '../m10-assistant/notice/NoticeScanLink';
 
 interface Outage {
   id: string;
@@ -132,6 +133,7 @@ export function UtilitiesScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
         <Text style={styles.heroSubtitle}>
           Monitorizare în timp real: Colterm, Aquatim și Rețele Electrice
         </Text>
+        <NoticeScanLink />
       </View>
 
       {/* Address Checker */}
