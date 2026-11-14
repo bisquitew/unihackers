@@ -28,6 +28,7 @@ const explore: { id: ModuleArtId; label: string; route?: string }[] = [
   { id: 'assistant', label: 'Assistant', route: '/m/assistant' },
   { id: 'wallet', label: 'Wallet', route: '/m/wallet' },
   { id: 'feedback', label: 'Feedback', route: '/m/feedback' },
+  { id: 'visitorInfo', label: 'Visitor info', route: '/m/visitor-info' },
 ];
 
 export default function HomeScreen() {
