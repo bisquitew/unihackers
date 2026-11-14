@@ -40,7 +40,8 @@
     "react-native-screens": "*",
     "react-native-svg": "15.16.0",
     "react-native-web": "~0.21.0",
-    "react-native-webview": "^14.0.1"
+    "react-native-webview": "^14.0.1",
+    "toqr": "^0.1.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",
