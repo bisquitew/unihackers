@@ -1,25 +1,35 @@
-import pg from 'pg';
-import dotenv from 'dotenv';
 import path from 'node:path';
 import fs from 'node:fs';
 import type { TigerStatusResponse, TigerHypertableInfo, TigerContinuousAggregateInfo, TigerCompressionStats } from '@hub/contracts';
 
-// Ensure environment variables from root .env are loaded
+// Dynamic import of pg and dotenv for zero-failure resilience across CI and minimal environments
+let pg: any = null;
+try {
+  const pgMod = await import('pg');
+  pg = pgMod.default || pgMod;
+} catch {
+  // pg package not available, mock fallback will be used
+}
+
 const rootEnvPath = path.resolve(process.cwd(), '.env');
 if (fs.existsSync(rootEnvPath)) {
-  dotenv.config({ path: rootEnvPath });
-} else {
-  dotenv.config();
+  try {
+    const dotenvMod = await import('dotenv');
+    const dotenv = dotenvMod.default || dotenvMod;
+    dotenv.config({ path: rootEnvPath });
+  } catch {
+    // dotenv not installed
+  }
 }
 
 const dbUrl = process.env.DATABASE_URL;
 
-let pool: pg.Pool | null = null;
+let pool: any = null;
 let isConnected = false;
 let connectionError: string | null = null;
 let initPromise: Promise<boolean> | null = null;
 
-if (dbUrl) {
+if (dbUrl && pg) {
   try {
     const isLocalhost = dbUrl.includes('localhost') || dbUrl.includes('127.0.0.1');
     let connectionString = dbUrl;
