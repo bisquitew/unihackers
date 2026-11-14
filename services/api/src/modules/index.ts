@@ -6,6 +6,7 @@ import m09Wallet from './m09-wallet/index.ts';
 import m10Assistant from './m10-assistant/index.ts';
 import m11Feedback from './m11-feedback/index.ts';
 import m02VisitorInfo from './m02-visitor-info/index.ts';
+import m06Smell from './m06-smell/index.ts';
 import { utilitiesApiModule } from './m04-utilities/index.ts';
 import { transitApiModule } from './m05-transit/index.ts';
 import { parkieApiModule } from './parkie/index.ts';
@@ -28,7 +29,7 @@ export const registeredModules: ApiModule[] = [
   createStubModule('m03-safety'),
   utilitiesApiModule as unknown as ApiModule,  // [M04_UTILITIES] - P2
   transitApiModule as unknown as ApiModule,    // [M05_TRANSIT] - P2
-  createStubModule('m06-smell'),
+  m06Smell,                                    // [M06_SMELL] - P4
   m07Buddy,                                    // [M07_BUDDY] - P3
   m08Forum,                                    // [M08_FORUM] - P3
   m09Wallet,                                   // [M09_WALLET] - P3
