@@ -1,4 +1,4 @@
-import { feedbackService } from './service';
+import { feedbackService } from './service.ts';
 
 export const feedbackAssistantTools = [
   {
