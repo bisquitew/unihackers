@@ -1,138 +1,58 @@
-import { fetchOutages, checkAddressOutages, fetchTransitLines, checkTransitStop } from '../api.js';
+import { checkAddressOutages, checkTransitStop, fetchOutages, fetchTransitLines } from '../api.js';
+import { art, cap, esc, row, statusText } from '../ui.js';
+import { CITY } from '../city.js';
 
-export async function renderAlertsView() {
-  const [outages, transit] = await Promise.all([
-    fetchOutages(),
-    fetchTransitLines(),
-  ]);
+export async function render() {
+  const [outages, lines] = await Promise.all([fetchOutages(), fetchTransitLines()]);
+  const statusTag = (s) => (s === 'normal' ? '<span class="tag mint">Normal</span>' : s === 'suspended' ? '<span class="tag danger">Suspended</span>' : '<span class="tag apricot">Rerouted</span>');
+  return `<div class="page">
+    <h1 class="page-title">City alerts</h1>
+    <p class="page-sub">Outages and transit changes across ${esc(CITY.name)}, and a quick way to check your own street or stop.</p>
+    <div class="cols section">
+      <div>
+        <div class="section-head"><h2>Outages (${outages.length})</h2></div>
+        <div class="list">${outages.map((o) => row({
+          art: art('utilities', 52), title: esc(o.title),
+          detail: `${esc(o.description)}<br><span class="muted">${esc(cap(o.provider))} · ${esc((o.affected_areas || []).join(', '))}${o.estimated_restore_time ? ` · back about ${new Date(o.estimated_restore_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</span>`,
+          side: `<span class="tag ${o.severity === 'critical' ? 'danger' : 'apricot'}">${esc(statusText(o.status))}</span>`,
+        })).join('') || '<div class="empty">No active outages.</div>'}</div>
 
-  return `
-    <div class="view-content alerts-view">
-      
-      <!-- Checkers Hero -->
-      <section class="checkers-grid">
-        
-        <!-- Address Checker -->
-        <div class="checker-card">
-          <div class="checker-header">
-            <span class="checker-icon">🏠</span>
-            <div>
-              <div class="checker-title">Verificator Avarii Utilități la Adresa Ta</div>
-              <div class="checker-sub">Introduceți strada sau cartierul pentru a verifica avariile Colterm & Aquatim</div>
-            </div>
-          </div>
-          <div class="search-input-group">
-            <input type="text" id="addressInput" class="form-control" placeholder="ex: Strada Circumvalațiunii 14, Timișoara">
-            <button class="btn btn-primary" id="checkAddressBtn">Verifică</button>
-          </div>
-          <div id="addressResultBox" class="result-box" style="display: none;"></div>
-        </div>
-
-        <!-- Transit Stop Checker -->
-        <div class="checker-card">
-          <div class="checker-header">
-            <span class="checker-icon">🚊</span>
-            <div>
-              <div class="checker-title">Verificator Linii & Stații STPT 2026</div>
-              <div class="checker-sub">Verifică dacă stația ta este afectată de șantierele de reabilitare</div>
-            </div>
-          </div>
-          <div class="search-input-group">
-            <input type="text" id="stationInput" class="form-control" placeholder="ex: Calea Bogdăneștilor">
-            <button class="btn btn-primary" id="checkStationBtn">Verifică</button>
-          </div>
-          <div id="stationResultBox" class="result-box" style="display: none;"></div>
-        </div>
-
-      </section>
-
-      <!-- Active Outages Table / Cards -->
-      <section class="section-container">
-        <h3 class="section-heading">🔥 Avarii Rețea Termică & Apă Potabilă (${outages.length})</h3>
-        <div class="cards-grid">
-          ${outages.map(out => `
-            <div class="detail-card">
-              <div class="detail-card-top">
-                <span class="provider-tag tag-${out.provider.toLowerCase()}">${out.provider}</span>
-                <span class="status-badge ${out.status === 'investigating' ? 'status-yellow' : 'status-red'}">${out.status.toUpperCase()}</span>
-              </div>
-              <div class="detail-card-title">${out.title}</div>
-              <div class="detail-card-body">${out.description}</div>
-              <div class="detail-card-footer">
-                <span>Cartiere: <strong>${(out.affected_areas || []).join(', ')}</strong></span>
-                <span>Estimare: <strong>${out.estimated_restore ? new Date(out.estimated_restore).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'În evaluare'}</strong></span>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </section>
-
-      <!-- Transit Lines & Detours -->
-      <section class="section-container">
-        <h3 class="section-heading">🚊 Linii Transport Public STPT (${transit.length})</h3>
-        <div class="cards-grid">
-          ${transit.map(line => `
-            <div class="detail-card">
-              <div class="detail-card-top">
-                <span class="line-badge">${line.line_number}</span>
-                <span class="status-badge ${line.status === 'normal' ? 'status-green' : (line.status === 'suspended' ? 'status-red' : 'status-yellow')}">
-                  ${line.status.toUpperCase()}
-                </span>
-              </div>
-              <div class="detail-card-title">${line.name}</div>
-              <div class="detail-card-body">${line.route_description || 'Traseu standard STPT Timișoara'}</div>
-              ${line.active_detour ? `
-                <div class="detour-alert-box">
-                  <strong>⚠️ Deviere:</strong> ${line.active_detour.title} — ${line.active_detour.description}
-                </div>
-              ` : ''}
-            </div>
-          `).join('')}
-        </div>
-      </section>
-
+        <div class="section"><div class="section-head"><h2>Transit (${lines.length} lines)</h2></div>
+        <div class="list">${lines.map((l) => row({
+          art: art('transit', 52), title: `Line ${esc(l.line_number)}: ${esc(l.name)}`,
+          detail: esc(l.detour_alert ? `${l.detour_alert.title}. ${l.current_route_summary || ''}` : l.current_route_summary || 'Normal route'),
+          side: statusTag(l.status),
+        })).join('')}</div></div>
+      </div>
+      <div>
+        <div class="checker"><h3>Is my street affected?</h3><p>Check heating and water outages by street or neighbourhood.</p>
+          <div class="row-inline"><label class="field"><span>Address</span><input id="addressInput" placeholder="Strada Circumvalațiunii 14"></label><button class="btn btn-ink btn-md" id="checkAddressBtn">Check</button></div>
+          <div class="result" id="addressResult" hidden></div></div>
+        <div class="checker"><h3>Is my stop affected?</h3><p>See whether a tram or bus stop is on a detour.</p>
+          <div class="row-inline"><label class="field"><span>Stop</span><input id="stationInput" placeholder="Calea Bogdăneștilor"></label><button class="btn btn-ink btn-md" id="checkStationBtn">Check</button></div>
+          <div class="result" id="stationResult" hidden></div></div>
+      </div>
     </div>
-  `;
+  </div>`;
 }
 
-export function initAlertsLogic() {
-  const addressBtn = document.getElementById('checkAddressBtn');
-  const addressInp = document.getElementById('addressInput');
-  const addressBox = document.getElementById('addressResultBox');
-
-  addressBtn?.addEventListener('click', async () => {
-    const val = addressInp.value.trim();
-    if (!val) return;
-    addressBtn.disabled = true;
-    addressBtn.textContent = 'Verificare...';
-    const res = await checkAddressOutages(val);
-    addressBox.style.display = 'block';
-    addressBox.className = `result-box ${res.affected ? 'box-danger' : 'box-success'}`;
-    addressBox.innerHTML = `
-      <strong>${res.affected ? '⚠️ Afectat de avarie!' : '✅ Nicio avarie activă!'}</strong>
-      <p style="margin: 4px 0 0;">${res.message}</p>
-    `;
-    addressBtn.disabled = false;
-    addressBtn.textContent = 'Verifică';
-  });
-
-  const stationBtn = document.getElementById('checkStationBtn');
-  const stationInp = document.getElementById('stationInput');
-  const stationBox = document.getElementById('stationResultBox');
-
-  stationBtn?.addEventListener('click', async () => {
-    const val = stationInp.value.trim();
-    if (!val) return;
-    stationBtn.disabled = true;
-    stationBtn.textContent = 'Verificare...';
-    const res = await checkTransitStop(val);
-    stationBox.style.display = 'block';
-    stationBox.className = `result-box ${res.detour ? 'box-danger' : 'box-success'}`;
-    stationBox.innerHTML = `
-      <strong>${res.detour ? '⚠️ Stație deviată sau suspendată!' : '✅ Circulație normală!'}</strong>
-      <p style="margin: 4px 0 0;">${res.message}</p>
-    `;
-    stationBtn.disabled = false;
-    stationBtn.textContent = 'Verifică';
-  });
+export function mount() {
+  const wire = (btnId, inputId, resultId, fn, bad) => {
+    const btn = document.getElementById(btnId), input = document.getElementById(inputId), out = document.getElementById(resultId);
+    const run = async () => {
+      const v = input.value.trim();
+      if (!v) return;
+      btn.disabled = true;
+      const res = await fn(v);
+      const isBad = bad(res);
+      out.hidden = false;
+      out.innerHTML = `<b class="${isBad ? 'bad' : 'ok'}">${isBad ? 'Affected' : 'All clear'}</b><p style="margin-top:4px">${esc(res.message || '')}</p>`;
+      btn.disabled = false;
+    };
+    btn.addEventListener('click', run);
+    input.addEventListener('keydown', (e) => e.key === 'Enter' && run());
+  };
+  wire('checkAddressBtn', 'addressInput', 'addressResult', checkAddressOutages, (r) => r.affected);
+  wire('checkStationBtn', 'stationInput', 'stationResult', checkTransitStop, (r) => r.detour);
+  return () => {};
 }

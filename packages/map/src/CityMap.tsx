@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
+import { getCity } from './city';
 import { useEngineBridge, type CityMapProps, type FromEngine, type ToEngine } from './bridge';
 import { ENGINE_HTML } from './engine.generated';
 
@@ -28,7 +29,7 @@ export function CityMap(props: CityMapProps & { style?: React.ComponentProps<typ
       {React.createElement('iframe', {
         ref: frame,
         srcDoc: ENGINE_HTML,
-        title: 'City map of Timișoara',
+        title: `City map of ${getCity().name}`,
         style: { border: 0, width: '100%', height: '100%', display: 'block' },
       })}
     </View>

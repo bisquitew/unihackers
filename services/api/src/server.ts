@@ -31,7 +31,10 @@ import {
   trustLocation,
   isLocationTrusted,
   DEV_USERS,
-  registerGoogleUser
+  registerGoogleUser,
+  hubClientOf,
+  roleAllowedOnClient,
+  wrongClientBody
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -75,7 +78,7 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Hub-Client'
   });
   res.end(JSON.stringify(data));
 }
@@ -168,7 +171,7 @@ async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, 
     'Content-Type': response.headers.get('content-type') ?? 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Hub-Client',
   });
   res.end(Buffer.from(await response.arrayBuffer()));
 }
@@ -183,7 +186,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Hub-Client'
     });
     res.end();
     return;
@@ -191,7 +194,8 @@ const server = http.createServer(async (req, res) => {
 
   // Auth Context resolution (supports dev tokens, Auth0 RS256 JWTs, and M2M AI agents)
   const authHeader = req.headers.authorization || '';
-  const currentUser = await resolveAuthUser(authHeader);
+  const hubClient = hubClientOf(req.headers['x-hub-client']);
+  const currentUser = await resolveAuthUser(authHeader, hubClient);
 
   try {
     // 1. Health
@@ -256,6 +260,7 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const email = (body.email || '').toLowerCase().trim();
       const role = body.role || (email.includes('admin') ? 'admin' : 'resident');
+      if (hubClient && !roleAllowedOnClient(role, hubClient)) return sendJson(res, 403, wrongClientBody(role, hubClient));
 
       let targetUser = null;
       let token = role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
@@ -293,6 +298,7 @@ const server = http.createServer(async (req, res) => {
       const email = body.email || 'citizen.google@gmail.com';
       const name = body.name || 'Cetățean Conectat cu Google';
       const role = body.role || (email.endsWith('@timisoara-hub.ro') || email.toLowerCase().includes('admin') ? 'admin' : 'resident');
+      if (hubClient && !roleAllowedOnClient(role, hubClient)) return sendJson(res, 403, wrongClientBody(role, hubClient));
       const result = registerGoogleUser({ email, name, role, picture: body.picture });
       return sendJson(res, 200, result);
     }
