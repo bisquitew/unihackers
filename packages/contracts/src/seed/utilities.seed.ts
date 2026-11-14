@@ -16,13 +16,13 @@ export const UTILITIES_SEED_DATA: Outage[] = [
       'Strada Circumvalațiunii',
       'Aleea Studenților'
     ],
-    start_time: '2026-11-13T09:00:00Z',
-    estimated_restore_time: '2026-11-13T22:00:00Z',
+    start_time: '2026-11-14T08:00:00Z',
+    estimated_restore_time: '2026-11-14T22:00:00Z',
     resolved_at: null,
     source_url: 'https://www.colterm.ro/stiri-comunicate',
     crowd_confirmations_count: 73,
-    created_at: '2026-11-13T09:15:00Z',
-    updated_at: '2026-11-13T14:30:00Z'
+    created_at: '2026-11-14T08:15:00Z',
+    updated_at: '2026-11-14T12:30:00Z'
   },
   {
     id: 'f1234567-89ab-cdef-0123-456789abcdef',

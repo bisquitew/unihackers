@@ -112,12 +112,12 @@ flowchart TD
 > **Sponsor Prize:** Stream Deck Mini  
 > **Judges Want:** Timescale continuous aggregates driving live dashboards & open data.
 
-- [ ] **5.1. Real-Time Server-Sent Events (SSE) Stream (`GET /v1/m/parkie/stream`)**
-  - Stream live parking updates directly to frontend maps when CV detection events occur.
-- [ ] **5.2. Open Data City Export Formats**
-  - Add optional CSV export support to `GET /v1/core/open-data/export?format=csv` for municipal analysts.
-- [ ] **5.3. Support Person 4's City Dashboard (`[M12_DASHBOARD]`)**
-  - Provide ready-to-render hourly aggregation payloads for environmental charts (PM2.5, noise, smell) and parking demand heatmaps.
+- [x] **5.1. Real-Time Server-Sent Events (SSE) Stream (`GET /v1/m/parkie/stream`)**
+  - Stream live parking updates directly to frontend maps when CV detection events occur via `eventBus.on('parkie.detection_updated')`.
+- [x] **5.2. Open Data City Export Formats (`GET /v1/core/open-data/export?format=csv`)**
+  - Add CSV export support formatting continuous aggregates into standard tabular CSV for municipal analysts and open data portals.
+- [x] **5.3. Support Person 4's City Dashboard (`[M12_DASHBOARD]`)**
+  - Provide ready-to-render hourly aggregation payloads for environmental charts (PM2.5, noise) and parking demand heatmaps via `GET /v1/m/dashboard/overview` and `GET /v1/core/analytics/heatmap`.
 
 ---
 

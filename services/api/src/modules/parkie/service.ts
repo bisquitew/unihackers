@@ -309,5 +309,52 @@ export const parkieService = {
         city_environmental_metrics_hourly: metricsStats
       }
     };
+  },
+
+  async getOpenDataExportCsv(): Promise<string> {
+    const exportData = await this.getOpenDataExport();
+    const parkingRows = exportData.data.parking_occupancy_hourly;
+    const metricsRows = exportData.data.city_environmental_metrics_hourly;
+
+    const headers = [
+      'dataset',
+      'bucket_timestamp',
+      'entity_or_area_id',
+      'metric_type',
+      'avg_value',
+      'min_value',
+      'max_value',
+      'sample_count'
+    ];
+
+    const lines: string[] = [headers.join(',')];
+
+    for (const p of parkingRows) {
+      lines.push([
+        'parking_occupancy_hourly',
+        `"${p.bucket}"`,
+        `"${p.lot_id}"`,
+        '"available_spots"',
+        p.avg_available,
+        p.min_available ?? '',
+        p.peak_occupied !== undefined ? p.peak_occupied : '',
+        p.sample_count
+      ].join(','));
+    }
+
+    for (const m of metricsRows) {
+      lines.push([
+        'city_environmental_metrics_hourly',
+        `"${m.bucket}"`,
+        `"${m.area_id}"`,
+        `"${m.metric_type}"`,
+        m.avg_value,
+        m.min_value ?? '',
+        m.max_value ?? '',
+        m.sample_count
+      ].join(','));
+    }
+
+    return lines.join('\n');
   }
 };

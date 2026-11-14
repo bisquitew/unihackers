@@ -7,6 +7,7 @@ import { eventBus } from './core/events.ts';
 import { utilitiesService } from './modules/m04-utilities/service.ts';
 import { transitService } from './modules/m05-transit/service.ts';
 import { parkieService } from './modules/parkie/service.ts';
+import { dashboardService } from './modules/m12-dashboard/index.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
 import { 
@@ -406,6 +407,36 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, parkieService.getLotColorsOnly());
     }
 
+    // Real-Time Server-Sent Events (SSE) Stream for Parking Spot Updates
+    if (pathname === '/v1/m/parkie/stream' && method === 'GET') {
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+      res.flushHeaders?.();
+
+      // Send initial state to connected client
+      const initialLots = parkieService.getAllLots();
+      res.write(`event: initial\ndata: ${JSON.stringify(initialLots)}\n\n`);
+
+      const onDetectionUpdate = (payload: any) => {
+        try {
+          res.write(`event: detection_updated\ndata: ${JSON.stringify(payload)}\n\n`);
+        } catch {
+          // Client disconnected
+        }
+      };
+
+      eventBus.on('parkie.detection_updated', onDetectionUpdate);
+
+      req.on('close', () => {
+        eventBus.off('parkie.detection_updated', onDetectionUpdate);
+      });
+      return;
+    }
+
     if (pathname === '/v1/m/parkie/nearest' && method === 'GET') {
       const lat = parseFloat(url.searchParams.get('lat') || '45.7578');
       const lng = parseFloat(url.searchParams.get('lng') || '21.2290');
@@ -484,8 +515,28 @@ const server = http.createServer(async (req, res) => {
 
     // 9. Open Data Back to the City (Anonymized continuous aggregate datasets)
     if (pathname === '/v1/core/open-data/export' && method === 'GET') {
+      if (url.searchParams.get('format') === 'csv') {
+        const csv = await parkieService.getOpenDataExportCsv();
+        res.writeHead(200, {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': 'attachment; filename="timisoara_smart_city_opendata.csv"',
+          'Access-Control-Allow-Origin': '*'
+        });
+        return res.end(csv);
+      }
       const openData = await parkieService.getOpenDataExport();
       return sendJson(res, 200, openData);
+    }
+
+    // 10. [M12_DASHBOARD] City Officials Overview & Heatmap Analytics
+    if (pathname === '/v1/m/dashboard/overview' && method === 'GET') {
+      const overview = await dashboardService.getCityOverview();
+      return sendJson(res, 200, overview);
+    }
+
+    if (pathname === '/v1/core/analytics/heatmap' && method === 'GET') {
+      const heatmap = dashboardService.getHeatmapData();
+      return sendJson(res, 200, heatmap);
     }
 
     // --- Solana Devnet Endpoints [M09_WALLET & M01_EVENTS] ---
