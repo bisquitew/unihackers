@@ -1,4 +1,13 @@
-import { Type, type FunctionDeclaration, type Schema } from '@google/genai';
+export enum Type {
+  STRING = 'STRING',
+  NUMBER = 'NUMBER',
+  INTEGER = 'INTEGER',
+  BOOLEAN = 'BOOLEAN',
+  ARRAY = 'ARRAY',
+  OBJECT = 'OBJECT',
+}
+export type FunctionDeclaration = any;
+export type Schema = any;
 import type { ApiModule } from '../../types.ts';
 
 const SELF_ID = 'm10-assistant';

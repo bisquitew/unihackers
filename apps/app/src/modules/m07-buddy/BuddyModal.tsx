@@ -31,17 +31,17 @@ const SEED_BUDDIES: BuddyRequestItem[] = [
     id: 'b-1',
     userName: 'Lucas Weber',
     university: 'Erasmus UPT Electro',
-    bio: 'Student din Germania pasionat de film european și fotografie.',
-    interests: ['film', 'craft beer', 'foto'],
-    icebreakerPrompt: 'Ce film te-a impresionat cel mai mult anul acesta?',
+    bio: 'Student from Germany passionate about European indie films and photography.',
+    interests: ['cinema', 'craft beer', 'photo'],
+    icebreakerPrompt: 'What indie film impressed you the most recently?',
   },
   {
     id: 'b-2',
     userName: 'Ioana Moldovan',
-    university: 'Arhitectură UPT',
-    bio: 'Îmi place să discut idei după proiecții și să cunosc oameni noi!',
-    interests: ['arhitectură', 'film', 'ceai'],
-    icebreakerPrompt: 'Mergem cu 20 de minute înainte să prindem locuri bune?',
+    university: 'Architecture UPT',
+    bio: 'I love discussing design after screenings and meeting creative people!',
+    interests: ['architecture', 'cinema', 'coffee'],
+    icebreakerPrompt: 'Shall we meet 20 minutes before to grab good seats?',
   },
 ];
 
@@ -73,14 +73,14 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
       {
         id: 'msg-1',
         sender: 'buddy',
-        text: `Salut! Mă bucur că mergem la ${eventTitle}!`,
-        time: 'Chiar acum',
+        text: `Hey! Glad to meet up for ${eventTitle}!`,
+        time: 'Just now',
       },
       {
         id: 'msg-2',
         sender: 'buddy',
         text: buddy.icebreakerPrompt,
-        time: 'Chiar acum',
+        time: 'Just now',
       },
     ]);
     setViewMode('chat');
@@ -103,9 +103,9 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
     // Simulated responsive answer from the buddy after 1 second for live demo
     setTimeout(() => {
       const replies = [
-        'Super tare! Ne vedem la intrare cu 15 minute înainte. 🍿',
-        'De acord! Caută-mă lângă terasa exterioară. Îți scriu când ajung!',
-        'Perfect, abia aștept să povestim! Am descărcat și eu biletul Solana.',
+        'Awesome! See you at the entrance 15 minutes before. 🍿',
+        'Sounds good! Look for me near the outdoor terrace. I will text you when I arrive!',
+        'Perfect, looking forward to meeting up! I also minted my ticket on Solana.',
       ];
       const randomReply = replies[Math.floor(Math.random() * replies.length)];
       const buddyReply: ChatMessage = {
@@ -120,17 +120,17 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
 
   const handlePostRequest = () => {
     if (!name.trim()) {
-      Alert.alert('Eroare', 'Te rugăm să introduci numele tău.');
+      Alert.alert('Error', 'Please enter your name.');
       return;
     }
 
     const newBuddy: BuddyRequestItem = {
       id: `b-${Date.now()}`,
       userName: name.trim(),
-      university: 'Student / Rezident',
-      bio: bio.trim() || 'Căutăm companie plăcută pentru acest eveniment!',
-      interests: interestsText ? interestsText.split(',').map((s) => s.trim()) : ['cultură', 'oraș'],
-      icebreakerPrompt: 'Ne vedem la intrare?',
+      university: 'Student / Resident',
+      bio: bio.trim() || 'Looking for great company for this event!',
+      interests: interestsText ? interestsText.split(',').map((s) => s.trim()) : ['culture', 'city'],
+      icebreakerPrompt: 'Shall we meet at the entrance?',
     };
 
     setBuddies([newBuddy, ...buddies]);
@@ -138,7 +138,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
     setName('');
     setBio('');
     setInterestsText('');
-    Alert.alert('Succes', 'Cererea ta a fost adăugată în lista evenimentului!');
+    Alert.alert('Success', 'Your buddy request has been posted!');
   };
 
   return (
@@ -148,7 +148,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.tag}>🤝 CU CINE? • BUDDY FINDER [M07]</Text>
+              <Text style={styles.tag}>🤝 BUDDY FINDER • EVENT COMPANIONS [M07]</Text>
               <Text style={styles.title} numberOfLines={1}>{eventTitle}</Text>
             </View>
             <TouchableOpacity
@@ -167,7 +167,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
           {viewMode === 'list' && (
             <>
               <Text style={styles.sub}>
-                Mergi singur? Conectează-te cu alți studenți sau rezidenți din Timișoara:
+                Attending alone? Connect with other students and locals in Timișoara:
               </Text>
 
               <ScrollView style={styles.list}>
@@ -182,7 +182,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
                         style={styles.connectBtn}
                         onPress={() => handleStartChat(b)}
                       >
-                        <Text style={styles.connectBtnText}>💬 Deschide Chat</Text>
+                        <Text style={styles.connectBtnText}>💬 Open Chat</Text>
                       </TouchableOpacity>
                     </View>
 
@@ -195,7 +195,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
                     </View>
 
                     <View style={styles.icebreakerBox}>
-                      <Text style={styles.icebreakerLabel}>💡 Întrebare de început:</Text>
+                      <Text style={styles.icebreakerLabel}>💡 Icebreaker Question:</Text>
                       <Text style={styles.icebreakerText}>"{b.icebreakerPrompt}"</Text>
                     </View>
                   </View>
@@ -206,7 +206,7 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
                 style={styles.postBtn}
                 onPress={() => setViewMode('post')}
               >
-                <Text style={styles.postBtnText}>+ Caut și eu un Buddy la acest eveniment</Text>
+                <Text style={styles.postBtnText}>+ Look for a buddy for this event</Text>
               </TouchableOpacity>
             </>
           )}
@@ -220,17 +220,17 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
                   style={styles.backButton}
                   onPress={() => setViewMode('list')}
                 >
-                  <Text style={styles.backButtonText}>← Înapoi</Text>
+                  <Text style={styles.backButtonText}>← Back</Text>
                 </TouchableOpacity>
                 <View style={styles.chatBuddyInfo}>
                   <Text style={styles.chatBuddyName}>{activeBuddy.userName}</Text>
-                  <Text style={styles.chatBuddyStatus}>🟢 Online acum • {activeBuddy.university}</Text>
+                  <Text style={styles.chatBuddyStatus}>🟢 Online now • {activeBuddy.university}</Text>
                 </View>
               </View>
 
               {/* Icebreaker Callout */}
               <View style={styles.chatIcebreakerBanner}>
-                <Text style={styles.chatIcebreakerTitle}>💡 Întrebare de la {activeBuddy.userName}:</Text>
+                <Text style={styles.chatIcebreakerTitle}>💡 Question from {activeBuddy.userName}:</Text>
                 <Text style={styles.chatIcebreakerPrompt}>"{activeBuddy.icebreakerPrompt}"</Text>
               </View>
 
@@ -260,9 +260,9 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
               {/* Quick Reply Chips */}
               <View style={styles.quickRepliesRow}>
                 {[
-                  '🎬 Îmi plac filmele indie!',
-                  '☕ Ne vedem cu 15m înainte?',
-                  '🎟️ Am biletul pe Solana!',
+                  '🎬 I love indie movies!',
+                  '☕ Meet 15 mins before?',
+                  '🎟️ Got my Solana ticket!',
                 ].map((chip) => (
                   <TouchableOpacity
                     key={chip}
@@ -280,14 +280,14 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
                   style={styles.chatTextInput}
                   value={inputMessage}
                   onChangeText={setInputMessage}
-                  placeholder={`Răspunde-i lui ${activeBuddy.userName}...`}
+                  placeholder={`Reply to ${activeBuddy.userName}...`}
                   placeholderTextColor="#71717a"
                 />
                 <TouchableOpacity
                   style={styles.sendButton}
                   onPress={() => handleSendMessage()}
                 >
-                  <Text style={styles.sendButtonText}>Trimite</Text>
+                  <Text style={styles.sendButtonText}>Send</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -296,32 +296,32 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
           {/* VIEW MODE 3: POST REQUEST FORM */}
           {viewMode === 'post' && (
             <ScrollView style={styles.form}>
-              <Text style={styles.formTitle}>Caută un partener de eveniment</Text>
+              <Text style={styles.formTitle}>Find an Event Buddy</Text>
 
-              <Text style={styles.label}>Numele tău</Text>
+              <Text style={styles.label}>Your Name</Text>
               <TextInput
                 style={styles.input}
                 value={name}
                 onChangeText={setName}
-                placeholder="Ex: Elena"
+                placeholder="E.g. Elena"
                 placeholderTextColor="#71717a"
               />
 
-              <Text style={styles.label}>Despre tine (Bio scurt)</Text>
+              <Text style={styles.label}>About You (Short Bio)</Text>
               <TextInput
                 style={styles.input}
                 value={bio}
                 onChangeText={setBio}
-                placeholder="Ce studiezi sau ce pasiuni ai?"
+                placeholder="What do you study or enjoy doing?"
                 placeholderTextColor="#71717a"
               />
 
-              <Text style={styles.label}>Interese (separate prin virgulă)</Text>
+              <Text style={styles.label}>Interests (comma separated)</Text>
               <TextInput
                 style={styles.input}
                 value={interestsText}
                 onChangeText={setInterestsText}
-                placeholder="film, jazz, teatru, cafea"
+                placeholder="cinema, jazz, theater, coffee"
                 placeholderTextColor="#71717a"
               />
 
@@ -330,13 +330,13 @@ export function BuddyModal({ visible, eventId, eventTitle, onClose }: BuddyModal
                   style={styles.cancelBtn}
                   onPress={() => setViewMode('list')}
                 >
-                  <Text style={styles.cancelBtnText}>Înapoi</Text>
+                  <Text style={styles.cancelBtnText}>Back</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.submitBtn}
                   onPress={handlePostRequest}
                 >
-                  <Text style={styles.submitBtnText}>Publică cererea</Text>
+                  <Text style={styles.submitBtnText}>Post Request</Text>
                 </TouchableOpacity>
               </View>
             </ScrollView>

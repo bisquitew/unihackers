@@ -32,7 +32,7 @@ export function ScannerModal({ visible, ticket, onClose, onSuccess }: ScannerMod
     }
 
     if (ticket.isCheckedIn) {
-      setErrorMessage('Acest bilet a fost deja utilizat pentru check-in!');
+      setErrorMessage('This ticket has already been used for check-in!');
       return;
     }
 
@@ -60,7 +60,7 @@ export function ScannerModal({ visible, ticket, onClose, onSuccess }: ScannerMod
         setScanStep(4);
         onSuccess(result.poap);
       } else {
-        setErrorMessage(result.error || 'Eroare la validarea biletului');
+        setErrorMessage(result.error || 'Error validating ticket on Devnet');
       }
     };
 
@@ -80,8 +80,8 @@ export function ScannerModal({ visible, ticket, onClose, onSuccess }: ScannerMod
           {/* Header */}
           <View style={styles.header}>
             <View>
-              <Text style={styles.tag}>📱 SCANNER BILETE LA INTRARE • STAFF DEMO</Text>
-              <Text style={styles.title} numberOfLines={1}>
+              <Text style={styles.headerTag}>⚡ VENUE DOOR CHECK-IN SCANNER</Text>
+              <Text style={styles.headerTitle} numberOfLines={1}>
                 {ticket.eventTitle}
               </Text>
             </View>
@@ -102,17 +102,17 @@ export function ScannerModal({ visible, ticket, onClose, onSuccess }: ScannerMod
                 <View style={styles.laserLine} />
 
                 <Text style={styles.viewfinderText}>
-                  {scanStep === 1 && '🔍 Scanare cod QR bilet...'}
-                  {scanStep === 2 && '🔐 Verificare Ed25519 pe Solana Devnet...'}
-                  {scanStep === 3 && '🏅 Minting Ecuson POAP On-Chain...'}
+                  {scanStep === 1 && '🔍 Scanning ticket QR code...'}
+                  {scanStep === 2 && '🔐 Verifying Ed25519 signature on Solana Devnet...'}
+                  {scanStep === 3 && '🏅 Minting on-chain POAP Attendance Badge...'}
                 </Text>
                 <ActivityIndicator size="small" color="#c084fc" style={{ marginTop: 12 }} />
               </View>
 
               <View style={styles.ticketDetailsBox}>
-                <Text style={styles.ticketIdText}>Bilet ID: {ticket.ticketId}</Text>
+                <Text style={styles.ticketIdText}>Ticket ID: {ticket.ticketId}</Text>
                 <Text style={styles.walletText} numberOfLines={1}>
-                  Participant: {ticket.attendeeName} ({ticket.ownerWallet.slice(0, 8)}...{ticket.ownerWallet.slice(-6)})
+                  Attendee: {ticket.attendeeName} ({ticket.ownerWallet.slice(0, 8)}...{ticket.ownerWallet.slice(-6)})
                 </Text>
               </View>
             </View>
@@ -122,10 +122,10 @@ export function ScannerModal({ visible, ticket, onClose, onSuccess }: ScannerMod
           {errorMessage && (
             <View style={styles.errorBox}>
               <Text style={styles.errorIcon}>⚠️</Text>
-              <Text style={styles.errorTitle}>Acces Refuzat</Text>
+              <Text style={styles.errorTitle}>Access Denied</Text>
               <Text style={styles.errorDesc}>{errorMessage}</Text>
               <TouchableOpacity style={styles.errorCloseBtn} onPress={onClose}>
-                <Text style={styles.errorCloseBtnText}>Închide</Text>
+                <Text style={styles.errorCloseBtnText}>Close</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -135,18 +135,18 @@ export function ScannerModal({ visible, ticket, onClose, onSuccess }: ScannerMod
             <View style={styles.successContainer}>
               <View style={styles.badgeCelebration}>
                 <Text style={styles.badgeIcon}>🏅</Text>
-                <Text style={styles.badgeCongratulations}>Bilet Verificat • Acces Permis!</Text>
-                <Text style={styles.poapUnlockedTag}>✨ NOU ECUSON POAP EMIS PE SOLANA</Text>
+                <Text style={styles.badgeCongratulations}>Ticket Verified • Entry Granted!</Text>
+                <Text style={styles.poapUnlockedTag}>✨ NEW POAP BADGE MINTED ON SOLANA</Text>
                 <Text style={styles.poapTitle}>{issuedPoap.badgeName}</Text>
               </View>
 
               <View style={styles.poapDetailsBox}>
-                <Text style={styles.poapDetailLabel}>Semnătură Tranzacție POAP Devnet:</Text>
+                <Text style={styles.poapDetailLabel}>Solana Devnet Transaction Signature:</Text>
                 <Text style={styles.poapSig} numberOfLines={2}>
                   {issuedPoap.txSignature}
                 </Text>
                 <Text style={styles.poapTime}>
-                  Verificat: {new Date(issuedPoap.issuedAt).toLocaleTimeString()} • Timișoara Culture Hub
+                  Verified: {new Date(issuedPoap.issuedAt).toLocaleTimeString()} • Timișoara Culture Hub
                 </Text>
               </View>
 
@@ -154,11 +154,11 @@ export function ScannerModal({ visible, ticket, onClose, onSuccess }: ScannerMod
                 style={styles.explorerBtn}
                 onPress={() => Linking.openURL(issuedPoap.explorerUrl)}
               >
-                <Text style={styles.explorerBtnText}>🔍 Vezi POAP pe Solana Explorer →</Text>
+                <Text style={styles.explorerBtnText}>🔍 View POAP on Solana Explorer →</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.doneBtn} onPress={onClose}>
-                <Text style={styles.doneBtnText}>✓ Finalizează Check-in</Text>
+                <Text style={styles.doneBtnText}>✓ Complete Check-in</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -175,147 +175,224 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    backgroundColor: '#121216',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '90%',
-    borderWidth: 1,
+    backgroundColor: '#09090b',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingBottom: 40,
     borderColor: '#27272a',
+    borderWidth: 1,
+    minHeight: 460,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#27272a',
-    paddingBottom: 12,
-  },
-  tag: { color: '#a855f7', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  title: { color: '#ffffff', fontSize: 16, fontWeight: 'bold', marginTop: 2, maxWidth: 280 },
-  closeBtn: {
-    backgroundColor: '#27272a',
-    width: 28,
-    height: 28,
-    borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#18181b',
   },
-  closeBtnText: { color: '#ffffff', fontSize: 12, fontWeight: 'bold' },
-
-  // Viewfinder
-  viewfinderContainer: { alignItems: 'center', paddingVertical: 10 },
+  headerTag: {
+    color: '#22c55e',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  headerTitle: {
+    color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginTop: 2,
+    maxWidth: 260,
+  },
+  closeBtn: {
+    padding: 8,
+  },
+  closeBtnText: {
+    color: '#a1a1aa',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  viewfinderContainer: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingHorizontal: 20,
+  },
   viewfinderBox: {
-    width: 220,
-    height: 220,
+    width: 240,
+    height: 180,
     borderWidth: 1,
     borderColor: '#3f3f46',
-    backgroundColor: '#09090b',
     borderRadius: 16,
     position: 'relative',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 16,
+    backgroundColor: '#0c0a09',
+    overflow: 'hidden',
   },
   corner: {
     position: 'absolute',
     width: 20,
     height: 20,
-    borderColor: '#8d23be',
+    borderColor: '#a855f7',
   },
-  cornerTL: { top: -2, left: -2, borderTopWidth: 4, borderLeftWidth: 4, borderTopLeftRadius: 8 },
-  cornerTR: { top: -2, right: -2, borderTopWidth: 4, borderRightWidth: 4, borderTopRightRadius: 8 },
-  cornerBL: { bottom: -2, left: -2, borderBottomWidth: 4, borderLeftWidth: 4, borderBottomLeftRadius: 8 },
-  cornerBR: { bottom: -2, right: -2, borderBottomWidth: 4, borderRightWidth: 4, borderBottomRightRadius: 8 },
+  cornerTL: { top: 0, left: 0, borderTopWidth: 3, borderLeftWidth: 3 },
+  cornerTR: { top: 0, right: 0, borderTopWidth: 3, borderRightWidth: 3 },
+  cornerBL: { bottom: 0, left: 0, borderBottomWidth: 3, borderLeftWidth: 3 },
+  cornerBR: { bottom: 0, right: 0, borderBottomWidth: 3, borderRightWidth: 3 },
   laserLine: {
-    width: '90%',
-    height: 2,
-    backgroundColor: '#c084fc',
     position: 'absolute',
-    top: '45%',
-    shadowColor: '#c084fc',
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    top: '40%',
+    left: 10,
+    right: 10,
+    height: 2,
+    backgroundColor: '#ef4444',
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   viewfinderText: {
     color: '#e4e4e7',
     fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
-    marginTop: 40,
+    paddingHorizontal: 16,
   },
   ticketDetailsBox: {
-    marginTop: 16,
     backgroundColor: '#18181b',
-    padding: 12,
     borderRadius: 10,
+    padding: 12,
+    marginTop: 16,
     width: '100%',
-    borderWidth: 1,
     borderColor: '#27272a',
+    borderWidth: 1,
   },
-  ticketIdText: { color: '#a1a1aa', fontSize: 11, fontWeight: 'bold' },
-  walletText: { color: '#ffffff', fontSize: 12, marginTop: 4 },
-
-  // Error State
-  errorBox: { alignItems: 'center', paddingVertical: 30 },
-  errorIcon: { fontSize: 40, marginBottom: 10 },
-  errorTitle: { color: '#ef4444', fontSize: 18, fontWeight: 'bold' },
-  errorDesc: { color: '#d4d4d8', fontSize: 13, textAlign: 'center', marginTop: 6, paddingHorizontal: 20 },
+  ticketIdText: {
+    color: '#a1a1aa',
+    fontSize: 11,
+    fontFamily: 'monospace',
+  },
+  walletText: {
+    color: '#c084fc',
+    fontSize: 11,
+    marginTop: 4,
+  },
+  errorBox: {
+    alignItems: 'center',
+    padding: 24,
+  },
+  errorIcon: {
+    fontSize: 48,
+    marginBottom: 12,
+  },
+  errorTitle: {
+    color: '#ef4444',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 6,
+  },
+  errorDesc: {
+    color: '#a1a1aa',
+    fontSize: 13,
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 20,
+  },
   errorCloseBtn: {
-    marginTop: 20,
     backgroundColor: '#27272a',
     paddingVertical: 10,
     paddingHorizontal: 24,
-    borderRadius: 10,
+    borderRadius: 8,
   },
-  errorCloseBtnText: { color: '#ffffff', fontWeight: 'bold', fontSize: 13 },
-
-  // Success State
-  successContainer: { alignItems: 'center', paddingVertical: 10 },
+  errorCloseBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  successContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+  },
   badgeCelebration: {
     alignItems: 'center',
-    backgroundColor: '#2e1065',
-    borderColor: '#7e22ce',
-    borderWidth: 1.5,
-    borderRadius: 16,
-    padding: 18,
-    width: '100%',
+    marginBottom: 16,
   },
-  badgeIcon: { fontSize: 44, marginBottom: 6 },
-  badgeCongratulations: { color: '#4ade80', fontSize: 16, fontWeight: 'bold' },
-  poapUnlockedTag: { color: '#facc15', fontSize: 10, fontWeight: '800', marginTop: 6, letterSpacing: 1 },
-  poapTitle: { color: '#ffffff', fontSize: 14, fontWeight: 'bold', marginTop: 4, textAlign: 'center' },
+  badgeIcon: {
+    fontSize: 54,
+    marginBottom: 8,
+  },
+  badgeCongratulations: {
+    color: '#4ade80',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  poapUnlockedTag: {
+    color: '#fbbf24',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  poapTitle: {
+    color: '#ffffff',
+    fontSize: 15,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
   poapDetailsBox: {
     backgroundColor: '#18181b',
-    borderRadius: 10,
+    borderRadius: 12,
     padding: 12,
     width: '100%',
-    marginTop: 14,
-    borderWidth: 1,
+    marginBottom: 16,
     borderColor: '#27272a',
-  },
-  poapDetailLabel: { color: '#a1a1aa', fontSize: 10, fontWeight: '600' },
-  poapSig: { color: '#c084fc', fontSize: 10, fontFamily: 'monospace', marginTop: 3 },
-  poapTime: { color: '#71717a', fontSize: 10, marginTop: 6 },
-  explorerBtn: {
-    marginTop: 14,
-    backgroundColor: '#3b0764',
-    borderColor: '#6b21a8',
     borderWidth: 1,
-    paddingVertical: 10,
-    width: '100%',
-    borderRadius: 10,
-    alignItems: 'center',
   },
-  explorerBtnText: { color: '#e9d5ff', fontSize: 12, fontWeight: 'bold' },
+  poapDetailLabel: {
+    color: '#71717a',
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  poapSig: {
+    color: '#38bdf8',
+    fontSize: 10,
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  poapTime: {
+    color: '#a1a1aa',
+    fontSize: 10,
+  },
+  explorerBtn: {
+    backgroundColor: '#2e1065',
+    borderColor: '#7e22ce',
+    borderWidth: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  explorerBtnText: {
+    color: '#f3e8ff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   doneBtn: {
-    marginTop: 10,
     backgroundColor: '#16a34a',
     paddingVertical: 12,
-    width: '100%',
     borderRadius: 10,
+    width: '100%',
     alignItems: 'center',
   },
-  doneBtnText: { color: '#ffffff', fontSize: 14, fontWeight: 'bold' },
+  doneBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
+  },
 });

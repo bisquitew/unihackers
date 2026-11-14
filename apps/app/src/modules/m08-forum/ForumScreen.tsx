@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -10,108 +10,17 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-
-interface Comment {
-  id: string;
-  authorName: string;
-  content: string;
-  createdAt: string;
-}
-
-interface Post {
-  id: string;
-  category: 'lost_pets' | 'neighbourhood' | 'help' | 'buy_sell' | 'cultural';
-  title: string;
-  content: string;
-  authorName: string;
-  neighbourhood: string;
-  photos: string[];
-  upvotes: number;
-  commentsCount: number;
-  comments: Comment[];
-  isReported: boolean;
-  reportCount: number;
-  reportReason?: string;
-  createdAt: string;
-}
-
-const INITIAL_POSTS: Post[] = [
-  {
-    id: 'post-001',
-    category: 'lost_pets',
-    title: 'Pisică portocalie pierdută în Fabric (Str. Ștefan cel Mare)',
-    content: 'Motan roșcat, 2 ani, răspunde la numele Milo. Are o zgardă albastră cu clopoțel. S-a speriat și a fugit spre malul Begăi.',
-    authorName: 'Ana Radu',
-    neighbourhood: 'Fabric',
-    photos: ['https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&q=80'],
-    upvotes: 18,
-    commentsCount: 2,
-    comments: [
-      { id: 'c1', authorName: 'Ion Ionescu', content: 'Cred că l-am văzut în spatele bisericii Millennium!', createdAt: '1h în urmă' },
-      { id: 'c2', authorName: 'Ana Radu', content: 'Mergem să căutăm, mulțumim mult!', createdAt: '30m în urmă' },
-    ],
-    isReported: false,
-    reportCount: 0,
-    createdAt: 'Azi, 11:00',
-  },
-  {
-    id: 'post-002',
-    category: 'neighbourhood',
-    title: 'Ecologizare voluntară malul Begăi (Iosefin / D’arc)',
-    content: 'Sâmbătă la 10:00 ne strângem să adunăm deșeurile de pe faleză. Asigurăm saci și mănuși!',
-    authorName: 'Mihai Voinea',
-    neighbourhood: 'Iosefin',
-    photos: ['https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=600&q=80'],
-    upvotes: 34,
-    commentsCount: 1,
-    comments: [
-      { id: 'c3', authorName: 'Elena D.', content: 'Vin și eu cu doi colegi de la UPT!', createdAt: '2h în urmă' },
-    ],
-    isReported: false,
-    reportCount: 0,
-    createdAt: 'Azi, 10:15',
-  },
-  {
-    id: 'post-003',
-    category: 'help',
-    title: 'Căldura oprită în Complexul Studențesc — spații calde de studiu?',
-    content: 'Avarie Colterm pe rețea. Unde putem merge să învățăm într-un spațiu cald cu Wi-Fi bun?',
-    authorName: 'Alex Popa',
-    neighbourhood: 'Complexul Studențesc',
-    photos: [],
-    upvotes: 27,
-    commentsCount: 1,
-    comments: [
-      { id: 'c4', authorName: 'Maria C.', content: 'La Faber și la Biblioteca Centrală Universitară (BCUT) e perfect!', createdAt: '45m în urmă' },
-    ],
-    isReported: false,
-    reportCount: 0,
-    createdAt: 'Azi, 13:50',
-  },
-  {
-    id: 'post-004',
-    category: 'buy_sell',
-    title: 'Bilete concert la suprapreț Piața Unirii',
-    content: 'Vând 3 bilete la concertul de la filarmonică cu preț dublu, plata doar cash în Piața Unirii.',
-    authorName: 'Anonim99',
-    neighbourhood: 'Cetate',
-    photos: [],
-    upvotes: 0,
-    commentsCount: 0,
-    comments: [],
-    isReported: true,
-    reportCount: 3,
-    reportReason: 'Speculă ilegală de bilete și spam',
-    createdAt: 'Azi, 14:10',
-  },
-];
+import { forumStore, Post, Comment } from './forumStore';
 
 export function ForumScreen() {
-  const [posts, setPosts] = useState<Post[]>(INITIAL_POSTS);
+  const [posts, setPosts] = useState<Post[]>(forumStore.getPosts());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [modalVisible, setModalVisible] = useState(false);
   const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
   const [newCommentText, setNewCommentText] = useState('');
+
+  // Dev toggle to test Moderator role directly
+  const [isModeratorView, setIsModeratorView] = useState(false);
 
   // New post state
   const [newTitle, setNewTitle] = useState('');
@@ -119,64 +28,59 @@ export function ForumScreen() {
   const [newCategory, setNewCategory] = useState<'lost_pets' | 'neighbourhood' | 'help'>('neighbourhood');
   const [newNeighbourhood, setNewNeighbourhood] = useState('Cetate');
 
+  useEffect(() => {
+    const unsub = forumStore.subscribe(() => {
+      setPosts(forumStore.getPosts());
+    });
+    return unsub;
+  }, []);
+
   const reportedPosts = posts.filter((p) => p.isReported);
 
   const filteredPosts =
-    selectedCategory === 'moderation'
+    selectedCategory === 'moderation' || isModeratorView
       ? reportedPosts
       : posts.filter(
           (p) => selectedCategory === 'all' || p.category === selectedCategory
         );
 
   const handleUpvote = (postId: string) => {
-    setPosts((prev) =>
-      prev.map((p) => (p.id === postId ? { ...p, upvotes: p.upvotes + 1 } : p))
-    );
+    forumStore.toggleUpvote(postId);
   };
 
   const handleReport = (postId: string) => {
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? {
-              ...p,
-              isReported: true,
-              reportCount: p.reportCount + 1,
-              reportReason: 'Sesizare transmisă de un rezident',
-            }
-          : p
-      )
-    );
-    Alert.alert(
-      'Postare raportată 🛡️',
-      'Mulțumim! Postarea a fost trimisă în coada de analiză a moderatorilor.'
-    );
+    const res = forumStore.reportPost(postId, 'Flagged by citizen for review');
+    if (res.alreadyReported) {
+      Alert.alert(
+        'Already Reported ℹ️',
+        'You have already reported this post for moderator review.'
+      );
+    } else {
+      Alert.alert(
+        'Post Reported 🛡️',
+        'Thank you! The post has been queued in the Moderation Panel.'
+      );
+    }
   };
 
   // Moderator Actions
   const handleApprovePost = (postId: string) => {
-    setPosts((prev) =>
-      prev.map((p) =>
-        p.id === postId
-          ? { ...p, isReported: false, reportCount: 0, reportReason: undefined }
-          : p
-      )
-    );
-    Alert.alert('Postare Aprobată ✓', 'Postarea a fost verificată și păstrată în feed-ul comunității.');
+    forumStore.approvePost(postId);
+    Alert.alert('Post Approved ✓', 'Post has been verified and kept in the community feed.');
   };
 
   const handleDeletePost = (postId: string) => {
     Alert.alert(
-      'Confirmă ștergerea',
-      'Sigur doriți să eliminați această postare din platformă?',
+      'Confirm Deletion',
+      'Are you sure you want to remove this post from the platform?',
       [
-        { text: 'Anulează', style: 'cancel' },
+        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Șterge definitiv',
+          text: 'Delete Permanently',
           style: 'destructive',
           onPress: () => {
-            setPosts((prev) => prev.filter((p) => p.id !== postId));
-            Alert.alert('Șters', 'Postarea a fost eliminată cu succes.');
+            forumStore.deletePost(postId);
+            Alert.alert('Deleted', 'Post was successfully removed.');
           },
         },
       ]
@@ -185,53 +89,28 @@ export function ForumScreen() {
 
   const handleAddComment = (postId: string) => {
     if (!newCommentText.trim()) return;
-    setPosts((prev) =>
-      prev.map((p) => {
-        if (p.id === postId) {
-          const c: Comment = {
-            id: `c-${Date.now()}`,
-            authorName: 'Tu (Rezident)',
-            content: newCommentText.trim(),
-            createdAt: 'Chiar acum',
-          };
-          return {
-            ...p,
-            commentsCount: p.commentsCount + 1,
-            comments: [...p.comments, c],
-          };
-        }
-        return p;
-      })
-    );
+    forumStore.addComment(postId, 'You (Resident)', newCommentText);
     setNewCommentText('');
   };
 
   const handleCreatePost = () => {
     if (!newTitle.trim() || !newContent.trim()) {
-      Alert.alert('Eroare', 'Vă rugăm să completați titlul și descrierea postării.');
+      Alert.alert('Error', 'Please fill out both the title and details of your post.');
       return;
     }
 
-    const post: Post = {
-      id: `post-${Date.now()}`,
+    forumStore.createPost({
+      title: newTitle,
+      content: newContent,
       category: newCategory,
-      title: newTitle.trim(),
-      content: newContent.trim(),
-      authorName: 'Tu (Rezident)',
       neighbourhood: newNeighbourhood,
-      photos: [],
-      upvotes: 1,
-      commentsCount: 0,
-      comments: [],
-      isReported: false,
-      reportCount: 0,
-      createdAt: 'Chiar acum',
-    };
+      authorName: 'You (Resident)',
+    });
 
-    setPosts([post, ...posts]);
     setModalVisible(false);
     setNewTitle('');
     setNewContent('');
+    Alert.alert('Success 🎉', 'Your post has been published and saved!');
   };
 
   return (
@@ -239,11 +118,11 @@ export function ForumScreen() {
       {/* Header bar */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.headerTitle}>Comunitate & Vecinătate</Text>
-          <Text style={styles.headerSub}>Timișoara • Forum Cetățenesc [M08]</Text>
+          <Text style={styles.headerTitle}>Community & Neighbourhoods</Text>
+          <Text style={styles.headerSub}>Timișoara • Civic Forum [M08]</Text>
         </View>
         <TouchableOpacity style={styles.createButton} onPress={() => setModalVisible(true)}>
-          <Text style={styles.createButtonText}>+ Scrie Postare</Text>
+          <Text style={styles.createButtonText}>+ Create Post</Text>
         </TouchableOpacity>
       </View>
 
@@ -251,13 +130,14 @@ export function ForumScreen() {
       <View style={styles.filterRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {[
-            { id: 'all', label: 'Toate' },
-            { id: 'lost_pets', label: '🐾 Animale Pierdute' },
-            { id: 'help', label: '🤝 Ajutor & Întrebări' },
-            { id: 'neighbourhood', label: '🏘️ Inițiative Cartier' },
+            { id: 'all', label: 'All Posts' },
+            { id: 'groups', label: '👥 Community Groups' },
+            { id: 'lost_pets', label: '🐾 Lost & Found Pets' },
+            { id: 'help', label: '🤝 Help & Questions' },
+            { id: 'neighbourhood', label: '🏘️ Local Initiatives' },
             {
               id: 'moderation',
-              label: `🛡️ Panou Moderare ${reportedPosts.length > 0 ? `(${reportedPosts.length})` : ''}`,
+              label: `🛡️ Moderation Panel ${reportedPosts.length > 0 ? `(${reportedPosts.length})` : ''}`,
             },
           ].map((cat) => (
             <TouchableOpacity
@@ -287,9 +167,9 @@ export function ForumScreen() {
       {/* MODERATOR VIEW BANNER (When Moderation Tab is Selected) */}
       {selectedCategory === 'moderation' && (
         <View style={styles.modBanner}>
-          <Text style={styles.modBannerTitle}>🛡️ Panou de Moderare Comunitate</Text>
+          <Text style={styles.modBannerTitle}>🛡️ Community Moderation Panel</Text>
           <Text style={styles.modBannerSub}>
-            Postările raportate de rezidenți pentru spam, înșelăciuni sau limbaj nepotrivit.
+            Posts flagged by residents for spam, scalping, or inappropriate content.
           </Text>
         </View>
       )}
@@ -298,14 +178,97 @@ export function ForumScreen() {
       {selectedCategory === 'moderation' && reportedPosts.length === 0 && (
         <View style={styles.emptyModBox}>
           <Text style={styles.emptyModIcon}>✨</Text>
-          <Text style={styles.emptyModTitle}>Nicio postare raportată!</Text>
+          <Text style={styles.emptyModTitle}>No flagged posts!</Text>
           <Text style={styles.emptyModDesc}>
-            Toate postările din Timișoara sunt verificate. Comunitatea este în siguranță.
+            All Timișoara community posts are verified. Feed is clean and safe.
           </Text>
         </View>
       )}
 
+      {/* Community Groups View */}
+      {selectedCategory === 'groups' && (
+        <ScrollView style={styles.content}>
+          <View style={styles.modBanner}>
+            <Text style={styles.modBannerTitle}>👥 Timișoara Community Groups</Text>
+            <Text style={styles.modBannerSub}>
+              Join local neighborhood councils, student associations, and volunteer civic circles.
+            </Text>
+          </View>
+
+          {[
+            {
+              id: 'grp-1',
+              name: 'Fabric Creative Hub & Yard',
+              area: 'Fabric',
+              members: 142,
+              desc: 'Artists, cultural organizers, and residents around Faber Yard and Traian Square.',
+              tags: ['culture', 'art', 'events'],
+            },
+            {
+              id: 'grp-2',
+              name: 'UPT & UVT Student Socials',
+              area: 'Complexul Studențesc',
+              members: 380,
+              desc: 'Campus news, study spots, student discounts, and indie social meetups.',
+              tags: ['students', 'campus', 'study'],
+            },
+            {
+              id: 'grp-3',
+              name: 'Timișoara Lost & Found Pets Network',
+              area: 'All Timișoara',
+              members: 95,
+              desc: 'Rapid rescue and alert coordination for lost dogs and cats in Timișoara.',
+              tags: ['pets', 'rescue', 'emergency'],
+            },
+            {
+              id: 'grp-4',
+              name: 'Bega Clean & Green Volunteers',
+              area: 'Iosefin / D’arc',
+              members: 64,
+              desc: 'Environmental cleanups along the Bega canal banks and eco-workshops.',
+              tags: ['ecology', 'volunteering', 'bega'],
+            },
+          ].map((grp) => (
+            <View key={grp.id} style={styles.postCard}>
+              <View style={styles.badgeRow}>
+                <Text style={styles.categoryBadge}>GROUP</Text>
+                <Text style={styles.neighbourhoodBadge}>📍 {grp.area}</Text>
+                <Text style={[styles.neighbourhoodBadge, { marginLeft: 'auto', color: '#c084fc' }]}>
+                  👥 {grp.members} members
+                </Text>
+              </View>
+              <Text style={styles.postTitle}>{grp.name}</Text>
+              <Text style={styles.postContent}>{grp.desc}</Text>
+              <View style={[styles.badgeRow, { marginTop: 10 }]}>
+                {grp.tags.map((t) => (
+                  <Text key={t} style={{ color: '#a855f7', fontSize: 10, marginRight: 8 }}>
+                    #{t}
+                  </Text>
+                ))}
+              </View>
+              <View style={[styles.actionRow, { marginTop: 12 }]}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: '#8d23be' }]}
+                  onPress={() => Alert.alert('Joined Group ✓', `You are now a member of ${grp.name}!`)}
+                >
+                  <Text style={[styles.actionBtnText, { color: '#ffffff', fontWeight: 'bold' }]}>
+                    + Join Group
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.actionBtn}
+                  onPress={() => setSelectedCategory('all')}
+                >
+                  <Text style={styles.actionBtnText}>View Posts →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      )}
+
       {/* Posts List */}
+      {selectedCategory !== 'groups' && (
       <ScrollView style={styles.content}>
         {filteredPosts.map((post) => (
           <View
@@ -327,11 +290,13 @@ export function ForumScreen() {
               {/* Report pill or badge */}
               {selectedCategory !== 'moderation' ? (
                 <TouchableOpacity onPress={() => handleReport(post.id)}>
-                  <Text style={styles.reportText}>{post.isReported ? '⚠️ Raportat' : '⚑ Raportează'}</Text>
+                  <Text style={[styles.reportText, forumStore.hasUserReported(post.id) && styles.reportTextActive]}>
+                    {forumStore.hasUserReported(post.id) ? '⚠️ Reported' : post.isReported ? '⚠️ Flagged' : '⚑ Report'}
+                  </Text>
                 </TouchableOpacity>
               ) : (
                 <View style={styles.modReportPill}>
-                  <Text style={styles.modReportPillText}>⚠️ {post.reportCount} sesizări</Text>
+                  <Text style={styles.modReportPillText}>⚠️ {post.reportCount} reports</Text>
                 </View>
               )}
             </View>
@@ -339,9 +304,9 @@ export function ForumScreen() {
             {/* Moderation Warning Note */}
             {post.isReported && (
               <View style={styles.reportedReasonBox}>
-                <Text style={styles.reportedReasonTitle}>Motiv semnalare:</Text>
+                <Text style={styles.reportedReasonTitle}>Flag reason:</Text>
                 <Text style={styles.reportedReasonText}>
-                  {post.reportReason || 'Semnalat de comunitate pentru verificare'}
+                  {post.reportReason || 'Flagged by community for review'}
                 </Text>
               </View>
             )}
@@ -356,8 +321,13 @@ export function ForumScreen() {
             {/* If NOT in moderator view: Normal Upvote & Comment Actions */}
             {selectedCategory !== 'moderation' ? (
               <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => handleUpvote(post.id)}>
-                  <Text style={styles.actionBtnText}>👍 {post.upvotes} Susțineri</Text>
+                <TouchableOpacity
+                  style={[styles.actionBtn, forumStore.hasUserUpvoted(post.id) && styles.actionBtnUpvoted]}
+                  onPress={() => handleUpvote(post.id)}
+                >
+                  <Text style={[styles.actionBtnText, forumStore.hasUserUpvoted(post.id) && styles.actionBtnTextUpvoted]}>
+                    {forumStore.hasUserUpvoted(post.id) ? '👍 Upvoted' : '👍 Upvote'} ({post.upvotes})
+                  </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.actionBtn}
@@ -367,7 +337,7 @@ export function ForumScreen() {
                     )
                   }
                 >
-                  <Text style={styles.actionBtnText}>💬 {post.commentsCount} Comentarii</Text>
+                  <Text style={styles.actionBtnText}>💬 {post.commentsCount} Comments</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -377,14 +347,14 @@ export function ForumScreen() {
                   style={styles.modApproveBtn}
                   onPress={() => handleApprovePost(post.id)}
                 >
-                  <Text style={styles.modApproveBtnText}>✓ Aprobă & Păstrează</Text>
+                  <Text style={styles.modApproveBtnText}>✓ Approve & Keep</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   style={styles.modDeleteBtn}
                   onPress={() => handleDeletePost(post.id)}
                 >
-                  <Text style={styles.modDeleteBtnText}>🗑️ Șterge Postarea</Text>
+                  <Text style={styles.modDeleteBtnText}>🗑️ Delete Post</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -401,7 +371,7 @@ export function ForumScreen() {
                 <View style={styles.addCommentRow}>
                   <TextInput
                     style={styles.commentInput}
-                    placeholder="Scrie un răspuns..."
+                    placeholder="Write a reply..."
                     placeholderTextColor="#71717a"
                     value={newCommentText}
                     onChangeText={setNewCommentText}
@@ -410,7 +380,7 @@ export function ForumScreen() {
                     style={styles.sendCommentBtn}
                     onPress={() => handleAddComment(post.id)}
                   >
-                    <Text style={styles.sendCommentText}>Trimite</Text>
+                    <Text style={styles.sendCommentText}>Send</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -418,14 +388,15 @@ export function ForumScreen() {
           </View>
         ))}
       </ScrollView>
+      )}
 
       {/* Create Post Modal */}
       <Modal visible={modalVisible} animationType="slide" transparent>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Postare nouă în comunitate</Text>
+            <Text style={styles.modalTitle}>New Community Post</Text>
 
-            <Text style={styles.inputLabel}>Categorie</Text>
+            <Text style={styles.inputLabel}>Category</Text>
             <View style={styles.catSelectRow}>
               {(['neighbourhood', 'lost_pets', 'help'] as const).map((cat) => (
                 <TouchableOpacity
@@ -437,37 +408,37 @@ export function ForumScreen() {
                   onPress={() => setNewCategory(cat)}
                 >
                   <Text style={styles.catOptionText}>
-                    {cat === 'lost_pets' ? '🐾 Animal' : cat === 'help' ? '🤝 Ajutor' : '🏘️ Cartier'}
+                    {cat === 'lost_pets' ? '🐾 Pet' : cat === 'help' ? '🤝 Help' : '🏘️ Local'}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
 
-            <Text style={styles.inputLabel}>Cartier</Text>
+            <Text style={styles.inputLabel}>Neighbourhood</Text>
             <TextInput
               style={styles.modalInput}
               value={newNeighbourhood}
               onChangeText={setNewNeighbourhood}
-              placeholder="Ex: Fabric, Iosefin, Cetate, Elisabetin"
+              placeholder="E.g. Fabric, Iosefin, Cetate, Elisabetin"
               placeholderTextColor="#71717a"
             />
 
-            <Text style={styles.inputLabel}>Titlu</Text>
+            <Text style={styles.inputLabel}>Title</Text>
             <TextInput
               style={styles.modalInput}
               value={newTitle}
               onChangeText={setNewTitle}
-              placeholder="Despre ce este vorba?"
+              placeholder="What is this regarding?"
               placeholderTextColor="#71717a"
             />
 
-            <Text style={styles.inputLabel}>Detalii</Text>
+            <Text style={styles.inputLabel}>Details</Text>
             <TextInput
               style={[styles.modalInput, { height: 80 }]}
               multiline
               value={newContent}
               onChangeText={setNewContent}
-              placeholder="Scrie detaliile postării..."
+              placeholder="Write the details of your post..."
               placeholderTextColor="#71717a"
             />
 
@@ -476,13 +447,13 @@ export function ForumScreen() {
                 style={styles.cancelBtn}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.cancelBtnText}>Anulează</Text>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.publishBtn}
                 onPress={handleCreatePost}
               >
-                <Text style={styles.publishBtnText}>Publică</Text>
+                <Text style={styles.publishBtnText}>Publish</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -611,8 +582,23 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#27272a',
   },
-  actionBtn: { flexDirection: 'row', alignItems: 'center' },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: '#18181b',
+    borderWidth: 1,
+    borderColor: '#27272a',
+  },
+  actionBtnUpvoted: {
+    backgroundColor: '#3b0764',
+    borderColor: '#9333ea',
+  },
   actionBtnText: { color: '#a1a1aa', fontSize: 12, fontWeight: '500' },
+  actionBtnTextUpvoted: { color: '#f3e8ff', fontWeight: 'bold' },
+  reportTextActive: { color: '#ef4444', fontWeight: 'bold' },
 
   // Moderator Control Buttons
   modActionRow: {
