@@ -44,6 +44,6 @@ export function Segmented<T extends string>({ options, value, onChange, accessib
 const styles = StyleSheet.create({
   track: { flexDirection: 'row', padding: 3, borderRadius: radii.full, backgroundColor: colors.secondary },
   item: { flex: 1, minHeight: minTarget - 6, borderRadius: radii.full, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
-  itemActive: { backgroundColor: colors.background, boxShadow: `${shadows.ring}, ${shadows.lift}` } as any,
+  itemActive: { backgroundColor: colors.surface, boxShadow: `${shadows.ring}, ${shadows.lift}` } as any,
   labelActive: { fontWeight: '700' },
 });

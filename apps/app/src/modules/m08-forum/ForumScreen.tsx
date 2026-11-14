@@ -392,5 +392,5 @@ const styles = StyleSheet.create({
   noReplies: { alignItems: 'center', gap: 8, paddingVertical: 8 },
   suggestions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 6 },
   composer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline },
-  input: { flex: 1, minHeight: 44, borderRadius: radii.full, paddingHorizontal: 16, fontFamily: fonts.ui500, fontSize: 16, color: colors.foreground, backgroundColor: colors.background, boxShadow: 'inset 0 1px 2px rgba(26,16,51,0.07), 0 0 0 1px rgba(26,16,51,0.08)', outlineStyle: 'none' } as any,
+  input: { flex: 1, minHeight: 44, borderRadius: radii.full, paddingHorizontal: 16, fontFamily: fonts.ui500, fontSize: 16, color: colors.foreground, backgroundColor: colors.secondary, outlineStyle: 'none' } as any,
 });

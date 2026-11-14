@@ -21,7 +21,7 @@ const SECTIONS: { id: Section; label: string }[] = [
  * section with ?tab= and an event with ?event=.
  */
 export default function CommunityTab() {
-  const params = useLocalSearchParams<{ tab?: string; event?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; event?: string; view?: string }>();
   const [section, setSection] = useState<Section>('events');
 
   useEffect(() => {
@@ -39,7 +39,7 @@ export default function CommunityTab() {
 
       {section === 'events' ? <EventsScreen embedded openEventId={params.event} onOpenWallet={() => setSection('wallet')} /> : null}
       {section === 'forum' ? <ForumScreen embedded /> : null}
-      {section === 'buddies' ? <BuddyScreen embedded /> : null}
+      {section === 'buddies' ? <BuddyScreen embedded initialView={params.view === 'chats' ? 'chats' : undefined} /> : null}
       {section === 'wallet' ? <WalletScreen embedded onOpenEvents={() => setSection('events')} /> : null}
     </Screen>
   );

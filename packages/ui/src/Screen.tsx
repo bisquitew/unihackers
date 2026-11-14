@@ -19,6 +19,8 @@ export function Screen({ children, tabBar = true, footer }: ScreenProps) {
     <View style={styles.root}>
       <ScrollView
         contentInsetAdjustmentBehavior="never"
+        bounces
+        overScrollMode="always"
         contentContainerStyle={{ paddingTop: insets.top + 12, paddingHorizontal: 16, paddingBottom: bottom }}
         showsVerticalScrollIndicator={false}
       >

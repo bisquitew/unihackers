@@ -2,7 +2,8 @@
 // Renders nothing where voice cannot play (phone for now) or when the server has no voice configured,
 // so it can be dropped into any card without changing the screen's behaviour.
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
+import { Text, colors, icons } from '@hub/ui';
 import { guessLang, speak, stopSpeaking, voiceAvailable, webPlaybackSupported, type VoiceLang } from './voiceClient';
 
 type State = 'idle' | 'loading' | 'playing' | 'error';
@@ -14,7 +15,7 @@ interface Props {
   compact?: boolean;
 }
 
-export function ListenButton({ text, lang, label = 'Ascultă', compact = false }: Props) {
+export function ListenButton({ text, lang, label = 'Listen', compact = false }: Props) {
   const [available, setAvailable] = useState(false);
   const [state, setState] = useState<State>('idle');
   const [error, setError] = useState('');
@@ -43,33 +44,38 @@ export function ListenButton({ text, lang, label = 'Ascultă', compact = false }
       setState('idle');
     } catch (e) {
       setState('error');
-      setError(e instanceof Error ? e.message : 'Vocea nu este disponibilă acum.');
+      setError(e instanceof Error ? e.message : 'Voice is not available right now.');
     }
   };
 
-  const icon = state === 'playing' ? '⏹' : '🔊';
-  const text2 = state === 'playing' ? 'Stop' : label;
+  const playing = state === 'playing';
   return (
     <View style={styles.wrap}>
-      <TouchableOpacity
-        style={[styles.button, compact && styles.compact]}
+      <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel={state === 'playing' ? 'Oprește citirea' : `${label} cu voce`}
+        accessibilityLabel={playing ? 'Stop reading aloud' : `${label} aloud`}
+        style={({ pressed }) => [styles.button, compact && styles.compact, pressed && { backgroundColor: colors.secondaryPressed }]}
       >
-        {state === 'loading' ? <ActivityIndicator size="small" color="#c084fc" /> : <Text style={styles.icon}>{icon}</Text>}
-        {compact ? null : <Text style={styles.label}>{text2}</Text>}
-      </TouchableOpacity>
-      {state === 'error' && error ? <Text style={styles.error}>{error}</Text> : null}
+        {state === 'loading' ? <ActivityIndicator size="small" color={colors.foreground} /> : playing ? <icons.Stop size={16} weight="fill" color={colors.foreground} /> : <icons.SpeakerHigh size={16} weight="bold" color={colors.foreground} />}
+        {compact ? null : (
+          <Text variant="label" style={{ fontSize: 13 }}>
+            {playing ? 'Stop' : label}
+          </Text>
+        )}
+      </Pressable>
+      {state === 'error' && error ? (
+        <Text variant="caption" color="danger" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { alignSelf: 'flex-start', marginTop: 8 },
-  button: { flexDirection: 'row', alignItems: 'center', gap: 6, borderColor: '#3f3f46', borderWidth: 1, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10, minHeight: 30 },
-  compact: { paddingHorizontal: 8 },
-  icon: { fontSize: 14 },
-  label: { color: '#c084fc', fontSize: 13, fontWeight: '600' },
-  error: { color: '#f87171', fontSize: 12, marginTop: 4, maxWidth: 260 },
+  button: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12, minHeight: 36, backgroundColor: colors.secondary },
+  compact: { paddingHorizontal: 10 },
+  error: { marginTop: 4, maxWidth: 260 },
 });

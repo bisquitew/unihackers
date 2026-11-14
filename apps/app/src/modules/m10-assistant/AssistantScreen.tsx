@@ -1,17 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  ActivityIndicator,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-  type ScrollViewInstance,
-} from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, TextInput, View, type ScrollViewInstance } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BackLink, Chip, IconButton, Row, RowGroup, Text, TextButton, colors, fonts, icons, moduleArt, radii, useKeyboardHeight } from '@hub/ui';
 import { registeredModuleManifests } from '../index';
 import { sendChat, type ChatTurn, type ToolUse } from './api';
 import { ListenButton } from './voice/ListenButton';
@@ -27,6 +18,7 @@ interface Message {
 const MAX_HISTORY = 20;
 const MAX_MESSAGE = 2000;
 
+// Sample questions in both languages on purpose: the assistant answers in the language you ask in.
 const SUGGESTIONS = [
   'Am apă caldă în Complexul Studențesc?',
   'S-a pierdut vreun animal în Fabric?',
@@ -37,7 +29,15 @@ const SUGGESTIONS = [
 const moduleTitle = (id: string) => registeredModuleManifests.find((m) => m.id === id)?.title ?? id;
 const newId = () => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 
+/**
+ * The city assistant, laid out like the other chats in the app: back link and title on top, the conversation in the
+ * middle, the message box docked at the bottom and lifted by the keyboard. Before the first question it shows
+ * a few things to try.
+ */
 export function AssistantScreen() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const keyboard = useKeyboardHeight();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -76,10 +76,10 @@ export function AssistantScreen() {
       const { reply, toolsUsed } = await sendChat(message, history);
       setMessages((current) => [...current, { id: newId(), role: 'model', text: reply, toolsUsed }]);
       if (autoReadRef.current) {
-        speak(reply, guessLang(reply)).catch((e) => setVoiceError(e instanceof Error ? e.message : 'Vocea nu este disponibilă acum.'));
+        speak(reply, guessLang(reply)).catch((e) => setVoiceError(e instanceof Error ? e.message : 'Voice is not available right now.'));
       }
     } catch (e) {
-      setError({ text: e instanceof Error ? e.message : 'Asistentul nu răspunde acum.', failedMessage: message });
+      setError({ text: e instanceof Error ? e.message : 'The assistant is not answering right now.', failedMessage: message });
     } finally {
       setLoading(false);
     }
@@ -99,7 +99,7 @@ export function AssistantScreen() {
         await ask(text, messagesRef.current);
       } catch (e) {
         setMic('idle');
-        setVoiceError(e instanceof Error ? e.message : 'Nu am înțeles înregistrarea.');
+        setVoiceError(e instanceof Error ? e.message : 'I could not understand the recording.');
       }
       return;
     }
@@ -109,7 +109,7 @@ export function AssistantScreen() {
       recording.current = await startRecording(() => void toggleMicRef.current());
       setMic('recording');
     } catch {
-      setVoiceError('Nu pot folosi microfonul. Verifică permisiunea browserului.');
+      setVoiceError('I cannot use the microphone. Check the browser permission.');
     }
   };
   const toggleMicRef = useRef(toggleMic);
@@ -124,30 +124,62 @@ export function AssistantScreen() {
     void ask(error.failedMessage, previous);
   };
 
+  const Art = moduleArt.assistant;
+  const empty = messages.length === 0;
+
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={[styles.screen, { paddingTop: insets.top + 12, paddingBottom: keyboard > 0 ? keyboard : Math.max(insets.bottom, 8) }]}>
+      <View style={styles.top}>
+        <BackLink label="Back" onPress={() => router.back()} />
+        <Text variant="heading" accessibilityRole="header">
+          City assistant
+        </Text>
+      </View>
+
       <ScrollView
         ref={scrollRef}
-        style={styles.list}
+        style={{ flex: 1 }}
         contentContainerStyle={styles.listContent}
         onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
-        {messages.length === 0 ? (
-          <View style={styles.intro}>
-            <Text style={styles.title}>Asistentul Orașului</Text>
-            <Text style={styles.subtitle}>
-              Întreabă despre evenimente, întreruperi, tramvaie, animale pierdute sau parcare. Ask in English too.
-            </Text>
+        {empty ? (
+          <View style={{ gap: 18 }}>
+            <View style={styles.intro}>
+              <Art size={52} />
+              <Text variant="body" color="mutedForeground" style={{ flex: 1 }}>
+                Ask about events, outages, trams, lost pets or parking. Ask in Romanian or English.
+              </Text>
+            </View>
+            <View>
+              <Text variant="section" accessibilityRole="header" style={{ marginBottom: 4 }}>
+                Try asking
+              </Text>
+              <RowGroup>
+                {SUGGESTIONS.map((s) => (
+                  <Row key={s} onPress={() => ask(s, messages)} accessibilityLabel={s}>
+                    <Row.Body>
+                      <Row.Title>{s}</Row.Title>
+                    </Row.Body>
+                    <Row.Trailing>
+                      <icons.CaretRight size={18} color={colors.mutedForeground} />
+                    </Row.Trailing>
+                  </Row>
+                ))}
+              </RowGroup>
+            </View>
           </View>
         ) : null}
 
         {messages.map((m) => (
           <View key={m.id} style={[styles.bubble, m.role === 'user' ? styles.userBubble : styles.modelBubble]}>
-            <Text style={m.role === 'user' ? styles.userText : styles.modelText}>{m.text}</Text>
+            <Text variant="body" color={m.role === 'user' ? 'inverseForeground' : 'foreground'} style={styles.bubbleText}>
+              {m.text}
+            </Text>
             {m.role === 'model' && m.toolsUsed && m.toolsUsed.length > 0 ? (
-              <Text style={styles.sources}>
-                Surse: {[...new Set(m.toolsUsed.map((t) => moduleTitle(t.moduleId)))].join(' · ')}
+              <Text variant="caption" color="mutedForeground" style={{ marginTop: 6 }}>
+                Sources: {[...new Set(m.toolsUsed.map((t) => moduleTitle(t.moduleId)))].join(' · ')}
               </Text>
             ) : null}
             {m.role === 'model' && voiceOn ? <ListenButton text={m.text} /> : null}
@@ -156,54 +188,59 @@ export function AssistantScreen() {
 
         {loading ? (
           <View style={[styles.bubble, styles.modelBubble, styles.loadingBubble]}>
-            <ActivityIndicator color="#c084fc" size="small" />
-            <Text style={styles.loadingText}>Caut informații…</Text>
+            <ActivityIndicator color={colors.foreground} size="small" />
+            <Text variant="rowDetail" color="mutedForeground">
+              Looking it up…
+            </Text>
           </View>
         ) : null}
 
         {error ? (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error.text}</Text>
-            <TouchableOpacity onPress={retry} accessibilityRole="button">
-              <Text style={styles.retryText}>Încearcă din nou</Text>
-            </TouchableOpacity>
+          <View style={{ gap: 2, alignItems: 'flex-start' }}>
+            <Text variant="body" color="danger" accessibilityRole="alert">
+              {error.text}
+            </Text>
+            <TextButton label="Try again" size="md" onPress={retry} />
           </View>
         ) : null}
       </ScrollView>
 
-      <ScrollView horizontal style={styles.chipsRow} contentContainerStyle={styles.chips} showsHorizontalScrollIndicator={false}>
-        {SUGGESTIONS.map((s) => (
-          <TouchableOpacity key={s} style={styles.chip} onPress={() => ask(s, messages)} disabled={loading}>
-            <Text style={styles.chipText}>{s}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       {voiceOn ? (
         <View style={styles.voiceRow}>
-          <Text style={styles.voiceLabel}>🔊 Citește răspunsurile cu voce</Text>
+          <Text variant="rowDetail" color="mutedForeground">
+            Read answers aloud
+          </Text>
           <Switch
             value={autoRead}
             onValueChange={(v) => {
               setAutoRead(v);
               if (!v) stopSpeaking();
             }}
-            accessibilityLabel="Citește răspunsurile cu voce"
-            trackColor={{ true: '#8d23be', false: '#3f3f46' }}
-            thumbColor="#ffffff"
+            accessibilityLabel="Read answers aloud"
+            trackColor={{ false: colors.secondaryPressed, true: colors.success }}
+            thumbColor="#FFFFFF"
           />
         </View>
       ) : null}
-      {voiceError ? <Text style={styles.voiceError}>{voiceError}</Text> : null}
-      {mic === 'recording' ? <Text style={styles.recordingText}>● Te ascult… apasă din nou pe microfon când ai terminat (max. 30 s)</Text> : null}
+      {voiceError ? (
+        <Text variant="caption" color="danger" style={styles.note}>
+          {voiceError}
+        </Text>
+      ) : null}
+      {mic === 'recording' ? (
+        <Text variant="caption" color="danger" style={styles.note}>
+          Listening… tap the microphone again when you are done (30 s at most)
+        </Text>
+      ) : null}
 
-      <View style={styles.inputRow}>
+      <View style={styles.composer}>
         <TextInput
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder="Scrie o întrebare…"
-          placeholderTextColor="#71717a"
+          placeholder="Ask a question"
+          placeholderTextColor={colors.mutedForeground}
+          accessibilityLabel="Your question"
           maxLength={MAX_MESSAGE}
           multiline
           onSubmitEditing={() => ask(input, messages)}
@@ -211,60 +248,36 @@ export function AssistantScreen() {
           returnKeyType="send"
         />
         {voiceOn ? (
-          <TouchableOpacity
-            style={[styles.micButton, mic === 'recording' && styles.micRecording, (loading || mic === 'transcribing') && styles.disabled]}
-            onPress={toggleMic}
-            disabled={loading || mic === 'transcribing'}
-            accessibilityRole="button"
-            accessibilityLabel={mic === 'recording' ? 'Oprește înregistrarea și trimite' : 'Vorbește cu asistentul'}
-          >
-            {mic === 'transcribing' ? <ActivityIndicator color="#ffffff" size="small" /> : <Text style={styles.sendText}>{mic === 'recording' ? '⏹' : '🎤'}</Text>}
-          </TouchableOpacity>
+          <IconButton label={mic === 'recording' ? 'Stop recording and send' : 'Speak to the assistant'} tone={mic === 'recording' ? 'primary' : 'light'} size={44} onPress={toggleMic}>
+            {mic === 'transcribing' ? (
+              <ActivityIndicator color={colors.foreground} size="small" />
+            ) : mic === 'recording' ? (
+              <icons.Stop size={20} weight="fill" color={colors.primaryForeground} />
+            ) : (
+              <icons.Microphone size={20} weight="bold" color={colors.foreground} />
+            )}
+          </IconButton>
         ) : null}
-        <TouchableOpacity
-          style={[styles.sendButton, (!input.trim() || loading) && styles.disabled]}
-          onPress={() => ask(input, messages)}
-          disabled={!input.trim() || loading}
-          accessibilityLabel="Trimite"
-        >
-          <Text style={styles.sendText}>➤</Text>
-        </TouchableOpacity>
+        <IconButton label="Send" tone="ink" size={44} onPress={() => ask(input, messages)}>
+          <icons.PaperPlaneTilt size={20} weight="fill" color={colors.inverseForeground} />
+        </IconButton>
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b' },
-  list: { flex: 1 },
-  listContent: { padding: 16, paddingBottom: 8 },
-  intro: { marginBottom: 12 },
-  title: { color: '#ffffff', fontSize: 22, fontWeight: '700', marginBottom: 6 },
-  subtitle: { color: '#a1a1aa', fontSize: 14, lineHeight: 20 },
-  bubble: { maxWidth: '85%', borderRadius: 16, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 10 },
-  userBubble: { alignSelf: 'flex-end', backgroundColor: '#8d23be', borderBottomRightRadius: 4 },
-  modelBubble: { alignSelf: 'flex-start', backgroundColor: '#18181b', borderColor: '#27272a', borderWidth: 1, borderBottomLeftRadius: 4 },
-  userText: { color: '#ffffff', fontSize: 15, lineHeight: 21 },
-  modelText: { color: '#e4e4e7', fontSize: 15, lineHeight: 21 },
-  sources: { color: '#71717a', fontSize: 12, marginTop: 6 },
+  screen: { flex: 1, backgroundColor: colors.background },
+  top: { paddingHorizontal: 16, paddingBottom: 4 },
+  listContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 10 },
+  intro: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  bubble: { maxWidth: '86%', borderRadius: radii.input, paddingVertical: 10, paddingHorizontal: 14 },
+  userBubble: { alignSelf: 'flex-end', backgroundColor: colors.inverse },
+  modelBubble: { alignSelf: 'flex-start', backgroundColor: colors.secondary },
+  bubbleText: { fontSize: 15, lineHeight: 21 },
   loadingBubble: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  loadingText: { color: '#a1a1aa', fontSize: 14 },
-  errorBox: { borderColor: '#7f1d1d', borderWidth: 1, backgroundColor: '#1c1917', borderRadius: 12, padding: 12, marginBottom: 10 },
-  errorText: { color: '#f87171', fontSize: 14, marginBottom: 6 },
-  retryText: { color: '#c084fc', fontWeight: '600' },
-  chipsRow: { flexGrow: 0 },
-  chips: { paddingHorizontal: 16, paddingVertical: 8, gap: 8 },
-  chip: { borderColor: '#27272a', borderWidth: 1, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12, backgroundColor: '#18181b' },
-  chipText: { color: '#d4d4d8', fontSize: 13 },
-  inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, padding: 12, borderTopColor: '#27272a', borderTopWidth: 1 },
-  input: { flex: 1, maxHeight: 120, backgroundColor: '#18181b', borderColor: '#27272a', borderWidth: 1, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, color: '#ffffff', fontSize: 15 },
-  sendButton: { backgroundColor: '#8d23be', borderRadius: 12, width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
-  sendText: { color: '#ffffff', fontSize: 18 },
-  disabled: { opacity: 0.5 },
   voiceRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 4 },
-  voiceLabel: { color: '#d4d4d8', fontSize: 13 },
-  voiceError: { color: '#f87171', fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
-  recordingText: { color: '#f87171', fontSize: 13, paddingHorizontal: 16, paddingTop: 4 },
-  micButton: { backgroundColor: '#27272a', borderColor: '#3f3f46', borderWidth: 1, borderRadius: 12, width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
-  micRecording: { backgroundColor: '#7f1d1d', borderColor: '#ef4444' },
+  note: { paddingHorizontal: 16, paddingTop: 4 },
+  composer: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
+  input: { flex: 1, minHeight: 44, maxHeight: 120, borderRadius: 22, paddingHorizontal: 16, paddingTop: 11, paddingBottom: 11, fontFamily: fonts.ui500, fontSize: 16, color: colors.foreground, backgroundColor: colors.secondary, outlineStyle: 'none' } as any,
 });

@@ -1,6 +1,8 @@
 import * as React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import {  StyleSheet, View } from 'react-native';
+import { SpringPressable } from './SpringPressable';
 import { colors, minTarget, radii, shadows } from './tokens';
+import { isDark } from './theme';
 import { Text } from './Text';
 
 type ChipProps = {
@@ -23,7 +25,8 @@ type ChipProps = {
 export function Chip({ label, selected, onPress, leading, tone = 'solid', dot }: ChipProps) {
   const glass = tone === 'glass';
   return (
-    <Pressable
+    <SpringPressable
+      scaleTo={0.92}
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
       accessibilityLabel={label}
@@ -32,7 +35,6 @@ export function Chip({ label, selected, onPress, leading, tone = 'solid', dot }:
         styles.chip,
         glass ? styles.glass : selected ? styles.on : styles.off,
         glass && !selected && styles.glassOff,
-        pressed && { transform: [{ scale: 0.97 }] },
       ]}
     >
       {glass && selected && dot ? <View style={[styles.dot, { backgroundColor: dot }]} /> : null}
@@ -40,16 +42,16 @@ export function Chip({ label, selected, onPress, leading, tone = 'solid', dot }:
       <Text variant="label" color={!glass && selected ? 'inverseForeground' : 'foreground'}>
         {label}
       </Text>
-    </Pressable>
+    </SpringPressable>
   );
 }
 
 const styles = StyleSheet.create({
   chip: { height: minTarget, paddingHorizontal: 16, borderRadius: radii.full, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  off: { backgroundColor: colors.background, boxShadow: `${shadows.ring}, ${shadows.lift}` } as any,
+  off: { backgroundColor: colors.surface, boxShadow: `${shadows.ring}, ${shadows.lift}` } as any,
   on: { backgroundColor: colors.inverse },
   glass: {
-    backgroundColor: 'rgba(255, 255, 255, 0.82)',
+    backgroundColor: isDark ? 'rgba(32, 18, 58, 0.82)' : 'rgba(255, 255, 255, 0.82)',
     boxShadow: `${shadows.ring}, ${shadows.lift}`,
     backdropFilter: 'blur(14px) saturate(1.6)',
   } as any,

@@ -1,19 +1,26 @@
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { palette } from './tokens';
+import { colors, palette } from './tokens';
 import { Text } from './Text';
 
 export type AvatarTone = 'apricot' | 'blue' | 'mint' | 'ink';
 
-const tones: Record<AvatarTone, { bg: string; fg: string }> = {
-  apricot: { bg: palette.apricot500, fg: palette.ink900 },
-  blue: { bg: palette.blue500, fg: palette.white },
-  mint: { bg: palette.mint500, fg: palette.ink900 },
-  ink: { bg: palette.ink900, fg: palette.white },
+// read per render (not once at load) so the ink avatar follows the theme
+const toneColors = (tone: AvatarTone): { bg: string; fg: string } => {
+  switch (tone) {
+    case 'blue':
+      return { bg: palette.blue500, fg: palette.white };
+    case 'mint':
+      return { bg: palette.mint500, fg: palette.ink900 };
+    case 'ink':
+      return { bg: colors.inverse, fg: colors.inverseForeground };
+    default:
+      return { bg: palette.apricot500, fg: palette.ink900 };
+  }
 };
 
 export function Avatar({ initials, tone = 'apricot', size = 32 }: { initials: string; tone?: AvatarTone; size?: number }) {
-  const t = tones[tone];
+  const t = toneColors(tone);
   return (
     <View style={[styles.avatar, { width: size, height: size, borderRadius: size, backgroundColor: t.bg }]}>
       <Text variant="caption" style={{ color: t.fg, fontFamily: 'Figtree_700Bold', fontSize: 12, lineHeight: 12 }}>

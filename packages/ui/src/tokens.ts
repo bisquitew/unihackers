@@ -1,7 +1,9 @@
 // Design tokens for the hop identity. Values mirror docs/brand/design-tokens.json (primitive -> semantic -> component).
 // Components must use these names, never raw hex.
 
-export const palette = {
+import { isDark, registerThemeApplier } from './theme';
+
+const fixedPalette = {
   white: '#FFFFFF',
   lilac50: '#F8F6FB',
   ink900: '#1A1033',
@@ -15,34 +17,73 @@ export const palette = {
   apricot500: '#FF7A2F',
   apricot700: '#A84300',
   red700: '#B3261E',
-  inkAlpha07: 'rgba(26, 16, 51, 0.07)',
-  inkAlpha08: 'rgba(26, 16, 51, 0.08)',
-  inkAlpha12: 'rgba(26, 16, 51, 0.12)',
 } as const;
 
-export const colors = {
-  background: palette.white,
-  backgroundPage: palette.lilac50,
-  foreground: palette.ink900,
-  mutedForeground: palette.ink600,
-  hairline: palette.inkAlpha07,
-  primary: palette.pink500,
-  /** Label on the pink primary. Always ink: white on this pink is only 3.4:1. */
-  primaryForeground: palette.ink900,
-  secondary: palette.inkAlpha07,
-  secondaryPressed: palette.inkAlpha12,
-  secondaryForeground: palette.ink900,
-  inverse: palette.ink900,
-  inverseForeground: palette.white,
-  focusRing: palette.ink900,
-  navActive: palette.inkAlpha08,
-  info: palette.blue700,
-  success: palette.mint700,
-  successDot: palette.mint500,
-  warning: palette.apricot700,
-  warningDot: palette.apricot500,
-  danger: palette.red700,
-} as const;
+// soft tints of the text colour: dark ink on light, light lilac on dark (hairlines, pressed states, pills)
+const alphaFor = (dark: boolean) => ({
+  inkAlpha07: dark ? 'rgba(248, 246, 251, 0.1)' : 'rgba(26, 16, 51, 0.07)',
+  inkAlpha08: dark ? 'rgba(248, 246, 251, 0.12)' : 'rgba(26, 16, 51, 0.08)',
+  inkAlpha12: dark ? 'rgba(248, 246, 251, 0.18)' : 'rgba(26, 16, 51, 0.12)',
+});
+
+/** The colour names. The tints change with the theme; the object itself never changes identity, so every importer sees the live values. */
+export const palette: typeof fixedPalette & ReturnType<typeof alphaFor> = { ...fixedPalette, ...alphaFor(isDark) };
+
+const buildColors = (dark: boolean) => {
+  const p = palette;
+  const light = {
+    background: p.white,
+    /** raised layers (sheets, the active segment): the same as the page in light, a step lighter in dark */
+    surface: p.white,
+    backgroundPage: p.lilac50,
+    foreground: p.ink900,
+    mutedForeground: p.ink600,
+    hairline: p.inkAlpha07,
+    primary: p.pink500,
+    /** Label on the pink primary. Always ink: white on this pink is only 3.4:1. */
+    primaryForeground: p.ink900,
+    secondary: p.inkAlpha07,
+    secondaryPressed: p.inkAlpha12,
+    secondaryForeground: p.ink900,
+    inverse: p.ink900,
+    inverseForeground: p.white,
+    focusRing: p.ink900,
+    navActive: p.inkAlpha08,
+    info: p.blue700,
+    success: p.mint700,
+    successDot: p.mint500,
+    warning: p.apricot700,
+    warningDot: p.apricot500,
+    danger: p.red700,
+  };
+  if (!dark) return light;
+  // Dark theme (identity.md): bg #14091F, surface #20123A, text #F8F6FB. Status colours move to their lighter tones to keep 4.5:1.
+  return {
+    ...light,
+    background: '#14091F',
+    surface: '#20123A',
+    backgroundPage: '#14091F',
+    foreground: p.lilac50,
+    mutedForeground: '#B9B0CE',
+    inverse: p.lilac50,
+    inverseForeground: p.ink900,
+    focusRing: p.lilac50,
+    secondaryForeground: p.lilac50,
+    info: '#8FA3FF',
+    success: '#7EE6C8',
+    warning: '#FFB88A',
+    danger: '#FF8A80',
+  };
+};
+
+type ColorSet = { [K in keyof ReturnType<typeof buildColors>]: string };
+/** Semantic colours for the current theme. Updated in place on a theme change; styles read it each time they are used. */
+export const colors: ColorSet = buildColors(isDark);
+
+registerThemeApplier(() => {
+  Object.assign(palette, alphaFor(isDark));
+  Object.assign(colors, buildColors(isDark));
+});
 
 export type ColorName = keyof typeof colors;
 

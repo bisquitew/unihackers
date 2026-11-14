@@ -2,8 +2,9 @@
 
 let realZod: any = null;
 try {
+  // synchronous on purpose: a top-level `await` breaks the web server render (Metro compiles it as plain CommonJS)
   // @ts-ignore
-  const zodModule = await import('zod');
+  const zodModule = require('zod');
   realZod = zodModule.z || zodModule.default || zodModule;
 } catch {
   // Fallback to lightweight shim

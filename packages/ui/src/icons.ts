@@ -41,4 +41,10 @@ export {
   WalletIcon as Wallet,
   FunnelIcon as Funnel,
   HeartIcon as Heart,
+  StarIcon as Star,
+  StackIcon as Stack,
+  MicrophoneIcon as Microphone,
+  StopIcon as Stop,
+  SpeakerHighIcon as SpeakerHigh,
+  PlayIcon as Play,
 } from 'phosphor-react-native';
