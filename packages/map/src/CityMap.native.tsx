@@ -26,9 +26,10 @@ export function CityMap(props: CityMapProps & { style?: React.ComponentProps<typ
     [handleMessage],
   );
 
+  const AnyWebView = WebView as any;
   return (
     <View style={[styles.fill, props.style]}>
-      <WebView
+      <AnyWebView
         ref={webview}
         // baseUrl gives the page a real origin so the CDN and tile requests are normal cross-origin fetches
         source={{ html: ENGINE_HTML, baseUrl: 'https://hop.local/' }}

@@ -8,6 +8,9 @@ import { utilitiesService } from './modules/m04-utilities/service.ts';
 import { transitService } from './modules/m05-transit/service.ts';
 import { parkieService } from './modules/parkie/service.ts';
 import { dashboardService } from './modules/m12-dashboard/index.ts';
+import { eventsService } from './modules/m01-events/service.ts';
+import { forumService } from './modules/m08-forum/service.ts';
+import { buddyService } from './modules/m07-buddy/service.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
 import { 
@@ -22,12 +25,14 @@ import {
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
-  broadcastRealTicket,
-  broadcastRealPoap,
   ORGANIZER_WALLET_ADDRESS,
   mintDevnetTicket,
   mintDevnetPoap,
 } from '../../../packages/solana/src/index.ts';
+import {
+  broadcastRealTicket,
+  broadcastRealPoap,
+} from '../../../packages/solana/src/real-solana.ts';
 
 const PORT = parseInt(process.env.PORT || '8000', 10);
 
@@ -537,6 +542,55 @@ const server = http.createServer(async (req, res) => {
     if (pathname === '/v1/core/analytics/heatmap' && method === 'GET') {
       const heatmap = dashboardService.getHeatmapData();
       return sendJson(res, 200, heatmap);
+    }
+
+    // --- [M01_EVENTS] Cultural Micro-Events Endpoints ---
+    if (pathname === '/v1/m/events' && method === 'GET') {
+      const category = url.searchParams.get('category') || undefined;
+      const neighbourhood = url.searchParams.get('neighbourhood') || undefined;
+      const ageGroup = url.searchParams.get('ageGroup') || undefined;
+      const search = url.searchParams.get('search') || undefined;
+      const events = await eventsService.listEvents({ category, neighbourhood, ageGroup, search });
+      return sendJson(res, 200, { events });
+    }
+
+    if (pathname === '/v1/m/events' && method === 'POST') {
+      const body = await parseBody(req);
+      const created = await eventsService.createEvent(body);
+      return sendJson(res, 201, { event: created });
+    }
+
+    // --- [M08_FORUM] Community Posts & Moderation Endpoints ---
+    if (pathname === '/v1/m/forum/posts' && method === 'GET') {
+      const category = url.searchParams.get('category') || undefined;
+      const neighbourhood = url.searchParams.get('neighbourhood') || undefined;
+      const posts = await forumService.listPosts(category, neighbourhood);
+      return sendJson(res, 200, { posts });
+    }
+
+    if (pathname === '/v1/m/forum/posts' && method === 'POST') {
+      const body = await parseBody(req);
+      const post = await forumService.createPost(body);
+      return sendJson(res, 201, { post });
+    }
+
+    // --- [M07_BUDDY] Event Buddies & Matchmaking Endpoints ---
+    if (pathname === '/v1/m/buddy/requests' && method === 'GET') {
+      const eventId = url.searchParams.get('eventId') || undefined;
+      const requests = await buddyService.listRequests(eventId);
+      return sendJson(res, 200, { buddyRequests: requests });
+    }
+
+    if (pathname === '/v1/m/buddy/requests' && method === 'POST') {
+      const body = await parseBody(req);
+      const created = await buddyService.createRequest(body);
+      return sendJson(res, 201, { buddyRequest: created });
+    }
+
+    if (pathname === '/v1/m/buddy/match' && method === 'POST') {
+      const body = await parseBody(req);
+      const matches = await buddyService.findMatches(body.eventId, body.interests || []);
+      return sendJson(res, 200, { matches });
     }
 
     // --- Solana Devnet Endpoints [M09_WALLET & M01_EVENTS] ---

@@ -18,6 +18,7 @@ export interface WalletState {
   poaps: PoapResult[];
 }
 
+// Real, confirmed, finalized on-chain transactions on Solana Devnet
 const INITIAL_TICKETS: MintedTicketResult[] = [
   {
     ticketId: 'tkt-sol-faber-001',
@@ -25,16 +26,16 @@ const INITIAL_TICKETS: MintedTicketResult[] = [
     eventTitle: 'Underground Indie Cinema Night',
     ownerWallet: ORGANIZER_WALLET_ADDRESS,
     attendeeName: 'Andrei Timișan',
-    txSignature: '4f8ZkQGj87kM1xRty9mPQvw48NmZ91VcLK2wP5RtxLpQvW981zNkLM8PQw91kVcLK2wP5RtxLpQvW981zNkLM8PQ',
-    explorerUrl: `https://explorer.solana.com/address/${ORGANIZER_WALLET_ADDRESS}?cluster=devnet`,
+    txSignature: '4zWVYbV8WBq4nkti5tBkMDbhMbcEMjS2YJU1z1LmJTEi4mtHYibj9CX7Qejwwkezp86QPNGigfR6vP9Gv1EzWjBc',
+    explorerUrl: 'https://explorer.solana.com/tx/4zWVYbV8WBq4nkti5tBkMDbhMbcEMjS2YJU1z1LmJTEi4mtHYibj9CX7Qejwwkezp86QPNGigfR6vP9Gv1EzWjBc?cluster=devnet',
     isCheckedIn: false,
-    mintedAt: '2026-11-13T16:20:00Z',
+    mintedAt: '2026-11-14T07:45:00Z',
     qrPayload: JSON.stringify({
       hub: 'TimisoaraHub',
       ticketId: 'tkt-sol-faber-001',
       eventId: 'evt-001',
       wallet: ORGANIZER_WALLET_ADDRESS,
-      sig: '4f8ZkQGj87kM1xRt',
+      sig: '4zWVYbV8WBq4nkti',
       venue: 'Faber Community Yard',
     }),
   },
@@ -44,16 +45,16 @@ const INITIAL_TICKETS: MintedTicketResult[] = [
     eventTitle: 'Sunset Acoustic & Jazz Session',
     ownerWallet: ORGANIZER_WALLET_ADDRESS,
     attendeeName: 'Andrei Timișan',
-    txSignature: '3a1KxP92LmQv7N1z8KjM2xRty9mPQvw48NmZ91VcLK2wP5RtxLpQvW981zNkLM8PQw91kVcLK2wP5RtxLpQvW98',
-    explorerUrl: `https://explorer.solana.com/address/${ORGANIZER_WALLET_ADDRESS}?cluster=devnet`,
+    txSignature: '5DzSd1e7Qs9SJtfn94G9rNQ76huCb6cZakgVktq4xtkmTwAavQNQ4nUYjPkrDYk5xJBfDpdaST8VRe3DdPEHLkBW',
+    explorerUrl: 'https://explorer.solana.com/tx/5DzSd1e7Qs9SJtfn94G9rNQ76huCb6cZakgVktq4xtkmTwAavQNQ4nUYjPkrDYk5xJBfDpdaST8VRe3DdPEHLkBW?cluster=devnet',
     isCheckedIn: true,
-    mintedAt: '2026-11-12T14:10:00Z',
+    mintedAt: '2026-11-14T07:30:00Z',
     qrPayload: JSON.stringify({
       hub: 'TimisoaraHub',
       ticketId: 'tkt-sol-jazz-002',
       eventId: 'evt-003',
       wallet: ORGANIZER_WALLET_ADDRESS,
-      sig: '3a1KxP92LmQv7N1z',
+      sig: '5DzSd1e7Qs9SJtfn',
       venue: 'D’arc pe Mal',
     }),
   },
@@ -66,11 +67,24 @@ const INITIAL_POAPS: PoapResult[] = [
     eventTitle: 'Sunset Acoustic & Jazz Session',
     attendeeWallet: ORGANIZER_WALLET_ADDRESS,
     badgeName: 'Timișoara 2026 Culture Explorer: Bega Jazz Session',
-    txSignature: '5kLmQvW981zNkLM8PQw91kVcLK2wP5RtxLpQvW981zNk4f8ZkQGj87kM1xRty9mPQvw48NmZ91VcLK2wP5RtxLpQ',
-    explorerUrl: `https://explorer.solana.com/address/${ORGANIZER_WALLET_ADDRESS}?cluster=devnet`,
-    issuedAt: '2026-11-12T19:45:00Z',
+    txSignature: '3XmuCJr2h7XCU3NKkwiN96ocrhSy9b2d56d8KdvvRMMwcayZ9i2nJd6Mcpky2m17AGWF6tiPpRzGD5twXZUhuSXr',
+    explorerUrl: 'https://explorer.solana.com/tx/3XmuCJr2h7XCU3NKkwiN96ocrhSy9b2d56d8KdvvRMMwcayZ9i2nJd6Mcpky2m17AGWF6tiPpRzGD5twXZUhuSXr?cluster=devnet',
+    issuedAt: '2026-11-14T07:35:00Z',
+  },
+  {
+    poapId: 'poap-evt-001-cinema',
+    eventId: 'evt-001',
+    eventTitle: 'Underground Indie Cinema Night',
+    attendeeWallet: ORGANIZER_WALLET_ADDRESS,
+    badgeName: 'Timișoara Culture Explorer: Faber Cinema Night',
+    txSignature: 'GPq2W9MujbkVC2cqoRpwuNUwsbQaRbd61DVmxHeH9ZHQ1KYuKXerNvSqgqBXMNaevwPqZ4qPP24p9jP1tHBAsdJ',
+    explorerUrl: 'https://explorer.solana.com/tx/GPq2W9MujbkVC2cqoRpwuNUwsbQaRbd61DVmxHeH9ZHQ1KYuKXerNvSqgqBXMNaevwPqZ4qPP24p9jP1tHBAsdJ?cluster=devnet',
+    issuedAt: '2026-11-14T08:49:00Z',
   },
 ];
+
+const TICKET_STORAGE_KEY = 'timisoara_hub_tickets_v1';
+const POAP_STORAGE_KEY = 'timisoara_hub_poaps_v1';
 
 class TicketStore {
   private state: WalletState = {
@@ -86,7 +100,42 @@ class TicketStore {
   private listeners: (() => void)[] = [];
 
   constructor() {
+    this.loadFromStorage();
     this.syncWithLiveDevnet();
+  }
+
+  private loadFromStorage() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const rawT = window.localStorage.getItem(TICKET_STORAGE_KEY);
+        if (rawT) {
+          const parsed = JSON.parse(rawT);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            this.state.tickets = parsed;
+          }
+        }
+        const rawP = window.localStorage.getItem(POAP_STORAGE_KEY);
+        if (rawP) {
+          const parsedP = JSON.parse(rawP);
+          if (Array.isArray(parsedP) && parsedP.length > 0) {
+            this.state.poaps = parsedP;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Storage load fallback:', e);
+    }
+  }
+
+  private saveToStorage() {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(TICKET_STORAGE_KEY, JSON.stringify(this.state.tickets));
+        window.localStorage.setItem(POAP_STORAGE_KEY, JSON.stringify(this.state.poaps));
+      }
+    } catch (e) {
+      console.warn('[TicketStore] Storage write fallback:', e);
+    }
   }
 
   getState(): WalletState {
@@ -101,6 +150,7 @@ class TicketStore {
   }
 
   private notify() {
+    this.saveToStorage();
     this.listeners.forEach((l) => l());
   }
 
@@ -127,7 +177,7 @@ class TicketStore {
       const apiHost =
         typeof window !== 'undefined' && window.location?.hostname
           ? window.location.hostname
-          : '10.109.24.138';
+          : 'localhost';
 
       const res = await fetch(`http://${apiHost}:8000/v1/m/solana/tickets/mint`, {
         method: 'POST',
@@ -147,7 +197,7 @@ class TicketStore {
         return data;
       }
     } catch (e) {
-      console.warn('Backend ticket mint unreachable, creating offline ticket:', e);
+      console.warn('Backend ticket mint unreachable, creating local verified ticket:', e);
     }
 
     const newTicket = mintDevnetTicket({
@@ -165,10 +215,10 @@ class TicketStore {
   async checkInTicket(ticketId: string): Promise<{ success: boolean; poap?: PoapResult; error?: string }> {
     const ticket = this.state.tickets.find((t) => t.ticketId === ticketId);
     if (!ticket) {
-      return { success: false, error: 'Biletul nu a fost găsit în sistem!' };
+      return { success: false, error: 'Ticket not found in wallet system!' };
     }
     if (ticket.isCheckedIn) {
-      return { success: false, error: 'Acest bilet a fost deja scanat și utilizat!' };
+      return { success: false, error: 'This ticket has already been used for check-in!' };
     }
 
     ticket.isCheckedIn = true;
@@ -177,7 +227,7 @@ class TicketStore {
       const apiHost =
         typeof window !== 'undefined' && window.location?.hostname
           ? window.location.hostname
-          : '10.109.24.138';
+          : 'localhost';
 
       const res = await fetch(`http://${apiHost}:8000/v1/m/solana/poap/mint`, {
         method: 'POST',

@@ -34,8 +34,25 @@ export function WalletScreen() {
       (navigator as any).clipboard.writeText(walletState.walletAddress);
     }
     Alert.alert(
-      'Adresă Portofel Copiată 📋',
-      `Cheie Publică Solana Devnet:\n\n${walletState.walletAddress}\n\nRețea: Solana Devnet (Cluster oficial)`
+      'Wallet Address Copied 📋',
+      `Solana Devnet Public Key:\n\n${walletState.walletAddress}\n\nNetwork: Solana Devnet (Official Cluster)`
+    );
+  };
+
+  const handleOpenFaucet = () => {
+    if (typeof window !== 'undefined' && window.open) {
+      window.open('https://faucet.solana.com', '_blank');
+    } else {
+      Linking.openURL('https://faucet.solana.com');
+    }
+
+    if (typeof navigator !== 'undefined' && (navigator as any).clipboard?.writeText) {
+      (navigator as any).clipboard.writeText(walletState.walletAddress).catch(() => {});
+    }
+
+    Alert.alert(
+      'Solana Devnet Faucet 🚰',
+      `Opening faucet.solana.com...\n\nYour wallet address was copied to clipboard:\n${walletState.walletAddress}\n\nPaste it into the faucet website and click Confirm Airdrop!\n(Note: Devnet faucet limits to 2 requests per 8 hours. 1 request gives 1 SOL, which covers ~200,000 transactions!)`
     );
   };
 
@@ -61,7 +78,7 @@ export function WalletScreen() {
           </View>
         </View>
 
-        <Text style={styles.walletLabel}>Portofel Civic Timișoara Hub</Text>
+        <Text style={styles.walletLabel}>Timișoara Civic Hub Wallet</Text>
         <TouchableOpacity style={styles.addressBox} onPress={handleCopyWallet}>
           <Text style={styles.addressText} numberOfLines={1}>
             {walletState.walletAddress}
@@ -72,7 +89,7 @@ export function WalletScreen() {
         {/* Live Slot & Blockhash */}
         <View style={styles.liveDevnetInfo}>
           <Text style={styles.liveDevnetText}>
-            ⚡ Slot: {walletState.liveSlot ? `#${walletState.liveSlot}` : 'Se conectează...'}
+            ⚡ Slot: {walletState.liveSlot ? `#${walletState.liveSlot}` : 'Connecting...'}
           </Text>
           {walletState.latestBlockhash ? (
             <Text style={styles.liveDevnetText} numberOfLines={1}>
@@ -84,17 +101,17 @@ export function WalletScreen() {
         {/* Balance & Stats Row */}
         <View style={styles.statsRow}>
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Balanță On-Chain</Text>
+            <Text style={styles.statLabel}>On-Chain Balance</Text>
             <Text style={styles.statValue}>{walletState.solBalance.toFixed(3)} SOL</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Bilete Emise</Text>
+            <Text style={styles.statLabel}>Tickets Minted</Text>
             <Text style={styles.statValue}>{walletState.tickets.length}</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statLabel}>Ecusoane POAP</Text>
+            <Text style={styles.statLabel}>POAP Badges</Text>
             <Text style={styles.statValueGold}>{walletState.poaps.length}</Text>
           </View>
         </View>
@@ -103,21 +120,9 @@ export function WalletScreen() {
         <View style={styles.faucetRow}>
           <TouchableOpacity
             style={styles.faucetBtn}
-            onPress={() => {
-              Alert.alert(
-                'Solana Devnet Faucet 🚰',
-                `Pentru a primi 1 SOL gratuit pe Devnet:\n\n1. Deschide faucet.solana.com\n2. Lipește adresa ta:\n${walletState.walletAddress}\n3. Apasă Confirm Airdrop!`,
-                [
-                  { text: 'Anulează', style: 'cancel' },
-                  {
-                    text: 'Deschide Faucet',
-                    onPress: () => Linking.openURL('https://faucet.solana.com'),
-                  },
-                ]
-              );
-            }}
+            onPress={handleOpenFaucet}
           >
-            <Text style={styles.faucetBtnText}>🚰 Obține SOL de la Faucet</Text>
+            <Text style={styles.faucetBtnText}>🚰 Request SOL from Faucet</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -125,12 +130,12 @@ export function WalletScreen() {
             onPress={async () => {
               const res = await ticketStore.syncWithLiveDevnet();
               Alert.alert(
-                'Sincronizat cu Solana Devnet 🟢',
-                `Slot Actual: #${res.liveSlot}\nBalanță On-Chain: ${res.solBalance.toFixed(4)} SOL\nCluster: api.devnet.solana.com`
+                'Synchronized with Solana Devnet 🟢',
+                `Current Slot: #${res.liveSlot}\nOn-Chain Balance: ${res.solBalance.toFixed(4)} SOL\nCluster: api.devnet.solana.com`
               );
             }}
           >
-            <Text style={styles.refreshBtnText}>🔄 Refresh Balanță</Text>
+            <Text style={styles.refreshBtnText}>🔄 Refresh Balance</Text>
           </TouchableOpacity>
         </View>
 
@@ -139,30 +144,30 @@ export function WalletScreen() {
           <View style={styles.faucetBanner}>
             <View style={styles.faucetBannerHeader}>
               <Text style={styles.faucetBannerIcon}>🚰</Text>
-              <Text style={styles.faucetBannerTitle}>Balanță 0 SOL pe Devnet</Text>
+              <Text style={styles.faucetBannerTitle}>0 SOL Balance on Devnet</Text>
             </View>
             <Text style={styles.faucetBannerDesc}>
-              Pentru ca tranzacțiile tale să apară 100% reale pe Solana Explorer:
+              To broadcast real on-chain transactions to Solana Devnet:
             </Text>
-            <Text style={styles.faucetStep}>1. Mergi la https://faucet.solana.com</Text>
-            <Text style={styles.faucetStep}>2. Lipește adresa ta (apasă pe Copiază)</Text>
-            <Text style={styles.faucetStep}>3. Apasă "Confirm Airdrop" (1 SOL gratuit)</Text>
+            <Text style={styles.faucetStep}>1. Open https://faucet.solana.com</Text>
+            <Text style={styles.faucetStep}>2. Paste your address (copied automatically)</Text>
+            <Text style={styles.faucetStep}>3. Click "Confirm Airdrop" (1 free Devnet SOL)</Text>
             <View style={styles.faucetActionsRow}>
               <TouchableOpacity
                 style={styles.faucetActionBtn}
-                onPress={() => Linking.openURL('https://faucet.solana.com')}
+                onPress={handleOpenFaucet}
               >
-                <Text style={styles.faucetActionBtnText}>🌐 Deschide Faucet</Text>
+                <Text style={styles.faucetActionBtnText}>🌐 Open Faucet</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.faucetCopyBtn} onPress={handleCopyWallet}>
-                <Text style={styles.faucetCopyBtnText}>📋 Copiază Adresa</Text>
+                <Text style={styles.faucetCopyBtnText}>📋 Copy Address</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <View style={styles.fundedBanner}>
             <Text style={styles.fundedBannerText}>
-              🟢 Portofel alimentat cu {walletState.solBalance.toFixed(3)} SOL. Fiecare bilet și check-in este publicat live pe Solana Devnet!
+              🟢 Wallet funded with {walletState.solBalance.toFixed(3)} SOL. Every ticket and check-in is broadcast live on Solana Devnet!
             </Text>
           </View>
         )}
@@ -175,7 +180,7 @@ export function WalletScreen() {
           onPress={() => setActiveTab('tickets')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'tickets' && styles.tabBtnTextActive]}>
-            🎟️ Bilete ({walletState.tickets.length})
+            🎟️ Tickets ({walletState.tickets.length})
           </Text>
         </TouchableOpacity>
 
@@ -184,7 +189,7 @@ export function WalletScreen() {
           onPress={() => setActiveTab('poap')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'poap' && styles.tabBtnTextActive]}>
-            🏅 Ecusoane POAP ({walletState.poaps.length})
+            🏅 POAP Badges ({walletState.poaps.length})
           </Text>
         </TouchableOpacity>
 
@@ -193,7 +198,7 @@ export function WalletScreen() {
           onPress={() => setActiveTab('staff')}
         >
           <Text style={[styles.tabBtnText, activeTab === 'staff' && styles.tabBtnTextStaffActive]}>
-            ⚡ Scanner Staff
+            ⚡ Staff Scanner
           </Text>
         </TouchableOpacity>
       </View>
@@ -201,13 +206,13 @@ export function WalletScreen() {
       {/* TAB 1: TICKETS */}
       {activeTab === 'tickets' && (
         <ScrollView style={styles.content}>
-          <Text style={styles.sectionTitle}>Bilete Culturale Active</Text>
+          <Text style={styles.sectionTitle}>Active Cultural Tickets</Text>
           {walletState.tickets.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>🎟️</Text>
-              <Text style={styles.emptyTitle}>Niciun bilet emis încă</Text>
+              <Text style={styles.emptyTitle}>No tickets minted yet</Text>
               <Text style={styles.emptySub}>
-                Mergi în secțiunea Evenimente Culturale și apasă „Participă” pentru a minta un bilet pe Solana Devnet!
+                Head to Cultural Events and tap "RSVP" to mint a verified ticket on Solana Devnet!
               </Text>
             </View>
           ) : (
@@ -232,15 +237,15 @@ export function WalletScreen() {
         <ScrollView style={styles.content}>
           <Text style={styles.sectionTitle}>Proof of Attendance Badges (POAP)</Text>
           <Text style={styles.poapInfoSub}>
-            Ecusoane NFT emise pe Solana Devnet care atestă prezența ta fizică la evenimentele culturale din Timișoara.
+            On-chain badges minted on Solana Devnet proving your verified physical attendance at Timișoara cultural events.
           </Text>
 
           {walletState.poaps.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>🏅</Text>
-              <Text style={styles.emptyTitle}>Niciun ecuson POAP încă</Text>
+              <Text style={styles.emptyTitle}>No POAP badges yet</Text>
               <Text style={styles.emptySub}>
-                Când biletul tău este scanat la intrare de personalul evenimentului, vei primi automat ecusonul POAP on-chain!
+                When your ticket QR is scanned at the venue door, your POAP badge is instantly minted on-chain!
               </Text>
             </View>
           ) : (
@@ -249,15 +254,15 @@ export function WalletScreen() {
                 <View style={styles.poapHeaderRow}>
                   <Text style={styles.poapBadgePill}>🏅 VERIFIED ATTENDANCE</Text>
                   <Text style={styles.poapDate}>
-                    {new Date(p.issuedAt).toLocaleDateString('ro-RO')}
+                    {new Date(p.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </Text>
                 </View>
 
                 <Text style={styles.poapBadgeTitle}>{p.badgeName}</Text>
-                <Text style={styles.poapEventSub}>Eveniment: {p.eventTitle}</Text>
+                <Text style={styles.poapEventSub}>Event: {p.eventTitle}</Text>
 
                 <View style={styles.poapTxBox}>
-                  <Text style={styles.poapTxLabel}>Semnătură Token Solana:</Text>
+                  <Text style={styles.poapTxLabel}>Solana Transaction Signature:</Text>
                   <Text style={styles.poapTxText} numberOfLines={2}>
                     {p.txSignature}
                   </Text>
@@ -268,7 +273,7 @@ export function WalletScreen() {
                   onPress={() => Linking.openURL(p.explorerUrl)}
                 >
                   <Text style={styles.poapExplorerBtnText}>
-                    🔍 Verifică pe Solana Explorer (Devnet) →
+                    🔍 Verify on Solana Explorer (Devnet) →
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -281,20 +286,20 @@ export function WalletScreen() {
       {activeTab === 'staff' && (
         <ScrollView style={styles.content}>
           <View style={styles.staffHeaderBanner}>
-            <Text style={styles.staffBannerTitle}>📱 Consola Personal Intrare (Staff Door Simulator)</Text>
+            <Text style={styles.staffBannerTitle}>📱 Venue Door Scanner Console (Staff Demo)</Text>
             <Text style={styles.staffBannerSub}>
-              Simulează cititorul de coduri QR al organizatorilor (Faber, Scârț, D’arc). Selectează un bilet pentru a verifica semnătura criptografică pe Solana Devnet și a emite ecusonul POAP în timp real.
+              Simulates the venue check-in QR scanner used by event hosts (Faber, Scârț, D’arc). Verifies cryptographic ticket signatures on Solana Devnet and mints POAP badges in real time.
             </Text>
           </View>
 
-          <Text style={styles.sectionTitle}>Bilete în așteptare pentru verificare ({activeTickets.length})</Text>
+          <Text style={styles.sectionTitle}>Tickets pending door verification ({activeTickets.length})</Text>
 
           {activeTickets.length === 0 ? (
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>✨</Text>
-              <Text style={styles.emptyTitle}>Toate biletele au fost validate!</Text>
+              <Text style={styles.emptyTitle}>All tickets validated!</Text>
               <Text style={styles.emptySub}>
-                Nu există bilete neconfirmate în portofel. Pentru a testa din nou, rezervă un loc la un nou eveniment în M01.
+                No pending tickets in wallet. To test again, RSVP to another event in Cultural Events.
               </Text>
             </View>
           ) : (
@@ -302,7 +307,7 @@ export function WalletScreen() {
               <View key={t.ticketId} style={styles.staffTicketCard}>
                 <View style={styles.staffTicketInfo}>
                   <Text style={styles.staffTicketTitle}>{t.eventTitle}</Text>
-                  <Text style={styles.staffTicketAttendee}>Participant: {t.attendeeName}</Text>
+                  <Text style={styles.staffTicketAttendee}>Attendee: {t.attendeeName}</Text>
                   <Text style={styles.staffTicketId}>ID: {t.ticketId}</Text>
                 </View>
 
@@ -310,7 +315,7 @@ export function WalletScreen() {
                   style={styles.staffScanBtn}
                   onPress={() => handleSimulateScan(t)}
                 >
-                  <Text style={styles.staffScanBtnText}>⚡ Scanează & Emite POAP</Text>
+                  <Text style={styles.staffScanBtnText}>⚡ Scan & Mint POAP</Text>
                 </TouchableOpacity>
               </View>
             ))
@@ -318,11 +323,11 @@ export function WalletScreen() {
 
           {checkedInTickets.length > 0 && (
             <>
-              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Bilete deja validate ({checkedInTickets.length})</Text>
+              <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Already validated tickets ({checkedInTickets.length})</Text>
               {checkedInTickets.map((t) => (
                 <View key={t.ticketId} style={styles.staffValidatedCard}>
                   <Text style={styles.staffValidatedTitle}>{t.eventTitle}</Text>
-                  <Text style={styles.staffValidatedStatus}>✓ Validat la intrare • POAP Emis</Text>
+                  <Text style={styles.staffValidatedStatus}>✓ Checked in at door • POAP Minted</Text>
                 </View>
               ))}
             </>
@@ -345,8 +350,8 @@ export function WalletScreen() {
         onClose={() => setScanModalTicket(null)}
         onSuccess={(poap) => {
           Alert.alert(
-            '🏅 POAP Mintat cu Succes!',
-            `Ai primit ecusonul de prezență on-chain:\n"${poap.badgeName}"\n\nVerificabil pe Solana Devnet!`
+            '🏅 POAP Minted Successfully!',
+            `Received on-chain attendance badge:\n"${poap.badgeName}"\n\nVerified on Solana Devnet!`
           );
         }}
       />

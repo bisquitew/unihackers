@@ -27,9 +27,9 @@ export function TicketBadge({
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
-        <Text style={styles.badge}>🎟️ SOLANA DEVNET BILET</Text>
+        <Text style={styles.badge}>🎟️ SOLANA DEVNET TICKET</Text>
         <Text style={[styles.status, isCheckedIn && styles.statusCheckedIn]}>
-          {isCheckedIn ? '✓ Check-in Confirmat' : 'Valid la intrare'}
+          {isCheckedIn ? '✓ Checked In' : 'Valid for Entry'}
         </Text>
       </View>
 
@@ -37,7 +37,7 @@ export function TicketBadge({
       <Text style={styles.ticketId}>ID: {ticketId}</Text>
 
       <View style={styles.txBox}>
-        <Text style={styles.txLabel}>Semnătură Tranzacție On-Chain:</Text>
+        <Text style={styles.txLabel}>On-Chain Transaction Signature:</Text>
         <Text style={styles.txSig} numberOfLines={2}>
           {txSignature}
         </Text>
@@ -47,13 +47,13 @@ export function TicketBadge({
       <View style={styles.btnRow}>
         {onShowQR && (
           <TouchableOpacity style={styles.qrBtn} onPress={onShowQR}>
-            <Text style={styles.qrBtnText}>📱 Afișează QR</Text>
+            <Text style={styles.qrBtnText}>📱 Show QR</Text>
           </TouchableOpacity>
         )}
 
         {!isCheckedIn && onCheckIn && (
           <TouchableOpacity style={styles.checkInBtn} onPress={onCheckIn}>
-            <Text style={styles.checkInBtnText}>⚡ Check-in Ușă</Text>
+            <Text style={styles.checkInBtnText}>⚡ Door Check-in</Text>
           </TouchableOpacity>
         )}
 
@@ -68,59 +68,107 @@ export function TicketBadge({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: '#0f0e17',
+    borderColor: '#2e1065',
     borderWidth: 1,
-    borderColor: '#6366f1',
     borderRadius: 14,
     padding: 16,
-    marginVertical: 8,
+    marginBottom: 12,
   },
-  headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badge: { color: '#a5b4fc', fontSize: 10, fontWeight: 'bold' },
-  status: { color: '#38bdf8', fontSize: 11, fontWeight: '600' },
-  statusCheckedIn: { color: '#4ade80' },
-  eventTitle: { color: '#ffffff', fontSize: 16, fontWeight: 'bold', marginTop: 8 },
-  ticketId: { color: '#71717a', fontSize: 11, marginTop: 2 },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  badge: {
+    color: '#a855f7',
+    fontSize: 10,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
+  },
+  status: {
+    color: '#4ade80',
+    fontSize: 11,
+    fontWeight: '600',
+    backgroundColor: '#052e16',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  statusCheckedIn: {
+    color: '#94a3b8',
+    backgroundColor: '#1e293b',
+  },
+  eventTitle: {
+    color: '#f8fafc',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 2,
+  },
+  ticketId: {
+    color: '#64748b',
+    fontSize: 11,
+    fontFamily: 'monospace',
+    marginBottom: 10,
+  },
   txBox: {
-    backgroundColor: '#181824',
-    padding: 8,
+    backgroundColor: '#020617',
     borderRadius: 8,
-    marginTop: 10,
+    padding: 8,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#1e1b4b',
   },
-  txLabel: { color: '#94a3b8', fontSize: 10, fontWeight: '600' },
-  txSig: { color: '#c7d2fe', fontSize: 10, fontFamily: 'monospace', marginTop: 2 },
+  txLabel: {
+    color: '#94a3b8',
+    fontSize: 10,
+    marginBottom: 2,
+  },
+  txSig: {
+    color: '#38bdf8',
+    fontSize: 10,
+    fontFamily: 'monospace',
+  },
   btnRow: {
     flexDirection: 'row',
     gap: 8,
-    marginTop: 12,
   },
   qrBtn: {
     flex: 1,
-    backgroundColor: '#3b0764',
-    borderColor: '#7e22ce',
-    borderWidth: 1,
-    paddingVertical: 8,
+    backgroundColor: '#7c3aed',
+    paddingVertical: 9,
     borderRadius: 8,
     alignItems: 'center',
   },
-  qrBtnText: { color: '#e9d5ff', fontSize: 11, fontWeight: '700' },
+  qrBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   checkInBtn: {
     flex: 1,
-    backgroundColor: '#14532d',
-    borderColor: '#16a34a',
-    borderWidth: 1,
-    paddingVertical: 8,
+    backgroundColor: '#16a34a',
+    paddingVertical: 9,
     borderRadius: 8,
     alignItems: 'center',
   },
-  checkInBtnText: { color: '#86efac', fontSize: 11, fontWeight: '700' },
+  checkInBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
   explorerBtn: {
     backgroundColor: '#1e1b4b',
     borderColor: '#4338ca',
     borderWidth: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
-  explorerBtnText: { color: '#c7d2fe', fontSize: 11, fontWeight: '700' },
+  explorerBtnText: {
+    color: '#c7d2fe',
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });

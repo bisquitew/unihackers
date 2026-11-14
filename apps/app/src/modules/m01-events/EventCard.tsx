@@ -44,7 +44,7 @@ export function EventCard({
         <View style={styles.metaRow}>
           <Text style={styles.categoryBadge}>{category.toUpperCase()}</Text>
           <Text style={styles.neighbourhoodBadge}>📍 {neighbourhood}</Text>
-          <Text style={styles.priceBadge}>{isFree ? 'GRATUIT' : `${priceAmount} RON`}</Text>
+          <Text style={styles.priceBadge}>{isFree ? 'FREE' : `${priceAmount} RON`}</Text>
         </View>
 
         <Text style={styles.title}>{title}</Text>
@@ -52,12 +52,12 @@ export function EventCard({
         <Text style={styles.description}>{description}</Text>
 
         <View style={styles.attendeeRow}>
-          <Text style={styles.attendees}>👥 {attendeeCount} participanți confirmați</Text>
+          <Text style={styles.attendees}>👥 {attendeeCount} confirmed attendees</Text>
         </View>
 
         {hasRsvpd && (
           <View style={styles.solanaBadge}>
-            <Text style={styles.solanaBadgeText}>✓ Bilet emis pe Solana Devnet</Text>
+            <Text style={styles.solanaBadgeText}>✓ Ticket Minted on Solana Devnet</Text>
             {solanaTx && (
               <Text style={styles.solanaTxText} numberOfLines={1}>Tx: {solanaTx}</Text>
             )}
@@ -70,14 +70,14 @@ export function EventCard({
             onPress={() => onRsvp(id)}
             disabled={hasRsvpd}
           >
-            <Text style={styles.rsvpBtnText}>{hasRsvpd ? '✓ Bilet Confirmat' : '🎟️ Participă & Emite Bilet'}</Text>
+            <Text style={styles.rsvpBtnText}>{hasRsvpd ? '✓ Ticket Confirmed' : '🎟️ RSVP & Mint Ticket'}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.buddyBtn}
             onPress={() => onFindBuddy(id, title)}
           >
-            <Text style={styles.buddyBtnText}>🤝 Cu Cine?</Text>
+            <Text style={styles.buddyBtnText}>🤝 Find Buddy</Text>
           </TouchableOpacity>
         </View>
       </View>

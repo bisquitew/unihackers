@@ -1,11 +1,13 @@
 import 'dotenv/config';
 import {
   getLiveDevnetStatus,
-  broadcastRealTicket,
-  broadcastRealPoap,
   ORGANIZER_WALLET_ADDRESS,
   getSolanaExplorerUrl,
 } from '../packages/solana/src/index.ts';
+import {
+  broadcastRealTicket,
+  broadcastRealPoap,
+} from '../packages/solana/src/real-solana.ts';
 
 async function main() {
   console.log('====================================================');

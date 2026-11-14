@@ -1,16 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { BuddyModal } from '../../../src/modules/m07-buddy/BuddyModal';
+import { View, StyleSheet } from 'react-native';
+import { BuddyScreen } from '../../../src/modules/m07-buddy/BuddyScreen';
 
 export default function BuddyRoute() {
   return (
     <View style={styles.container}>
-      <BuddyModal
-        visible={true}
-        eventId="evt-001"
-        eventTitle="Underground Indie Cinema Night"
-        onClose={() => {}}
-      />
+      <BuddyScreen />
     </View>
   );
 }

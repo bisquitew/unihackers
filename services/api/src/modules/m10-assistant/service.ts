@@ -1,12 +1,15 @@
-import {
-  FunctionCallingConfigMode,
-  GoogleGenAI,
-  type Content,
-  type FunctionCall,
-  type GenerateContentConfig,
-  type GenerateContentResponse,
-  type Part,
-} from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
+
+export enum FunctionCallingConfigMode {
+  AUTO = 'AUTO',
+  NONE = 'NONE',
+  ANY = 'ANY',
+}
+type Content = any;
+type FunctionCall = any;
+type GenerateContentConfig = any;
+type GenerateContentResponse = any;
+type Part = any;
 import { getTools, type RegisteredTool } from './tools.ts';
 import { buildSystemInstruction } from './prompt.ts';
 import type { ChatInput, ChatResult, ToolUse } from './types.ts';
