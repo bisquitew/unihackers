@@ -18,6 +18,8 @@ export type AlertItem = {
   context: string;
   steps: AlertStep[];
   confirmedBy: number;
+  radiusMeters?: number;
+  zoneType?: 'danger' | 'construction';
 };
 
 export const alerts: AlertItem[] = [
@@ -37,6 +39,8 @@ export const alerts: AlertItem[] = [
       { state: 'next', title: 'Remediere și redeschidere perimetru', note: 'Estimare 23:00' },
     ],
     confirmedBy: 48,
+    radiusMeters: 650,
+    zoneType: 'danger',
   },
   {
     id: 'const-bogdanestilor',
@@ -54,6 +58,8 @@ export const alerts: AlertItem[] = [
       { state: 'next', title: 'Finalizare și repunere în circulație', note: 'Decembrie 2026' },
     ],
     confirmedBy: 34,
+    radiusMeters: 900,
+    zoneType: 'construction',
   },
   {
     id: 'hot-water-garii-2',
