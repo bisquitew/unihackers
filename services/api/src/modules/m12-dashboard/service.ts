@@ -1,7 +1,88 @@
 import { parkieService } from '../parkie/service.ts';
 import { utilitiesService } from '../m04-utilities/service.ts';
 import { transitService } from '../m05-transit/service.ts';
+import { smellService } from '../m06-smell/service.ts';
+import { safetyService } from '../m03-safety/service.ts';
 import { TIMISOARA_AREAS } from '../../core/areas.ts';
+import { db } from '../../core/db.ts';
+
+/** Fallback values when Tiger Cloud is not connected; always sent with source: 'simulated'. */
+const SIMULATED_ENV = { air_quality_pm25: 22.4, noise_db: 58.2 };
+
+interface EnvMetric {
+  value: number;
+  source: 'tiger' | 'simulated';
+  /** Newest hourly bucket the value is built from (ISO), null when simulated. */
+  latest_bucket: string | null;
+  areas: number;
+}
+
+/**
+ * Average of the last 24 hourly buckets per metric, read from P2's `city_metrics_hourly_stats`
+ * continuous aggregate. The window ends at the newest bucket, so seeded data that stopped a while ago still shows.
+ */
+async function environmentFromTiger(): Promise<Record<keyof typeof SIMULATED_ENV, EnvMetric>> {
+  const simulated = (type: keyof typeof SIMULATED_ENV): EnvMetric => ({ value: SIMULATED_ENV[type], source: 'simulated', latest_bucket: null, areas: 0 });
+  const out = { air_quality_pm25: simulated('air_quality_pm25'), noise_db: simulated('noise_db') };
+  if (!db.isTigerConnected()) return out;
+  const rows = await db.query<{ metric_type: keyof typeof SIMULATED_ENV; avg_24h: string; latest: Date | string; areas: string }>(
+    `SELECT c.metric_type,
+            ROUND(AVG(c.avg_value)::numeric, 1) AS avg_24h,
+            MAX(c.bucket) AS latest,
+            COUNT(DISTINCT c.area_id) AS areas
+     FROM city_metrics_hourly_stats c
+     WHERE c.metric_type IN ('air_quality_pm25', 'noise_db')
+       AND c.bucket > (SELECT MAX(bucket) FROM city_metrics_hourly_stats WHERE metric_type = c.metric_type) - INTERVAL '24 hours'
+     GROUP BY c.metric_type;`,
+  );
+  for (const r of rows) {
+    if (!(r.metric_type in out)) continue;
+    out[r.metric_type] = {
+      value: Number(r.avg_24h),
+      source: 'tiger',
+      latest_bucket: typeof r.latest === 'string' ? r.latest : r.latest.toISOString(),
+      areas: Number(r.areas),
+    };
+  }
+  return out;
+}
+
+/** Live numbers from Tiger Cloud's own catalogue (hypertables, continuous aggregates, compression). */
+async function tigerSummary() {
+  const t = await db.getTigerStatus();
+  const before = t.compression.reduce((s, c) => s + c.before_compression_bytes, 0);
+  const after = t.compression.reduce((s, c) => s + c.after_compression_bytes, 0);
+  const ratio = before > 0 ? Math.round((1 - after / before) * 1000) / 10 : null;
+  return {
+    // kept for older clients
+    continuous_aggregates_active: t.continuous_aggregates.length,
+    compression_ratio: ratio === null ? '—' : `${ratio}%`,
+    real_time_aggregates_enabled: true,
+    // new: where the numbers come from
+    status: t.status,
+    simulated: t.status !== 'connected',
+    timescale_version: t.version,
+    hypertables: t.hypertables.length,
+    hypertable_names: t.hypertables.map((h) => (h.schema && h.schema !== 'public' ? `${h.schema}.${h.table_name}` : h.table_name)),
+    compressed_bytes_saved: Math.max(0, before - after),
+  };
+}
+
+/** Residents' smell (m06) and safety (m03) reports in the last 7 days; real ones are stored in Tiger Cloud hypertables. */
+async function communityReports() {
+  const week = { hours: 24 * 7, includeDemo: true };
+  const [smell, safety] = await Promise.all([smellService.window(week), safetyService.window(week)]);
+  const part = (w: { reports: unknown[]; demoCount: number }, status: { active: string }) => ({
+    last_7_days: w.reports.length,
+    real: w.reports.length - w.demoCount,
+    demo: w.demoCount,
+    storage: status.active,
+  });
+  return {
+    smell: part(smell, smellService.status()),
+    safety: part(safety, safetyService.status()),
+  };
+}
 
 export const dashboardService = {
   async getCityOverview() {
@@ -23,20 +104,9 @@ export const dashboardService = {
         occupancy_pct: Math.round(((l.capacity - l.available_spots) / l.capacity) * 100)
       }));
 
-    // Environmental metrics from Timescale continuous aggregates
-    const metricsAnalytics = await parkieService.getCityMetricsAnalytics(undefined, undefined, 24);
-    const pm25Metrics = metricsAnalytics.filter((m) => m.metric_type === 'pm25' || m.metric_type === 'air_quality_pm25');
-    const noiseMetrics = metricsAnalytics.filter((m) => m.metric_type === 'noise');
-
-    const avgPm25 =
-      pm25Metrics.length > 0
-        ? (pm25Metrics.reduce((sum, m) => sum + m.avg_value, 0) / pm25Metrics.length).toFixed(1)
-        : '19.8';
-
-    const avgNoise =
-      noiseMetrics.length > 0
-        ? (noiseMetrics.reduce((sum, m) => sum + m.avg_value, 0) / noiseMetrics.length).toFixed(1)
-        : '58.4';
+    // Environmental metrics, Tiger status and community reports, all read live (or labelled simulated)
+    const [env, tiger, community] = await Promise.all([environmentFromTiger(), tigerSummary(), communityReports()]);
+    const pm25 = env.air_quality_pm25.value;
 
     // Utilities & Transit disruptions
     const outages = utilitiesService.getAllOutages();
@@ -54,21 +124,21 @@ export const dashboardService = {
           most_congested_lots: congestedLots
         },
         environment: {
-          air_quality_avg_pm25: parseFloat(avgPm25),
-          air_quality_status: parseFloat(avgPm25) <= 25 ? 'good' : 'moderate',
-          avg_noise_db: parseFloat(avgNoise),
-          monitored_neighbourhoods: TIMISOARA_AREAS.length
+          air_quality_avg_pm25: pm25,
+          air_quality_status: pm25 <= 25 ? 'good' : 'moderate',
+          avg_noise_db: env.noise_db.value,
+          monitored_neighbourhoods: TIMISOARA_AREAS.length,
+          source: env.air_quality_pm25.source === 'tiger' && env.noise_db.source === 'tiger' ? 'tiger' : 'simulated',
+          latest_bucket: env.air_quality_pm25.latest_bucket,
+          sensor_areas: env.air_quality_pm25.areas
         },
         infrastructure_alerts: {
           active_utility_outages: outages.length,
           active_transit_detours: detours.length,
           tram_line_5_status: detours.some((d) => d.line_number === '5') ? 'suspended_replacement_active' : 'normal'
         },
-        timescale_tiger_cloud: {
-          continuous_aggregates_active: 2,
-          compression_ratio: '94.8%',
-          real_time_aggregates_enabled: true
-        }
+        timescale_tiger_cloud: tiger,
+        community_reports: community
       }
     };
   },
@@ -105,7 +175,9 @@ export const dashboardService = {
       latitude: coords.lat,
       longitude: coords.lng,
       pm25_intensity: 0.42,
-      noise_intensity: areaId === 'area-complex' ? 0.85 : 0.5
+      noise_intensity: areaId === 'area-complex' ? 0.85 : 0.5,
+      // fixed illustration values, not read from Tiger Cloud
+      source: 'simulated' as const
     }));
 
     return {
