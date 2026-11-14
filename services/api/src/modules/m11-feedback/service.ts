@@ -9,6 +9,7 @@ import type {
   SurveyPayload,
 } from './types.ts';
 import { seedChangelog, seedFeedback } from './seed.ts';
+import { db } from '../../core/db.ts';
 
 const newId = () => `fb-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
 
@@ -53,6 +54,18 @@ export class FeedbackService {
       surveyComments: null,
     };
     this.entries.push(entry);
+
+    if (db.isTigerConnected()) {
+      try {
+        await db.query(`
+          INSERT INTO m11_feedback (id, rating, text, app_version, module_id, created_at)
+          VALUES ($1, $2, $3, $4, $5, NOW());
+        `, [entry.id, entry.appRating, entry.text, entry.appVersion, entry.moduleId]);
+      } catch (err: any) {
+        console.warn('FeedbackService TimescaleDB error:', err.message);
+      }
+    }
+
     return entry;
   }
 

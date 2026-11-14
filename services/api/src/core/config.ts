@@ -11,7 +11,8 @@ const STAFF_DOMAIN = '@timisoara-hub.ro';
 const STAFF_EMAILS = (process.env.STAFF_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 export const isStaffEmail = (email: string): boolean => {
   const e = String(email || '').trim().toLowerCase();
-  return STAFF_EMAILS.includes(e) || (DEMO_AUTH && e.endsWith(STAFF_DOMAIN));
+  if (e.startsWith('resident') || e.includes('citizen') || e.startsWith('student')) return false;
+  return STAFF_EMAILS.includes(e) || (DEMO_AUTH && (e.includes('admin') || e.includes('staff') || e.includes('primaria')));
 };
 
 /** An error that carries the HTTP status to answer with. */
