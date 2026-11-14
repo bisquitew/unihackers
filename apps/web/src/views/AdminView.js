@@ -1,5 +1,5 @@
 import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
-import { approveReportedPost, createOutage, fetchAuditLogs, fetchLots, fetchReportedPosts, fetchTigerStatus, fetchDashboardOverview, removeReportedPost, saveLotPlots, createAreaAlert } from '../api.js';
+import { approveReportedPost, createOutage, fetchAuditLogs, fetchLots, fetchReportedPosts, fetchTigerStatus, fetchDashboardOverview, removeReportedPost, saveLotPlots, createAreaAlert, captureCameraFrame } from '../api.js';
 import { CameraCanvas } from '../components/CameraCanvas.js';
 import { esc } from '../ui.js';
 
@@ -68,8 +68,10 @@ export async function render(ctx) {
             </div>
           </div>
           <div>
-            <div class="inspector-title">Camera source</div>
+            <div class="inspector-title">Camera source & live feed</div>
             <input type="text" id="adminCameraUrl" class="form-control" placeholder="rtsp://cam.timisoara-hub.ro/live" aria-label="RTSP camera URL">
+            <button class="btn btn-secondary btn-md btn-block" id="adminCaptureFrameBtn" style="margin-top:8px">📸 Capture Live Frame</button>
+            <div id="adminCaptureStatus" style="font-size:11px;margin-top:6px;color:var(--text-sub);line-height:1.4"></div>
           </div>
         </aside>
       </div>
@@ -226,14 +228,46 @@ export function mount(ctx, { saveLotPlots, showToast }) {
   const canvasEl = document.getElementById('adminCameraCanvas');
   if (canvasEl) {
     adminCanvas = new CameraCanvas(canvasEl, { onPlotSelected: (plot) => updateInspector(plot), onPlotsChanged: () => {} });
+    const lotSelect = document.getElementById('adminLotSelect');
+    const cameraUrlInput = document.getElementById('adminCameraUrl');
+    let loadedLots = [];
+
     fetchLots().then((lots) => {
-      const lotSelect = document.getElementById('adminLotSelect');
-      if (lots.length) adminCanvas.setLot(lots[0]);
+      loadedLots = lots;
+      if (lots.length) {
+        adminCanvas.setLot(lots[0]);
+        if (cameraUrlInput) cameraUrlInput.value = lots[0].camera_url || '';
+      }
       lotSelect?.addEventListener('change', (e) => {
         const selected = lots.find((l) => l.id === e.target.value);
-        if (selected) adminCanvas.setLot(selected);
+        if (selected) {
+          adminCanvas.setLot(selected);
+          if (cameraUrlInput) cameraUrlInput.value = selected.camera_url || '';
+        }
       });
     });
+
+    const captureBtn = document.getElementById('adminCaptureFrameBtn');
+    const captureStatus = document.getElementById('adminCaptureStatus');
+    captureBtn?.addEventListener('click', async () => {
+      const url = cameraUrlInput?.value.trim() || 'rtsp://cam.timisoara-hub.ro/live';
+      if (captureBtn) captureBtn.disabled = true;
+      if (captureStatus) captureStatus.textContent = '⏳ Capturing frame from camera stream...';
+      try {
+        const res = await captureCameraFrame(url);
+        if (res && res.image) {
+          adminCanvas.setBackgroundImage(res.image);
+          if (captureStatus) captureStatus.textContent = '✅ Live frame captured! Ready for slot calibration.';
+        } else {
+          if (captureStatus) captureStatus.textContent = '⚠️ Stream did not return a valid frame.';
+        }
+      } catch (err) {
+        if (captureStatus) captureStatus.textContent = `❌ Capture error: ${err.message}`;
+      } finally {
+        if (captureBtn) captureBtn.disabled = false;
+      }
+    });
+
     const modeBtns = { select: document.getElementById('adminSelectModeBtn'), draw: document.getElementById('adminDrawModeBtn') };
     const setMode = (m) => {
       adminCanvas.setMode(m);
@@ -245,12 +279,15 @@ export function mount(ctx, { saveLotPlots, showToast }) {
     document.getElementById('adminAddGridBtn')?.addEventListener('click', () => adminCanvas.addGridSlots(5));
     document.getElementById('adminSavePlotsBtn')?.addEventListener('click', async () => {
       const plots = adminCanvas.getPlots();
-      const lotSelect = document.getElementById('adminLotSelect');
+      const lotId = lotSelect ? lotSelect.value : '';
+      const cameraUrl = cameraUrlInput?.value.trim() || null;
       try {
-        await saveLotPlots(lotSelect.value, { slots_data: plots, camera_url: document.getElementById('adminCameraUrl').value.trim() || null, capacity: plots.length });
-        showToast?.(`Saved. ${plots.length} spots configured.`);
+        await saveLotPlots(lotId, { slots_data: plots, camera_url: cameraUrl, capacity: plots.length || undefined });
+        const selectedLot = loadedLots.find((l) => l.id === lotId);
+        const name = selectedLot ? selectedLot.name : 'Parking lot';
+        alert(`✅ Saved & calibrated ${plots.length} parking spots for "${name}"!\nAI Vision agent will now scan this feed.`);
       } catch (err) {
-        showToast?.(`Could not save: ${err.message}`);
+        alert(`Could not save plots: ${err.message}`);
       }
     });
     document.getElementById('adminPlotId')?.addEventListener('input', (e) => adminCanvas.updateSelectedPlot({ id: e.target.value }));

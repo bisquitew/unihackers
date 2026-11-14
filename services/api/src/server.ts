@@ -686,14 +686,28 @@ const server = http.createServer(async (req, res) => {
     }
 
     // 7. [PARKIE] Real-time Parking Lots & CV Detections
-    if (pathname === '/v1/m/parkie/lots' && method === 'GET') {
+    if ((pathname === '/v1/m/parkie/capture-frame' || pathname === '/vision/capture_frame') && method === 'POST') {
+      const body = await parseBody(req);
+      const cameraUrl = body.camera_url || body.cameraUrl || '';
+      const result = await parkieService.captureFrame(cameraUrl);
+      return sendJson(res, 200, result);
+    }
+
+    if ((pathname.startsWith('/v1/m/parkie/lots/') || pathname.startsWith('/lots/')) && pathname.endsWith('/config') && method === 'GET') {
+      const id = pathname.replace('/v1/m/parkie/lots/', '').replace('/lots/', '').replace('/config', '');
+      const config = parkieService.getLotConfig(id);
+      if (!config) return sendJson(res, 404, { error: 'Parking lot not found', id });
+      return sendJson(res, 200, config);
+    }
+
+    if ((pathname === '/v1/m/parkie/lots' || pathname === '/lots') && method === 'GET') {
       const statusColor = url.searchParams.get('status_color') || undefined;
       const minAvailable = url.searchParams.get('min_available') ? parseInt(url.searchParams.get('min_available')!, 10) : undefined;
       const lots = parkieService.getAllLots({ status_color: statusColor, min_available: minAvailable });
       return sendJson(res, 200, lots);
     }
 
-    if (pathname === '/v1/m/parkie/lots/colors' && method === 'GET') {
+    if ((pathname === '/v1/m/parkie/lots/colors' || pathname === '/lots/colors') && method === 'GET') {
       return sendJson(res, 200, parkieService.getLotColorsOnly());
     }
 
@@ -766,12 +780,14 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, lot);
     }
 
-    if (pathname === '/v1/m/parkie/detections' && method === 'POST') {
-      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.detections', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
-      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
+    if ((pathname === '/v1/m/parkie/detections' || pathname === '/vision/update_lot') && method === 'POST') {
+      if (pathname === '/v1/m/parkie/detections') {
+        const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.detections', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+        if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
+      }
       const body = await parseBody(req);
-      const lotId = body.lot_id;
-      const detectedCars = parseInt(body.detected_cars ?? '0', 10);
+      const lotId = body.lot_id || body.lotId;
+      const detectedCars = parseInt(body.detected_cars ?? body.detectedCars ?? '0', 10);
 
       if (!lotId) {
         return sendJson(res, 400, { error: 'Missing lot_id in detection payload' });
@@ -782,7 +798,15 @@ const server = http.createServer(async (req, res) => {
         return sendJson(res, 404, { error: 'Parking lot not found for detection update', lotId });
       }
 
-      return sendJson(res, 200, updated);
+      return sendJson(res, 200, {
+        status: 'success',
+        lot_id: updated.id,
+        name: updated.name,
+        available_spots: updated.available_spots,
+        capacity: updated.capacity,
+        status_color: updated.status_color,
+        last_updated: updated.last_updated
+      });
     }
 
     if (pathname === '/v1/m/parkie/lots' && method === 'POST') {
