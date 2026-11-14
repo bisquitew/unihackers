@@ -157,6 +157,8 @@ registerDictionary('ro', {
   'No information in this category.': 'Nu am găsit informații în această categorie.', 'Unplanned breakdown': 'Avarie neplanificată', 'Scheduled maintenance': 'Mentenanță programată', Investigating: 'În investigare', 'Work in progress': 'Lucrări în desfășurare',
   'Expected back about {}': 'Revenire estimată în jurul orei {}', 'Restore time to be confirmed': 'Ora de revenire va fi confirmată', 'Keep away from the area': 'Evită zona', 'Works in progress': 'Lucrări în desfășurare',
   '{} · {} m around': '{} · {} m în jur', 'until {}': 'până la {}', 'Until Dec': 'Până în decembrie', 'Severity: {}': 'Gravitate: {}', 'Expected to end {}': 'Se estimează că se termină {}', 'End date to be confirmed': 'Data de final va fi confirmată',
+  'Free spots, counted from each lot’s camera.': 'Locuri libere, numărate de camera fiecărei parcări.', 'Unirii, Iulius, Gara…': 'Unirii, Iulius, Gara…', 'Directions': 'Navighează', 'Busy': 'Aglomerat', 'Full': 'Plin', 'Available': 'Disponibil', 'Nothing matches.': 'Nimic nu se potrivește.', 'Lots, {}% free': 'Parcări, {}% libere', '{} of {} spots free': '{} din {} locuri libere',
+  'This account cannot sign in to the mobile app.': 'Acest cont nu se poate autentifica în aplicația mobilă.', 'Sign-in is simulated in this demo build.': 'Autentificarea este simulată în această versiune demo.',
   'Reported {}': 'Raportat {}', 'Announced': 'Anunțat',
   'Keep away from the area · {} m around': 'Evită zona · {} m în jur', 'Works in progress · {} m around': 'Lucrări în desfășurare · {} m în jur',
 });

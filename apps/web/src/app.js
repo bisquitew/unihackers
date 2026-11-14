@@ -121,8 +121,7 @@ function openAuthModal(error = '') {
     try {
       const user = await fn();
       close();
-      const roleLabel = user.role === 'admin' ? '🛡️ Administrator Municipal' : '👤 Cetățean Rezident';
-      showToast(`Conectat ca ${user.name.split(' ')[0]} (${roleLabel})`);
+      showToast(`Logged in as ${user.name.split(' ')[0]}.`);
       // staff go straight to their dashboard, everyone else stays where they were
       if (user.role === 'admin' && activeTab === 'home') go('admin');
     } catch (e) {
@@ -138,32 +137,11 @@ function openAuthModal(error = '') {
   // Real-time live account type detection to prevent role ambiguity / confused-deputy issues
   const updateAccountTypePreview = (val) => {
     const email = (val || '').trim().toLowerCase();
-    if (!email || !email.includes('@')) {
-      if (preview) {
-        preview.className = 'account-detector-banner';
-        preview.innerHTML = `<span class="detector-dot"></span><span class="detector-text">Introduceți emailul pentru detecția automată a tipului de cont</span>`;
-      }
-      if (passwordContainer) passwordContainer.style.display = 'none';
-      return;
-    }
-
-    const isStaff = email.includes('admin') || email.includes('primaria') || (email.endsWith('@timisoara-hub.ro') && !email.includes('resident') && !email.includes('student'));
-
-    if (isStaff) {
-      if (preview) {
-        preview.className = 'account-detector-banner banner-admin';
-        preview.innerHTML = `<span class="detector-dot dot-admin"></span><span class="detector-text"><strong>🏛️ Tip Cont: Administrator Municipal Primărie</strong><br><small>Nivel de securitate 2 • Necesită parolă de securitate</small></span>`;
-      }
-      if (passwordContainer) {
-        passwordContainer.style.display = 'block';
-        if (passwordInput && !passwordInput.value) passwordInput.value = 'timisoara2026!admin';
-      }
-    } else {
-      if (preview) {
-        preview.className = 'account-detector-banner banner-resident';
-        preview.innerHTML = `<span class="detector-dot dot-resident"></span><span class="detector-text"><strong>👤 Tip Cont: Cetățean Rezident</strong><br><small>Nivel de securitate 1 • Acces servicii urbane & comunitate</small></span>`;
-      }
-      if (passwordContainer) passwordContainer.style.display = 'none';
+    const isStaff = email.includes('@') && (email.includes('admin') || email.includes('primaria') || (email.endsWith('@timisoara-hub.ro') && !email.includes('resident') && !email.includes('student')));
+    if (preview) preview.textContent = isStaff ? 'City staff account. Enter your staff password.' : '';
+    if (passwordContainer) {
+      passwordContainer.style.display = isStaff ? 'block' : 'none';
+      if (isStaff && passwordInput && !passwordInput.value) passwordInput.value = 'timisoara2026!admin';
     }
   };
 
