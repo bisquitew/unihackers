@@ -1,8 +1,9 @@
-import type { SolanaTicketRecord, MintTicketPayload, CheckInPayload } from './types.ts';
-import { seedTickets } from './seed.ts';
+import type { SolanaTicketRecord, MintTicketPayload, CheckInPayload, PoapRecord } from './types.ts';
+import { seedPoaps, seedTickets } from './seed.ts';
 
 export class WalletService {
   private tickets: SolanaTicketRecord[] = [...seedTickets];
+  private poaps: PoapRecord[] = [...seedPoaps];
 
   private generateDevnetSignature(): string {
     const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
@@ -50,6 +51,10 @@ export class WalletService {
 
   async listUserTickets(wallet: string): Promise<SolanaTicketRecord[]> {
     return this.tickets.filter((t) => t.ownerWallet === wallet);
+  }
+
+  async listUserPoaps(wallet: string): Promise<PoapRecord[]> {
+    return this.poaps.filter((p) => p.attendeeWallet === wallet);
   }
 
   async checkInTicket(payload: CheckInPayload): Promise<{ success: boolean; message: string; ticket?: SolanaTicketRecord }> {
