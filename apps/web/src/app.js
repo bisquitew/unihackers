@@ -2,6 +2,7 @@ import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEm
 import { renderNavbar, renderMenu } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
 import { applyTheme, toggleTheme } from './ui.js';
+import { setLang, startI18n } from './i18n.js';
 import { fetchLots, saveLotPlots } from './api.js';
 import * as home from './views/HomeView.js';
 import * as map from './views/MapView.js';
