@@ -1,5 +1,5 @@
-import { MicroEvent, CreateEventInput, RSVPInput, RSVPRecord } from './types';
-import { seedEvents } from './seed';
+import type { MicroEvent, CreateEventInput, RSVPInput, RSVPRecord } from './types.ts';
+import { seedEvents } from './seed.ts';
 
 export class EventsService {
   private events: MicroEvent[] = [...seedEvents];

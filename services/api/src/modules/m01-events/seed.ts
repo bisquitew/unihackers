@@ -1,4 +1,4 @@
-import { MicroEvent } from './types';
+import type { MicroEvent } from './types.ts';
 
 export const seedEvents: MicroEvent[] = [
   {

@@ -1,5 +1,5 @@
-import { ForumPost, CreatePostInput, ReportPostInput, ForumComment } from './types';
-import { seedForumPosts } from './seed';
+import type { ForumPost, CreatePostInput, ReportPostInput, ForumComment } from './types.ts';
+import { seedForumPosts } from './seed.ts';
 
 export class ForumService {
   private posts: ForumPost[] = [...seedForumPosts];
