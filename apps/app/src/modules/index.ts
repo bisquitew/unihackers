@@ -9,6 +9,7 @@ import { manifest as m06Manifest } from './m06-smell/manifest';
 import { utilitiesManifest } from './m04-utilities/manifest';
 import { transitManifest } from './m05-transit/manifest';
 import { dashboardManifest } from './m12-dashboard/manifest';
+import { parkieManifest } from './parkie/manifest';
 
 export interface ModuleManifest {
   id: string;
@@ -45,7 +46,7 @@ export const registeredModuleManifests: ModuleManifest[] = [
   m10Manifest, // [M10_ASSISTANT] - P4
   m11Manifest, // [M11_FEEDBACK] - P4
   dashboardManifest, // [M12_DASHBOARD] - P4 & P2
-  createStubManifest('parkie', 'Parkie Smart Parking', 'P1', 'parking', '/m/parkie')
+  parkieManifest // [PARKIE] - P1 & P2
 ];
 
 export const registeredModules = registeredModuleManifests;

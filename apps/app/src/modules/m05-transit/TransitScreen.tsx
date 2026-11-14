@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import { ListenButton } from '../m10-assistant/voice/ListenButton';
 
 interface TransitLine {
   id: string;
@@ -196,6 +197,7 @@ export function TransitScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiBas
               </View>
 
               <Text style={styles.lineDescription}>{line.description}</Text>
+              <ListenButton lang="ro" text={`Linia ${line.line_number}, ${line.name}: ${badge.label}. ${line.description}`} />
 
               {line.status === 'suspended' && (
                 <View style={styles.replacementAlert}>

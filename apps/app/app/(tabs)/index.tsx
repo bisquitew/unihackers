@@ -31,6 +31,7 @@ const explore: { id: ModuleArtId; label: string; route?: string }[] = [
   { id: 'feedback', label: 'Feedback', route: '/m/feedback' },
   { id: 'visitorInfo', label: 'Visitor info', route: '/m/visitor-info' },
   { id: 'smell', label: 'Smell', route: '/m/smell' },
+  { id: 'safety', label: 'Safety', route: '/m/safety' },
 ];
 
 export default function HomeScreen() {

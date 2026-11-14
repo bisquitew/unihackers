@@ -1,7 +1,7 @@
-import { feedbackRoutes } from './routes';
-import { feedbackAssistantTools } from './assistant-tools';
-import { feedbackService, FeedbackService } from './service';
-import type { ApiModule } from '../../types';
+import { feedbackRoutes } from './routes.ts';
+import { feedbackAssistantTools } from './assistant-tools.ts';
+import { feedbackService, FeedbackService } from './service.ts';
+import type { ApiModule } from '../../types.ts';
 
 export const apiModule: ApiModule = {
   id: 'm11-feedback',

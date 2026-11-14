@@ -22,7 +22,7 @@ import {
 import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, palette, radii, shadows } from '@hub/ui';
 
 // The hue dot on a switched-on layer chip. Blue = getting around and city information, mint = people and services, ink = yours.
-const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500 };
+const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500, events: palette.mint500 };
 import { allMapLayers } from '../../src/core/map-layers';
 import { getMapLayersVersion, onMapLayersChanged } from '../../src/core/map-layers/changes';
 

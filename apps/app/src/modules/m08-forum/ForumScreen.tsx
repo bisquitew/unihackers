@@ -1,706 +1,396 @@
-import React, { useState, useEffect } from 'react';
-import {
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  TextInput,
-  Modal,
-  Alert,
-} from 'react-native';
-import { forumStore, Post, Comment } from './forumStore';
+import React, { useEffect, useState } from 'react';
+import { Image, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
+import { Avatar, Chip, Field, IconButton, PrimaryButton, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, fonts, icons, moduleArt, palette, radii } from '@hub/ui';
+import { ModulePage } from '../../core/ModulePage';
+import { initialsOf, toneFor } from '../../core/people';
+import { forumStore, type Post } from './forumStore';
 
-export function ForumScreen() {
+const CATEGORY_LABEL: Record<Post['category'], string> = {
+  lost_pets: 'Lost pets',
+  neighbourhood: 'Local',
+  help: 'Help',
+  buy_sell: 'Buy and sell',
+  cultural: 'Culture',
+};
+// The dot before a post's category: apricot for something urgent, mint for people helping people, blue for local news.
+const CATEGORY_DOT: Record<Post['category'], string> = {
+  lost_pets: palette.apricot500,
+  help: palette.mint500,
+  neighbourhood: palette.blue500,
+  buy_sell: palette.ink600,
+  cultural: palette.blue500,
+};
+const FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'lost_pets', label: 'Lost pets' },
+  { id: 'help', label: 'Help' },
+  { id: 'neighbourhood', label: 'Local' },
+  { id: 'groups', label: 'Groups' },
+];
+const NEW_CATEGORIES: { id: 'neighbourhood' | 'lost_pets' | 'help'; label: string }[] = [
+  { id: 'neighbourhood', label: 'Local' },
+  { id: 'lost_pets', label: 'Lost pet' },
+  { id: 'help', label: 'Help' },
+];
+const AREAS = ['Cetate', 'Fabric', 'Iosefin', 'Elisabetin'];
+const GROUPS = [
+  { id: 'grp-1', name: 'Fabric Creative Hub & Yard', area: 'Fabric', members: 142, desc: 'Artists, cultural organizers, and residents around Faber Yard and Traian Square.', tags: ['culture', 'art', 'events'] },
+  { id: 'grp-2', name: 'UPT & UVT Student Socials', area: 'Complexul Studențesc', members: 380, desc: 'Campus news, study spots, student discounts, and indie social meetups.', tags: ['students', 'campus', 'study'] },
+  { id: 'grp-3', name: 'Timișoara Lost & Found Pets Network', area: 'All Timișoara', members: 95, desc: 'Rapid rescue and alert coordination for lost dogs and cats in Timișoara.', tags: ['pets', 'rescue'] },
+  { id: 'grp-4', name: 'Bega Clean & Green Volunteers', area: 'Iosefin and D’arc', members: 64, desc: 'Environmental cleanups along the Bega canal banks and eco-workshops.', tags: ['ecology', 'volunteering', 'bega'] },
+];
+const QUICK_REPLIES = ['Thanks for sharing', 'I can help with this', 'Where exactly?'];
+
+export function ForumScreen({ embedded }: { embedded?: boolean }) {
+  const { height: windowHeight } = useWindowDimensions();
+  const sheetMax = Math.round(windowHeight * 0.72);
+
   const [posts, setPosts] = useState<Post[]>(forumStore.getPosts());
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [activeCommentsPostId, setActiveCommentsPostId] = useState<string | null>(null);
-  const [newCommentText, setNewCommentText] = useState('');
+  useEffect(() => forumStore.subscribe(() => setPosts(forumStore.getPosts())), []);
+  const reported = posts.filter((p) => p.isReported);
 
-  // Dev toggle to test Moderator role directly
-  const [isModeratorView, setIsModeratorView] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
+  const [moderation, setModeration] = useState(false);
+  const feed = moderation ? reported : posts.filter((p) => filter === 'all' || p.category === filter);
 
-  // New post state
-  const [newTitle, setNewTitle] = useState('');
-  const [newContent, setNewContent] = useState('');
-  const [newCategory, setNewCategory] = useState<'lost_pets' | 'neighbourhood' | 'help'>('neighbourhood');
-  const [newNeighbourhood, setNewNeighbourhood] = useState('Cetate');
+  const [commentsFor, setCommentsFor] = useState<string | null>(null);
+  const commentPost = posts.find((p) => p.id === commentsFor) ?? null;
+  const [removeId, setRemoveId] = useState<string | null>(null);
+  const [joined, setJoined] = useState<string[]>([]);
 
-  useEffect(() => {
-    const unsub = forumStore.subscribe(() => {
-      setPosts(forumStore.getPosts());
-    });
-    return unsub;
-  }, []);
-
-  const reportedPosts = posts.filter((p) => p.isReported);
-
-  const filteredPosts =
-    selectedCategory === 'moderation' || isModeratorView
-      ? reportedPosts
-      : posts.filter(
-          (p) => selectedCategory === 'all' || p.category === selectedCategory
-        );
-
-  const handleUpvote = (postId: string) => {
-    forumStore.toggleUpvote(postId);
-  };
-
-  const handleReport = (postId: string) => {
-    const res = forumStore.reportPost(postId, 'Flagged by citizen for review');
-    if (res.alreadyReported) {
-      Alert.alert(
-        'Already Reported ℹ️',
-        'You have already reported this post for moderator review.'
-      );
-    } else {
-      Alert.alert(
-        'Post Reported 🛡️',
-        'Thank you! The post has been queued in the Moderation Panel.'
-      );
-    }
-  };
-
-  // Moderator Actions
-  const handleApprovePost = (postId: string) => {
-    forumStore.approvePost(postId);
-    Alert.alert('Post Approved ✓', 'Post has been verified and kept in the community feed.');
-  };
-
-  const handleDeletePost = (postId: string) => {
-    Alert.alert(
-      'Confirm Deletion',
-      'Are you sure you want to remove this post from the platform?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete Permanently',
-          style: 'destructive',
-          onPress: () => {
-            forumStore.deletePost(postId);
-            Alert.alert('Deleted', 'Post was successfully removed.');
-          },
-        },
-      ]
-    );
-  };
-
-  const handleAddComment = (postId: string) => {
-    if (!newCommentText.trim()) return;
-    forumStore.addComment(postId, 'You (Resident)', newCommentText);
-    setNewCommentText('');
-  };
-
-  const handleCreatePost = () => {
-    if (!newTitle.trim() || !newContent.trim()) {
-      Alert.alert('Error', 'Please fill out both the title and details of your post.');
-      return;
-    }
-
-    forumStore.createPost({
-      title: newTitle,
-      content: newContent,
-      category: newCategory,
-      neighbourhood: newNeighbourhood,
-      authorName: 'You (Resident)',
-    });
-
-    setModalVisible(false);
-    setNewTitle('');
-    setNewContent('');
-    Alert.alert('Success 🎉', 'Your post has been published and saved!');
+  // writing a post
+  const [writing, setWriting] = useState(false);
+  const [draft, setDraft] = useState({ title: '', content: '', category: 'neighbourhood' as 'neighbourhood' | 'lost_pets' | 'help', area: 'Cetate' });
+  const canPublish = draft.title.trim().length > 0 && draft.content.trim().length > 0;
+  const publish = () => {
+    if (!canPublish) return;
+    forumStore.createPost({ title: draft.title, content: draft.content, category: draft.category, neighbourhood: draft.area, authorName: 'You' });
+    setWriting(false);
+    setDraft({ title: '', content: '', category: 'neighbourhood', area: 'Cetate' });
+    setModeration(false);
+    setFilter('all');
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header bar */}
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Community & Neighbourhoods</Text>
-          <Text style={styles.headerSub}>Timișoara • Civic Forum [M08]</Text>
-        </View>
-        <TouchableOpacity style={styles.createButton} onPress={() => setModalVisible(true)}>
-          <Text style={styles.createButtonText}>+ Create Post</Text>
-        </TouchableOpacity>
+    <ModulePage title="Forum" embedded={embedded}>
+      <View style={styles.head}>
+        <Text variant="rowDetail" color="mutedForeground" style={{ flex: 1 }}>
+          What your neighbours are talking about
+        </Text>
+        <PrimaryButton label="New post" size="md" onPress={() => setWriting(true)} />
       </View>
 
-      {/* Category & Moderator Filter Pills */}
-      <View style={styles.filterRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          {[
-            { id: 'all', label: 'All Posts' },
-            { id: 'groups', label: '👥 Community Groups' },
-            { id: 'lost_pets', label: '🐾 Lost & Found Pets' },
-            { id: 'help', label: '🤝 Help & Questions' },
-            { id: 'neighbourhood', label: '🏘️ Local Initiatives' },
-            {
-              id: 'moderation',
-              label: `🛡️ Moderation Panel ${reportedPosts.length > 0 ? `(${reportedPosts.length})` : ''}`,
-            },
-          ].map((cat) => (
-            <TouchableOpacity
-              key={cat.id}
-              style={[
-                styles.categoryChip,
-                selectedCategory === cat.id && styles.categoryChipActive,
-                cat.id === 'moderation' && styles.moderationChip,
-                cat.id === 'moderation' && selectedCategory === 'moderation' && styles.moderationChipActive,
-              ]}
-              onPress={() => setSelectedCategory(cat.id)}
-            >
-              <Text
-                style={[
-                  styles.categoryChipText,
-                  selectedCategory === cat.id && styles.categoryChipTextActive,
-                  cat.id === 'moderation' && styles.moderationChipText,
-                ]}
-              >
-                {cat.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* MODERATOR VIEW BANNER (When Moderation Tab is Selected) */}
-      {selectedCategory === 'moderation' && (
-        <View style={styles.modBanner}>
-          <Text style={styles.modBannerTitle}>🛡️ Community Moderation Panel</Text>
-          <Text style={styles.modBannerSub}>
-            Posts flagged by residents for spam, scalping, or inappropriate content.
-          </Text>
-        </View>
-      )}
-
-      {/* Empty State for Moderation */}
-      {selectedCategory === 'moderation' && reportedPosts.length === 0 && (
-        <View style={styles.emptyModBox}>
-          <Text style={styles.emptyModIcon}>✨</Text>
-          <Text style={styles.emptyModTitle}>No flagged posts!</Text>
-          <Text style={styles.emptyModDesc}>
-            All Timișoara community posts are verified. Feed is clean and safe.
-          </Text>
-        </View>
-      )}
-
-      {/* Community Groups View */}
-      {selectedCategory === 'groups' && (
-        <ScrollView style={styles.content}>
-          <View style={styles.modBanner}>
-            <Text style={styles.modBannerTitle}>👥 Timișoara Community Groups</Text>
-            <Text style={styles.modBannerSub}>
-              Join local neighborhood councils, student associations, and volunteer civic circles.
-            </Text>
-          </View>
-
-          {[
-            {
-              id: 'grp-1',
-              name: 'Fabric Creative Hub & Yard',
-              area: 'Fabric',
-              members: 142,
-              desc: 'Artists, cultural organizers, and residents around Faber Yard and Traian Square.',
-              tags: ['culture', 'art', 'events'],
-            },
-            {
-              id: 'grp-2',
-              name: 'UPT & UVT Student Socials',
-              area: 'Complexul Studențesc',
-              members: 380,
-              desc: 'Campus news, study spots, student discounts, and indie social meetups.',
-              tags: ['students', 'campus', 'study'],
-            },
-            {
-              id: 'grp-3',
-              name: 'Timișoara Lost & Found Pets Network',
-              area: 'All Timișoara',
-              members: 95,
-              desc: 'Rapid rescue and alert coordination for lost dogs and cats in Timișoara.',
-              tags: ['pets', 'rescue', 'emergency'],
-            },
-            {
-              id: 'grp-4',
-              name: 'Bega Clean & Green Volunteers',
-              area: 'Iosefin / D’arc',
-              members: 64,
-              desc: 'Environmental cleanups along the Bega canal banks and eco-workshops.',
-              tags: ['ecology', 'volunteering', 'bega'],
-            },
-          ].map((grp) => (
-            <View key={grp.id} style={styles.postCard}>
-              <View style={styles.badgeRow}>
-                <Text style={styles.categoryBadge}>GROUP</Text>
-                <Text style={styles.neighbourhoodBadge}>📍 {grp.area}</Text>
-                <Text style={[styles.neighbourhoodBadge, { marginLeft: 'auto', color: '#c084fc' }]}>
-                  👥 {grp.members} members
-                </Text>
-              </View>
-              <Text style={styles.postTitle}>{grp.name}</Text>
-              <Text style={styles.postContent}>{grp.desc}</Text>
-              <View style={[styles.badgeRow, { marginTop: 10 }]}>
-                {grp.tags.map((t) => (
-                  <Text key={t} style={{ color: '#a855f7', fontSize: 10, marginRight: 8 }}>
-                    #{t}
-                  </Text>
-                ))}
-              </View>
-              <View style={[styles.actionRow, { marginTop: 12 }]}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: '#8d23be' }]}
-                  onPress={() => Alert.alert('Joined Group ✓', `You are now a member of ${grp.name}!`)}
-                >
-                  <Text style={[styles.actionBtnText, { color: '#ffffff', fontWeight: 'bold' }]}>
-                    + Join Group
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() => setSelectedCategory('all')}
-                >
-                  <Text style={styles.actionBtnText}>View Posts →</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))}
-        </ScrollView>
-      )}
-
-      {/* Posts List */}
-      {selectedCategory !== 'groups' && (
-      <ScrollView style={styles.content}>
-        {filteredPosts.map((post) => (
-          <View
-            key={post.id}
-            style={[
-              styles.postCard,
-              post.isReported && selectedCategory === 'moderation' && styles.reportedPostCard,
-            ]}
-          >
-            <View style={styles.postHeader}>
-              <View>
-                <View style={styles.badgeRow}>
-                  <Text style={styles.categoryBadge}>{post.category.toUpperCase().replace('_', ' ')}</Text>
-                  <Text style={styles.neighbourhoodBadge}>📍 {post.neighbourhood}</Text>
-                </View>
-                <Text style={styles.postAuthor}>{post.authorName} • {post.createdAt}</Text>
-              </View>
-
-              {/* Report pill or badge */}
-              {selectedCategory !== 'moderation' ? (
-                <TouchableOpacity onPress={() => handleReport(post.id)}>
-                  <Text style={[styles.reportText, forumStore.hasUserReported(post.id) && styles.reportTextActive]}>
-                    {forumStore.hasUserReported(post.id) ? '⚠️ Reported' : post.isReported ? '⚠️ Flagged' : '⚑ Report'}
-                  </Text>
-                </TouchableOpacity>
-              ) : (
-                <View style={styles.modReportPill}>
-                  <Text style={styles.modReportPillText}>⚠️ {post.reportCount} reports</Text>
-                </View>
-              )}
-            </View>
-
-            {/* Moderation Warning Note */}
-            {post.isReported && (
-              <View style={styles.reportedReasonBox}>
-                <Text style={styles.reportedReasonTitle}>Flag reason:</Text>
-                <Text style={styles.reportedReasonText}>
-                  {post.reportReason || 'Flagged by community for review'}
-                </Text>
-              </View>
-            )}
-
-            <Text style={styles.postTitle}>{post.title}</Text>
-            <Text style={styles.postContent}>{post.content}</Text>
-
-            {post.photos.length > 0 && (
-              <Image source={{ uri: post.photos[0] }} style={styles.postImage} />
-            )}
-
-            {/* If NOT in moderator view: Normal Upvote & Comment Actions */}
-            {selectedCategory !== 'moderation' ? (
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.actionBtn, forumStore.hasUserUpvoted(post.id) && styles.actionBtnUpvoted]}
-                  onPress={() => handleUpvote(post.id)}
-                >
-                  <Text style={[styles.actionBtnText, forumStore.hasUserUpvoted(post.id) && styles.actionBtnTextUpvoted]}>
-                    {forumStore.hasUserUpvoted(post.id) ? '👍 Upvoted' : '👍 Upvote'} ({post.upvotes})
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.actionBtn}
-                  onPress={() =>
-                    setActiveCommentsPostId(
-                      activeCommentsPostId === post.id ? null : post.id
-                    )
-                  }
-                >
-                  <Text style={styles.actionBtnText}>💬 {post.commentsCount} Comments</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              /* MODERATOR CONTROL BUTTONS */
-              <View style={styles.modActionRow}>
-                <TouchableOpacity
-                  style={styles.modApproveBtn}
-                  onPress={() => handleApprovePost(post.id)}
-                >
-                  <Text style={styles.modApproveBtnText}>✓ Approve & Keep</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.modDeleteBtn}
-                  onPress={() => handleDeletePost(post.id)}
-                >
-                  <Text style={styles.modDeleteBtnText}>🗑️ Delete Post</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {/* Comments Drawer */}
-            {activeCommentsPostId === post.id && (
-              <View style={styles.commentsBox}>
-                {post.comments.map((c) => (
-                  <View key={c.id} style={styles.commentItem}>
-                    <Text style={styles.commentAuthor}>{c.authorName}</Text>
-                    <Text style={styles.commentContent}>{c.content}</Text>
-                  </View>
-                ))}
-                <View style={styles.addCommentRow}>
-                  <TextInput
-                    style={styles.commentInput}
-                    placeholder="Write a reply..."
-                    placeholderTextColor="#71717a"
-                    value={newCommentText}
-                    onChangeText={setNewCommentText}
-                  />
-                  <TouchableOpacity
-                    style={styles.sendCommentBtn}
-                    onPress={() => handleAddComment(post.id)}
-                  >
-                    <Text style={styles.sendCommentText}>Send</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
-          </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chips} contentContainerStyle={styles.chipsContent}>
+        {FILTERS.map((f) => (
+          <Chip
+            key={f.id}
+            label={f.label}
+            selected={!moderation && filter === f.id}
+            onPress={() => {
+              setModeration(false);
+              setFilter(f.id);
+            }}
+          />
         ))}
+        <Chip label={reported.length ? `Moderation, ${reported.length}` : 'Moderation'} selected={moderation} onPress={() => setModeration(true)} />
       </ScrollView>
+
+      {moderation ? (
+        <Text variant="rowDetail" color="mutedForeground" style={styles.note}>
+          Posts that residents flagged for spam or inappropriate content.
+        </Text>
+      ) : null}
+
+      {!moderation && filter === 'groups' ? (
+        <RowGroup>
+          {GROUPS.map((g) => {
+            const isIn = joined.includes(g.id);
+            return (
+              <View key={g.id} style={styles.post}>
+                <Avatar initials={initialsOf(g.name)} tone={toneFor(g.id)} size={44} />
+                <View style={styles.postMain}>
+                  <Text variant="subheading">{g.name}</Text>
+                  <Text variant="rowDetail" color="mutedForeground">
+                    {g.area}, {g.members + (isIn ? 1 : 0)} members
+                  </Text>
+                  <Text variant="body" style={{ marginTop: 6 }}>
+                    {g.desc}
+                  </Text>
+                  <View style={styles.tags}>
+                    {g.tags.map((t) => (
+                      <Text key={t} variant="label" color="info">
+                        #{t}
+                      </Text>
+                    ))}
+                  </View>
+                  <View style={styles.actions}>
+                    {isIn ? (
+                      <SecondaryButton label="Joined" size="md" onPress={() => setJoined(joined.filter((x) => x !== g.id))} />
+                    ) : (
+                      <SecondaryButton label="Join group" size="md" onPress={() => setJoined([...joined, g.id])} />
+                    )}
+                  </View>
+                </View>
+              </View>
+            );
+          })}
+        </RowGroup>
+      ) : feed.length === 0 ? (
+        <View style={styles.empty}>
+          <Text variant="subheading" accessibilityRole="header">
+            {moderation ? 'Nothing flagged' : 'No posts here yet'}
+          </Text>
+          <Text variant="body" color="mutedForeground" style={{ textAlign: 'center' }}>
+            {moderation ? 'Every post is verified. The feed is clean.' : 'Start the conversation with a new post.'}
+          </Text>
+        </View>
+      ) : (
+        <RowGroup>
+          {feed.map((post) => {
+            const upvoted = forumStore.hasUserUpvoted(post.id);
+            const iReported = forumStore.hasUserReported(post.id);
+            return (
+              <View key={post.id} style={styles.post}>
+                <Avatar initials={initialsOf(post.authorName)} tone={toneFor(post.authorName)} size={44} />
+                <View style={styles.postMain}>
+                  <View style={styles.byline}>
+                    <Text variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
+                      {post.authorName}
+                    </Text>
+                    <Text variant="rowDetail" color="mutedForeground" numberOfLines={1}>
+                      {post.createdAt}
+                    </Text>
+                  </View>
+                  <View style={styles.category}>
+                    <View style={[styles.dot, { backgroundColor: CATEGORY_DOT[post.category] }]} />
+                    <Text variant="caption" color="mutedForeground">
+                      {CATEGORY_LABEL[post.category]}, {post.neighbourhood}
+                    </Text>
+                  </View>
+                  <Text variant="subheading" style={{ marginTop: 8 }}>
+                    {post.title}
+                  </Text>
+                  <Text variant="body" style={{ marginTop: 4 }}>
+                    {post.content}
+                  </Text>
+                  {post.photos[0] ? <Image source={{ uri: post.photos[0] }} accessibilityLabel={`Photo for ${post.title}`} style={styles.photo} /> : null}
+                  {post.isReported ? (
+                    <Text variant="rowDetail" color="warning" style={{ marginTop: 8 }}>
+                      {moderation ? `Flagged ${post.reportCount} ${post.reportCount === 1 ? 'time' : 'times'}: ${post.reportReason || 'Flagged by residents'}` : 'Flagged for review'}
+                    </Text>
+                  ) : null}
+
+                  {moderation ? (
+                    <View style={styles.actions}>
+                      <SecondaryButton label="Keep post" size="md" onPress={() => forumStore.approvePost(post.id)} />
+                      <TextButton label="Remove" size="md" onPress={() => setRemoveId(post.id)} />
+                    </View>
+                  ) : (
+                    <View style={styles.actionRow}>
+                      <Pill
+                        label={`${upvoted ? 'Remove upvote' : 'Upvote'}, ${post.upvotes}`}
+                        text={String(post.upvotes)}
+                        active={upvoted}
+                        icon={(c) => <icons.ThumbsUp size={18} weight={upvoted ? 'fill' : 'bold'} color={c} />}
+                        onPress={() => forumStore.toggleUpvote(post.id)}
+                      />
+                      <Pill label={`Comments, ${post.commentsCount}`} text={String(post.commentsCount)} icon={(c) => <icons.ChatCircle size={18} weight="bold" color={c} />} onPress={() => setCommentsFor(post.id)} />
+                      <View style={{ flex: 1 }} />
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={iReported ? 'Reported' : 'Report this post'}
+                        onPress={() => forumStore.reportPost(post.id, 'Flagged by a resident for review')}
+                        hitSlop={8}
+                        style={({ pressed }) => [styles.report, pressed && { opacity: 0.6 }]}
+                      >
+                        <icons.Flag size={18} weight={iReported ? 'fill' : 'bold'} color={iReported ? colors.warning : colors.mutedForeground} />
+                      </Pressable>
+                    </View>
+                  )}
+                </View>
+              </View>
+            );
+          })}
+        </RowGroup>
       )}
 
-      {/* Create Post Modal */}
-      <Modal visible={modalVisible} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>New Community Post</Text>
+      {/* comments */}
+      <Sheet modal visible={!!commentPost} onClose={() => setCommentsFor(null)} accessibilityLabel="Comments">
+        {commentPost ? <Comments post={commentPost} maxHeight={Math.round(windowHeight * 0.42)} /> : null}
+      </Sheet>
 
-            <Text style={styles.inputLabel}>Category</Text>
-            <View style={styles.catSelectRow}>
-              {(['neighbourhood', 'lost_pets', 'help'] as const).map((cat) => (
-                <TouchableOpacity
-                  key={cat}
-                  style={[
-                    styles.catOption,
-                    newCategory === cat && styles.catOptionActive,
-                  ]}
-                  onPress={() => setNewCategory(cat)}
-                >
-                  <Text style={styles.catOptionText}>
-                    {cat === 'lost_pets' ? '🐾 Pet' : cat === 'help' ? '🤝 Help' : '🏘️ Local'}
-                  </Text>
-                </TouchableOpacity>
+      {/* confirm a removal */}
+      <Sheet modal visible={!!removeId} onClose={() => setRemoveId(null)} accessibilityLabel="Remove post">
+        <View style={{ gap: 12 }}>
+          <Text variant="heading" accessibilityRole="header">
+            Remove this post?
+          </Text>
+          <Text variant="body" color="mutedForeground">
+            It will be taken off the forum for everyone. This cannot be undone.
+          </Text>
+          <View style={{ gap: 8, marginTop: 4 }}>
+            <SecondaryButton
+              label="Remove post"
+              size="lg"
+              onPress={() => {
+                if (removeId) forumStore.deletePost(removeId);
+                setRemoveId(null);
+              }}
+            />
+            <TextButton label="Keep it" size="lg" onPress={() => setRemoveId(null)} />
+          </View>
+        </View>
+      </Sheet>
+
+      {/* write a post */}
+      <Sheet modal visible={writing} onClose={() => setWriting(false)} accessibilityLabel="New post">
+        <ScrollView style={{ maxHeight: sheetMax }} contentContainerStyle={{ gap: 12 }} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <Text variant="heading" accessibilityRole="header">
+            New post
+          </Text>
+          <Text variant="subheading">What is it about?</Text>
+          <View style={styles.wrap}>
+            {NEW_CATEGORIES.map((c) => (
+              <Chip key={c.id} label={c.label} selected={draft.category === c.id} onPress={() => setDraft({ ...draft, category: c.id })} />
+            ))}
+          </View>
+          <Text variant="subheading">Where</Text>
+          <View style={styles.wrap}>
+            {AREAS.map((a) => (
+              <Chip key={a} label={a} selected={draft.area === a} onPress={() => setDraft({ ...draft, area: a })} />
+            ))}
+          </View>
+          <Field label="Title" value={draft.title} onChangeText={(title) => setDraft({ ...draft, title })} maxLength={90} />
+          <Field label="Details" value={draft.content} onChangeText={(content) => setDraft({ ...draft, content })} multiline maxLength={400} />
+          <PrimaryButton label="Publish" size="lg" disabled={!canPublish} onPress={publish} />
+          {!canPublish ? (
+            <Text variant="rowDetail" color="mutedForeground" style={{ textAlign: 'center' }}>
+              Add a title and some details to publish.
+            </Text>
+          ) : null}
+        </ScrollView>
+      </Sheet>
+    </ModulePage>
+  );
+}
+
+/** An action under a post: an icon and a count in a soft pill. Ink when it is on. */
+function Pill({ label, text, icon, onPress, active }: { label: string; text: string; icon: (color: string) => React.ReactNode; onPress: () => void; active?: boolean }) {
+  const fg = active ? colors.inverseForeground : colors.foreground;
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: !!active }} onPress={onPress} hitSlop={{ top: 4, bottom: 4 }} style={({ pressed }) => [styles.pill, active && styles.pillOn, pressed && { opacity: 0.7 }]}>
+      {icon(fg)}
+      <Text variant="label" style={{ color: fg }}>
+        {text}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** The comments on a post: the post in brief, the replies with their authors, and a composer that stays at the bottom. */
+function Comments({ post, maxHeight }: { post: Post; maxHeight: number }) {
+  const [text, setText] = useState('');
+  const send = (value = text) => {
+    if (!value.trim()) return;
+    forumStore.addComment(post.id, 'You', value);
+    setText('');
+  };
+  const Art = moduleArt.forum;
+  return (
+    <View style={{ gap: 14 }}>
+      <View style={styles.sheetHead}>
+        <Text variant="subheading" accessibilityRole="header">
+          Comments
+        </Text>
+        <Text variant="label" color="mutedForeground">
+          {post.comments.length}
+        </Text>
+      </View>
+
+      <View style={styles.summary}>
+        <Avatar initials={initialsOf(post.authorName)} tone={toneFor(post.authorName)} size={32} />
+        <View style={{ flex: 1 }}>
+          <Text variant="label" numberOfLines={1}>
+            {post.authorName}
+          </Text>
+          <Text variant="rowDetail" color="mutedForeground" numberOfLines={1}>
+            {post.title}
+          </Text>
+        </View>
+      </View>
+
+      <ScrollView style={{ maxHeight, minHeight: 160 }} contentContainerStyle={{ gap: 18, paddingVertical: 4 }} showsVerticalScrollIndicator={false}>
+        {post.comments.length === 0 ? (
+          <View style={styles.noReplies}>
+            <Art size={72} />
+            <Text variant="subheading" accessibilityRole="header">
+              No replies yet
+            </Text>
+            <Text variant="rowDetail" color="mutedForeground" style={{ textAlign: 'center' }}>
+              Be the first to answer {post.authorName.split(' ')[0]}.
+            </Text>
+            <View style={styles.suggestions}>
+              {QUICK_REPLIES.map((q) => (
+                <Chip key={q} label={q} onPress={() => setText(q)} />
               ))}
             </View>
-
-            <Text style={styles.inputLabel}>Neighbourhood</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={newNeighbourhood}
-              onChangeText={setNewNeighbourhood}
-              placeholder="E.g. Fabric, Iosefin, Cetate, Elisabetin"
-              placeholderTextColor="#71717a"
-            />
-
-            <Text style={styles.inputLabel}>Title</Text>
-            <TextInput
-              style={styles.modalInput}
-              value={newTitle}
-              onChangeText={setNewTitle}
-              placeholder="What is this regarding?"
-              placeholderTextColor="#71717a"
-            />
-
-            <Text style={styles.inputLabel}>Details</Text>
-            <TextInput
-              style={[styles.modalInput, { height: 80 }]}
-              multiline
-              value={newContent}
-              onChangeText={setNewContent}
-              placeholder="Write the details of your post..."
-              placeholderTextColor="#71717a"
-            />
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.publishBtn}
-                onPress={handleCreatePost}
-              >
-                <Text style={styles.publishBtnText}>Publish</Text>
-              </TouchableOpacity>
-            </View>
           </View>
-        </View>
-      </Modal>
+        ) : (
+          post.comments.map((c) => (
+            <View key={c.id} style={styles.comment}>
+              <Avatar initials={initialsOf(c.authorName)} tone={toneFor(c.authorName)} size={32} />
+              <View style={{ flex: 1 }}>
+                <View style={styles.byline}>
+                  <Text variant="label">{c.authorName}</Text>
+                  <Text variant="rowDetail" color="mutedForeground">
+                    {c.createdAt}
+                  </Text>
+                </View>
+                <Text variant="body" style={{ marginTop: 2 }}>
+                  {c.content}
+                </Text>
+              </View>
+            </View>
+          ))
+        )}
+      </ScrollView>
+
+      <View style={styles.composer}>
+        <Avatar initials="YO" tone="ink" size={32} />
+        <TextInput value={text} onChangeText={setText} placeholder="Write a reply" placeholderTextColor={colors.mutedForeground} accessibilityLabel="Reply" returnKeyType="send" onSubmitEditing={() => send()} style={styles.input} />
+        <IconButton label="Send reply" tone="ink" size={44} onPress={() => send()}>
+          <icons.PaperPlaneTilt size={20} weight="fill" color={colors.inverseForeground} />
+        </IconButton>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b' },
-  header: {
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#27272a',
-  },
-  headerTitle: { color: '#ffffff', fontSize: 18, fontWeight: 'bold' },
-  headerSub: { color: '#a1a1aa', fontSize: 11, marginTop: 2 },
-  createButton: {
-    backgroundColor: '#8d23be',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-  },
-  createButtonText: { color: '#ffffff', fontSize: 12, fontWeight: '700' },
-  filterRow: { paddingHorizontal: 16, paddingVertical: 12 },
-  categoryChip: {
-    backgroundColor: '#18181b',
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  categoryChipActive: { backgroundColor: '#8d23be', borderColor: '#a855f7' },
-  categoryChipText: { color: '#a1a1aa', fontSize: 12, fontWeight: '500' },
-  categoryChipTextActive: { color: '#ffffff', fontWeight: 'bold' },
-  moderationChip: { borderColor: '#b45309' },
-  moderationChipActive: { backgroundColor: '#b45309', borderColor: '#f59e0b' },
-  moderationChipText: { color: '#fbbf24' },
-  content: { flex: 1, paddingHorizontal: 16 },
-
-  // Moderator Banner & Empty State
-  modBanner: {
-    backgroundColor: '#451a03',
-    borderColor: '#b45309',
-    borderWidth: 1,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 10,
-    padding: 12,
-  },
-  modBannerTitle: { color: '#fde68a', fontSize: 13, fontWeight: 'bold' },
-  modBannerSub: { color: '#fef3c7', fontSize: 11, marginTop: 2 },
-  emptyModBox: {
-    backgroundColor: '#18181b',
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 20,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  emptyModIcon: { fontSize: 32, marginBottom: 8 },
-  emptyModTitle: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
-  emptyModDesc: { color: '#a1a1aa', fontSize: 12, textAlign: 'center', marginTop: 4 },
-
-  postCard: {
-    backgroundColor: '#18181b',
-    borderColor: '#27272a',
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
-  },
-  reportedPostCard: {
-    borderColor: '#b45309',
-    backgroundColor: '#1c130d',
-  },
-  postHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  badgeRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
-  categoryBadge: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: '#c084fc',
-    backgroundColor: '#2e1065',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  neighbourhoodBadge: { fontSize: 10, color: '#e4e4e7', fontWeight: '500' },
-  postAuthor: { color: '#71717a', fontSize: 11 },
-  reportText: { color: '#f59e0b', fontSize: 11, fontWeight: '600' },
-  modReportPill: {
-    backgroundColor: '#7c2d12',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  modReportPillText: { color: '#fdba74', fontSize: 10, fontWeight: 'bold' },
-
-  reportedReasonBox: {
-    backgroundColor: '#291409',
-    borderColor: '#9a3412',
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 8,
-    marginTop: 8,
-  },
-  reportedReasonTitle: { color: '#fdba74', fontSize: 10, fontWeight: 'bold' },
-  reportedReasonText: { color: '#ffedd5', fontSize: 11, marginTop: 2 },
-
-  postTitle: { color: '#ffffff', fontSize: 15, fontWeight: 'bold', marginTop: 8 },
-  postContent: { color: '#d4d4d8', fontSize: 13, marginTop: 6, lineHeight: 18 },
-  postImage: { width: '100%', height: 160, borderRadius: 10, marginTop: 10 },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#27272a',
-  },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: '#18181b',
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  actionBtnUpvoted: {
-    backgroundColor: '#3b0764',
-    borderColor: '#9333ea',
-  },
-  actionBtnText: { color: '#a1a1aa', fontSize: 12, fontWeight: '500' },
-  actionBtnTextUpvoted: { color: '#f3e8ff', fontWeight: 'bold' },
-  reportTextActive: { color: '#ef4444', fontWeight: 'bold' },
-
-  // Moderator Control Buttons
-  modActionRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 14,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#451a03',
-  },
-  modApproveBtn: {
-    flex: 1,
-    backgroundColor: '#14532d',
-    borderColor: '#16a34a',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  modApproveBtnText: { color: '#86efac', fontSize: 11, fontWeight: 'bold' },
-  modDeleteBtn: {
-    flex: 1,
-    backgroundColor: '#7f1d1d',
-    borderColor: '#dc2626',
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-  },
-  modDeleteBtnText: { color: '#fca5a5', fontSize: 11, fontWeight: 'bold' },
-
-  commentsBox: { marginTop: 10, backgroundColor: '#0f0f12', padding: 10, borderRadius: 10 },
-  commentItem: { marginBottom: 8 },
-  commentAuthor: { color: '#c084fc', fontSize: 11, fontWeight: 'bold' },
-  commentContent: { color: '#e4e4e7', fontSize: 12 },
-  addCommentRow: { flexDirection: 'row', gap: 8, marginTop: 6 },
-  commentInput: {
-    flex: 1,
-    backgroundColor: '#18181b',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    color: '#ffffff',
-    fontSize: 12,
-  },
-  sendCommentBtn: {
-    backgroundColor: '#8d23be',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    justifyContent: 'center',
-  },
-  sendCommentText: { color: '#ffffff', fontSize: 11, fontWeight: 'bold' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    backgroundColor: '#18181b',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-  },
-  modalTitle: { color: '#ffffff', fontSize: 18, fontWeight: 'bold', marginBottom: 14 },
-  inputLabel: { color: '#a1a1aa', fontSize: 11, marginBottom: 4, fontWeight: '600' },
-  modalInput: {
-    backgroundColor: '#09090b',
-    borderWidth: 1,
-    borderColor: '#27272a',
-    borderRadius: 8,
-    color: '#ffffff',
-    padding: 10,
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  catSelectRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  catOption: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    backgroundColor: '#27272a',
-    alignItems: 'center',
-  },
-  catOptionActive: { backgroundColor: '#8d23be' },
-  catOptionText: { color: '#ffffff', fontSize: 11, fontWeight: '600' },
-  modalButtons: { flexDirection: 'row', gap: 10, marginTop: 8 },
-  cancelBtn: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#27272a',
-    alignItems: 'center',
-  },
-  cancelBtnText: { color: '#ffffff', fontWeight: '600' },
-  publishBtn: {
-    flex: 1,
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#8d23be',
-    alignItems: 'center',
-  },
-  publishBtnText: { color: '#ffffff', fontWeight: 'bold' },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 12, marginTop: 18, paddingHorizontal: 4 },
+  chips: { marginTop: 14, marginHorizontal: -16, flexGrow: 0 },
+  chipsContent: { gap: 8, paddingHorizontal: 16, paddingBottom: 6 },
+  note: { marginTop: 12, paddingHorizontal: 4 },
+  // a post: the avatar on the left anchors it, the content hangs from it, and the space around it separates it from the next
+  post: { flexDirection: 'row', gap: 12, paddingTop: 22, paddingBottom: 22, paddingHorizontal: 2 },
+  postMain: { flex: 1, minWidth: 0 },
+  byline: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  category: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  photo: { width: '100%', height: 190, borderRadius: radii.group, marginTop: 12, backgroundColor: colors.secondary },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12 },
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 14 },
+  pill: { flexDirection: 'row', alignItems: 'center', gap: 6, height: 38, paddingHorizontal: 14, borderRadius: radii.full, backgroundColor: colors.secondary },
+  pillOn: { backgroundColor: colors.inverse },
+  report: { width: 38, height: 38, alignItems: 'center', justifyContent: 'center' },
+  empty: { alignItems: 'center', gap: 8, paddingVertical: 48, paddingHorizontal: 24 },
+  wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  sheetHead: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  summary: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.hairline },
+  comment: { flexDirection: 'row', gap: 10 },
+  noReplies: { alignItems: 'center', gap: 8, paddingVertical: 8 },
+  suggestions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8, marginTop: 6 },
+  composer: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.hairline },
+  input: { flex: 1, minHeight: 44, borderRadius: radii.full, paddingHorizontal: 16, fontFamily: fonts.ui500, fontSize: 16, color: colors.foreground, backgroundColor: colors.background, boxShadow: 'inset 0 1px 2px rgba(26,16,51,0.07), 0 0 0 1px rgba(26,16,51,0.08)', outlineStyle: 'none' } as any,
 });

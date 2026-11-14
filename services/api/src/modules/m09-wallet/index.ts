@@ -1,6 +1,6 @@
-import { walletRoutes } from './routes';
-import { walletService, WalletService } from './service';
-import type { ApiModule } from '../../types';
+import { walletRoutes } from './routes.ts';
+import { walletService, WalletService } from './service.ts';
+import type { ApiModule } from '../../types.ts';
 
 export const apiModule: ApiModule = {
   id: 'm09-wallet',

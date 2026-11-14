@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timișoara City Hub — Platformă Civică & Comunitară</title>
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- App Styles -->
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+  <!-- Sticky Navbar Header -->
+  <div id="navbarContainer"></div>
+
+  <!-- Dynamic View Content -->
+  <main id="mainContent" class="app-main"></main>
+
+  <!-- Modals Container (Auth0 Switcher, Step-Up MFA Challenge) -->
+  <div id="modalContainer"></div>
+
+  <!-- Toast Notification -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Leaflet Map JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Main Application Script (ES Module) -->
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>

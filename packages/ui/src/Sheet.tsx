@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { AccessibilityInfo, Animated, Easing, PanResponder, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, Animated, Dimensions, Easing, Keyboard, Modal, PanResponder, Platform, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, durations, radii } from './tokens';
 
@@ -12,15 +12,38 @@ type SheetProps = {
   onHeight?: (height: number) => void;
   /** Lift the sheet above something at the bottom (the floating tab bar). It then floats with all corners rounded. */
   bottomOffset?: number;
+  /** Draw the sheet in a full-screen modal layer. Use it when the sheet is opened from inside a scrolling page. */
+  modal?: boolean;
   accessibilityLabel: string;
   children: React.ReactNode;
 };
 
 /**
+ * How tall the on-screen keyboard is right now (0 when hidden). Neither platform moves a bottom-anchored layer for us:
+ * iOS draws the keyboard over the app, and Android's window resize does not reach a Modal on an edge-to-edge screen.
+ * So anything docked to the bottom (sheets, chat composers) lifts itself by this amount.
+ */
+export function useKeyboardHeight(): number {
+  const [height, setHeight] = React.useState(0);
+  React.useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const show = Keyboard.addListener(ios ? 'keyboardWillChangeFrame' : 'keyboardDidShow', (e) => {
+      setHeight(ios ? Math.max(0, Dimensions.get('window').height - e.endCoordinates.screenY) : e.endCoordinates.height);
+    });
+    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
+}
+
+/**
  * A bottom sheet: grab handle, soft shadow, slides up on transform only. Respects reduced motion and the bottom safe area.
  * The handle is the way to dismiss it: drag it down (or flick), or tap it. So a sheet needs no Cancel or X button.
  */
-export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset = 0, accessibilityLabel, children }: SheetProps) {
+export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset = 0, modal = false, accessibilityLabel, children }: SheetProps) {
   const insets = useSafeAreaInsets();
   const [mounted, setMounted] = React.useState(visible);
   const [reduced, setReduced] = React.useState(false);
@@ -35,6 +58,8 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
   React.useEffect(() => {
     void AccessibilityInfo.isReduceMotionEnabled().then(setReduced);
   }, []);
+
+  const keyboard = useKeyboardHeight();
 
   React.useEffect(() => {
     const duration = reduced ? 0 : durations.sheet;
@@ -79,7 +104,7 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
   };
 
   if (!mounted) return null;
-  return (
+  const body = (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       {scrim ? <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={styles.scrim} /> : null}
       <Animated.View
@@ -89,8 +114,10 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
         style={[
           styles.sheet,
           bottomOffset > 0
-            ? { bottom: bottomOffset, left: 12, right: 12, borderRadius: radii.sheet, paddingBottom: 18 }
-            : { paddingBottom: Math.max(insets.bottom, 12) + 12 },
+            ? { bottom: keyboard > 0 ? keyboard + 8 : bottomOffset, left: 12, right: 12, borderRadius: radii.sheet, paddingBottom: 18 }
+            : keyboard > 0
+              ? { bottom: keyboard, paddingBottom: 12 }
+              : { paddingBottom: Math.max(insets.bottom, 12) + 12 },
           { transform: [{ translateY: Animated.add(y, drag) }] },
         ]}
       >
@@ -103,6 +130,18 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
       </Animated.View>
     </View>
   );
+  // A modal sheet is drawn above everything (tab bar included) and does not depend on where it is rendered, so it can be
+  // used from inside a scrolling page. The keyboard pushes it up on iOS.
+  if (modal) {
+    return (
+      <Modal transparent visible animationType="none" statusBarTranslucent onRequestClose={onClose}>
+        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+          {body}
+        </View>
+      </Modal>
+    );
+  }
+  return body;
 }
 
 const styles = StyleSheet.create({

@@ -6,15 +6,6 @@ import { colors } from '@hub/ui';
 import { AuthProvider } from '../src/core/auth';
 import { AuthGate } from '../src/core/AuthGate';
 
-// Screens owned by other modules keep their original dark styling until they are moved onto @hub/ui.
-const legacyDark = {
-  headerShown: true,
-  headerStyle: { backgroundColor: '#09090b' },
-  headerTintColor: '#ffffff',
-  headerTitleStyle: { fontWeight: 'bold' as const },
-  contentStyle: { backgroundColor: '#09090b' },
-};
-
 export default function RootLayout() {
   const [loaded] = useNunito({
     Nunito_700Bold,
@@ -36,10 +27,11 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" />
           <Stack.Screen name="alerts/index" />
           <Stack.Screen name="alerts/[id]" />
-          <Stack.Screen name="m/forum/index" options={{ ...legacyDark, title: 'Comunitate & Forum' }} />
-          <Stack.Screen name="m/events/index" options={{ ...legacyDark, title: 'Evenimente Culturale' }} />
-          <Stack.Screen name="m/buddy/index" options={{ ...legacyDark, title: 'Cu Cine? (Buddy Finder)' }} />
-          <Stack.Screen name="m/wallet/index" options={{ ...legacyDark, title: 'Portofel & Bilete Solana' }} />
+          {/* The four community modules are on the hop design system: they draw their own back link and title. */}
+          <Stack.Screen name="m/forum/index" />
+          <Stack.Screen name="m/events/index" />
+          <Stack.Screen name="m/buddy/index" />
+          <Stack.Screen name="m/wallet/index" />
         </Stack>
       </AuthGate>
     </AuthProvider>

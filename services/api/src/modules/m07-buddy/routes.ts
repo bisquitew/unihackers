@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
-import { buddyService } from './service';
-import { CreateBuddyRequestInput } from './types';
+import { buddyService } from './service.ts';
+import type { CreateBuddyRequestInput } from './types.ts';
 
 export const buddyRoutes = new Hono();
 

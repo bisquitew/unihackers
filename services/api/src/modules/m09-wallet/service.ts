@@ -1,5 +1,5 @@
-import { SolanaTicketRecord, MintTicketPayload, CheckInPayload } from './types';
-import { seedTickets } from './seed';
+import type { SolanaTicketRecord, MintTicketPayload, CheckInPayload } from './types.ts';
+import { seedTickets } from './seed.ts';
 
 export class WalletService {
   private tickets: SolanaTicketRecord[] = [...seedTickets];
