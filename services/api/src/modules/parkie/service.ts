@@ -57,7 +57,7 @@ export const parkieService = {
     ];
     const scriptPath = candidates.find((c) => fs.existsSync(c)) || candidates[0];
     try {
-      const { stdout } = await execFileAsync('python3', [scriptPath, cameraUrl || ''], {
+      const { stdout } = await execFileAsync(process.platform === 'win32' ? 'python' : 'python3', [scriptPath, cameraUrl || ''], {
         timeout: 10000,
         maxBuffer: 10 * 1024 * 1024
       });

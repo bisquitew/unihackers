@@ -40,5 +40,11 @@ export const RO_WEB = {
   'Log in to hop': 'Autentifică-te în hop', 'See what is happening in your city, join in, and keep your tickets with you.': 'Vezi ce se întâmplă în orașul tău, participă și ține-ți biletele la tine.',
   'Demo accounts': 'Conturi demo', 'Resident': 'Locuitor', 'City admin': 'Administrator municipal', 'Sign-in is simulated in this demo. City staff use their @timisoara-hub.ro account and land on the dashboard.': 'Autentificarea este simulată în această demonstrație. Personalul municipal folosește contul @timisoara-hub.ro și ajunge în panou.',
   'Not now': 'Nu acum', 'Could not load this page. Is the API running?': 'Pagina nu s-a putut încărca. Rulează API-ul?', 'You are logged out.': 'Ai fost deconectat.', 'The dashboard is for city staff.': 'Panoul este pentru personalul municipal.',
+  'What is going on around the city, and whether it affects you.': 'Ce se întâmplă prin oraș și dacă te afectează.', 'Danger and works': 'Pericol și lucrări', 'Outages': 'Avarii', 'Transit': 'Transport',
+  'Does it affect me?': 'Mă afectează?', 'What to check': 'Ce verifici', 'Transit stop': 'Stație de transport', 'Street or neighbourhood': 'Stradă sau cartier', 'Stop name': 'Numele stației', 'Check': 'Verifică',
+  'Could not check right now. Try again.': 'Nu se poate verifica acum. Încearcă din nou.', 'You are inside a danger zone.': 'Ești într-o zonă de pericol.', 'You are inside a works zone.': 'Ești într-o zonă de lucrări.',
+  'You are outside every active zone.': 'Ești în afara oricărei zone active.', 'There is an outage here.': 'Este o avarie aici.', 'No outage here.': 'Nicio avarie aici.', 'Heating, hot water and water are running.': 'Căldura, apa caldă și apa funcționează.',
+  'This stop is on a detour.': 'Această stație este pe traseu deviat.', 'Normal service.': 'Circulație normală.', 'No detours at this stop.': 'Nicio deviere la această stație.', 'Line {}': 'Linia {}',
+  'All quiet': 'Liniște', 'Keep away from the area': 'Evită zona', 'Works in progress': 'Lucrări în desfășurare',
   'Switch language': 'Schimbă limba',
 };
