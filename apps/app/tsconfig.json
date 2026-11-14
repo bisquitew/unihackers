@@ -16,6 +16,18 @@
       "@hub/solana/*": [
         "../../packages/solana/src/*"
       ],
+      "@hub/ui": [
+        "../../packages/ui/src"
+      ],
+      "@hub/ui/*": [
+        "../../packages/ui/src/*"
+      ],
+      "@hub/map": [
+        "../../packages/map/src"
+      ],
+      "@hub/map/*": [
+        "../../packages/map/src/*"
+      ],
       "@unihack/contracts": [
         "../../packages/contracts/src"
       ],

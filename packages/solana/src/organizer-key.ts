@@ -1,3 +1,6 @@
+// Must stay the first import: Hermes (the phone JS engine) has no crypto.getRandomValues, which Keypair.generate() needs.
+// On the web this is a no-op because browsers already provide it.
+import 'react-native-get-random-values';
 import { Keypair } from '@solana/web3.js';
 
 // Public Address for Timișoara Cultural Hub (Safe for public GitHub repositories)
