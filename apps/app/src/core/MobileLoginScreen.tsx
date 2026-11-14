@@ -87,7 +87,7 @@ export function MobileLoginScreen() {
           </View>
         )}
         <Text variant="caption" color="mutedForeground" style={{ textAlign: 'center', marginTop: 14 }}>
-          Secure civic sign-in • Timișoara City Hub
+          Sign-in is simulated in this demo build.
         </Text>
       </View>
     </View>

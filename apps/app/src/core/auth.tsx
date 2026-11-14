@@ -39,7 +39,7 @@ interface AuthContextType {
 
 /** Staff sign in only on the web dashboard; the mobile app is strictly for residents. */
 export const STAFF_ROLES = ['admin', 'moderator'];
-export const STAFF_MESSAGE = 'Autentificarea nu este permisă pentru acest cont în aplicația mobilă.';
+export const STAFF_MESSAGE = 'This account cannot sign in to the mobile app.';
 
 const STORAGE_KEY = '@hub_auth_token';
 

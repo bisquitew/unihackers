@@ -206,10 +206,14 @@ export async function fetchOutages() {
 
 export async function checkAddressOutages(address) {
   try {
-    const res = await fetch(`${BASE_URL}/v1/m/utilities/outages/check-address?address=${encodeURIComponent(address)}`);
-    return await res.json();
+    const res = await fetch(`${BASE_URL}/v1/m/utilities/check-address`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ address }),
+    });
+    return res.ok ? await res.json() : null;
   } catch {
-    return { affected: false, message: 'Nu s-a putut verifica adresa.' };
+    return null;
   }
 }
 
@@ -241,10 +245,14 @@ export async function fetchTransitLines() {
 
 export async function checkTransitStop(stopName) {
   try {
-    const res = await fetch(`${BASE_URL}/v1/m/transit/check-stop?stop=${encodeURIComponent(stopName)}`);
-    return await res.json();
+    const res = await fetch(`${BASE_URL}/v1/m/transit/check-stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stop: stopName }),
+    });
+    return res.ok ? await res.json() : null;
   } catch {
-    return { detour: false, message: 'Nu s-a putut verifica stația.' };
+    return null;
   }
 }
 

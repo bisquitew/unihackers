@@ -343,40 +343,19 @@ button.row:hover, .row.link-row:hover { background: var(--tint); border-radius: 
 .tiger-grid > *, .stat-grid > * { padding: 18px 16px; border-left: 1px solid var(--hair); }
 .tiger-grid > *:first-child, .stat-grid > *:first-child { border-left: 0; }
 
-/* ---------- Auth0 Transparent Role & Identity UI ---------- */
-.auth-dialog { width: min(540px, 100%); }
-.auth-header { text-align: center; margin-bottom: 20px; }
-.auth-badge-icon { font-size: 36px; margin-bottom: 8px; }
-.auth-error-alert { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 10px 14px; border-radius: 12px; font-weight: 600; font-size: 14px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
-.account-types-info { background: var(--tint); border-radius: 18px; padding: 14px; margin-bottom: 18px; }
-.info-tag { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 10px; }
-.type-cards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.type-card { background: var(--surface); border-radius: 14px; padding: 14px; box-shadow: var(--ring); display: flex; flex-direction: column; justify-content: space-between; }
-.type-card h4 { font-size: 14px; margin: 6px 0 4px; }
-.type-card p { font-size: 12px; line-height: 16px; color: var(--muted); margin-bottom: 12px; flex: 1; }
-.type-badge-pill { display: inline-block; font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; }
-.resident-pill { background: rgba(36, 56, 201, 0.1); color: var(--blue); }
-.admin-pill { background: rgba(179, 38, 30, 0.1); color: var(--danger); }
-.auth-divider { display: flex; align-items: center; text-align: center; margin: 16px 0; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+/* ---------- log-in window ---------- */
+.auth-dialog { width: min(440px, 100%); }
+.auth-dialog .lead { margin-top: 6px; color: var(--muted); }
+.auth-error { margin-top: 16px; color: var(--danger); font-weight: 600; font-size: 15px; }
+.auth-divider { display: flex; align-items: center; margin: 18px 0; color: var(--muted); font-size: 13px; font-weight: 600; }
 .auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--hair); }
-.auth-divider span { padding: 0 10px; }
-.account-detector-banner { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 12px; background: var(--tint); font-size: 13px; line-height: 17px; margin-top: 4px; border: 1px solid transparent; transition: all 150ms ease; }
-.detector-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
-.banner-resident { background: rgba(36, 56, 201, 0.06); border-color: rgba(36, 56, 201, 0.2); }
-.banner-resident .dot-resident { background: var(--blue); box-shadow: 0 0 6px var(--blue); }
-.banner-admin { background: rgba(179, 38, 30, 0.08); border-color: rgba(179, 38, 30, 0.25); }
-.banner-admin .dot-admin { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
-.topbar-role-badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 999px; margin-left: 6px; }
-.badge-admin-top { background: rgba(179, 38, 30, 0.15); color: var(--danger); border: 1px solid rgba(179, 38, 30, 0.3); }
-.badge-resident-top { background: rgba(36, 56, 201, 0.12); color: var(--blue); border: 1px solid rgba(36, 56, 201, 0.2); }
-.user-btn { display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--hair); background: var(--surface); box-shadow: var(--lift); }
-.menu-role-box { margin-top: 8px; padding: 8px 12px; border-radius: 10px; font-size: 12px; }
-.role-box-resident { background: rgba(36, 56, 201, 0.08); color: var(--blue); }
-.role-box-admin { background: rgba(179, 38, 30, 0.1); color: var(--danger); font-weight: 600; }
-.role-box-title { font-weight: 800; font-size: 13px; }
-.role-box-desc { font-size: 11px; opacity: 0.85; margin-top: 2px; }
-.google-login-button { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 600; }
-.auth-footer-shield { margin-top: 18px; text-align: center; color: var(--muted); font-size: 11px; }
+.auth-divider span { padding: 0 12px; }
+.auth-hint { min-height: 0; font-size: 14px; font-weight: 600; color: var(--blue); }
+.auth-hint:empty { display: none; }
+.auth-demo { display: flex; align-items: baseline; gap: 16px; margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--hair); font-size: 14px; }
+.auth-demo span { color: var(--muted); font-weight: 600; }
+.auth-demo .link { font-weight: 700; color: var(--ink); }
+.auth-note { margin-top: 12px; font-size: 13px; line-height: 18px; }
 
 @media (max-width: 1080px) {
   .topbar { gap: 12px; padding: 0 16px; } .brand small { display: none; }
@@ -398,3 +377,15 @@ button.row:hover, .row.link-row:hover { background: var(--tint); border-radius: 
 .lang button { min-width: 38px; min-height: 34px; padding: 0 10px; border: 0; border-radius: 999px; background: none; font: 700 13px/1 var(--ui); letter-spacing: 0.04em; color: var(--muted); }
 .lang button.on { background: var(--surface); color: var(--ink); box-shadow: var(--ring), var(--lift); }
 @media (max-width: 720px) { .lang button { min-width: 34px; padding: 0 8px; } }
+
+/* alerts page: the "does it affect me?" check sits beside the feed */
+.checker { position: sticky; top: 96px; }
+.verdict { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--hair); }
+.verdict b { display: block; font-family: var(--display); font-size: 20px; line-height: 26px; }
+.verdict b.warn { color: var(--apricot); } .verdict b.info { color: var(--blue); } .verdict b.ok { color: var(--mint); } .verdict b.bad { color: var(--danger); }
+.verdict p { margin: 6px 0 0; font-size: 15px; color: var(--muted); }
+.verdict a { color: var(--ink); font-weight: 700; }
+a.row { color: inherit; text-decoration: none; }
+@media (max-width: 1000px) { .checker { position: static; } }
+
+.google-login-button { display: flex; align-items: center; justify-content: center; gap: 10px; }

@@ -18,6 +18,7 @@ import { db } from './core/db.ts';
 import honoApp from './index.ts';
 import { DEMO_AUTH, HttpError, isStaffEmail } from './core/config.ts';
 import { areaAlertsService } from './core/area-alerts.ts';
+import { avatarSvg } from './core/avatars.ts';
 import { 
   resolveAuthUser, 
   enforceSecurityPolicy, 
@@ -227,6 +228,13 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         version: '1.0.0',
         timestamp: new Date().toISOString()
       });
+    }
+
+    // Profile pictures: drawn from the seed in the address, so they are the same every time and need no storage
+    if (pathname.startsWith('/v1/core/avatars/') && pathname.endsWith('.svg') && method === 'GET') {
+      const seed = decodeURIComponent(pathname.slice('/v1/core/avatars/'.length, -4)).slice(0, 80);
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin': '*' });
+      return res.end(avatarSvg(seed));
     }
 
     // 2. Core Areas
@@ -727,6 +735,8 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
 
     // 7. [PARKIE] Real-time Parking Lots & CV Detections
     if ((pathname === '/v1/m/parkie/capture-frame' || pathname === '/vision/capture_frame') && method === 'POST') {
+      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.capture', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       const cameraUrl = body.camera_url || body.cameraUrl || '';
       const result = await parkieService.captureFrame(cameraUrl);
@@ -806,6 +816,8 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         });
       }
       if (method === 'PUT' || method === 'POST') {
+        const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.plots', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+        if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
         const body = await parseBody(req);
         const updated = await parkieService.updateLotPlots(id, body);
         if (!updated) return sendJson(res, 404, { error: 'Parking lot not found for plot update', id });
@@ -821,10 +833,9 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
     }
 
     if ((pathname === '/v1/m/parkie/detections' || pathname === '/vision/update_lot') && method === 'POST') {
-      if (pathname === '/v1/m/parkie/detections') {
-        const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.detections', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
-        if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
-      }
+      // the old /vision/update_lot path is guarded the same way: anyone could otherwise set a lot's occupancy
+      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.detections', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       const lotId = body.lot_id || body.lotId;
       const detectedCars = parseInt(body.detected_cars ?? body.detectedCars ?? '0', 10);
