@@ -6,6 +6,9 @@ import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700
 import { colors, isDark, returnTo, themeStore, useThemeVersion } from '@hub/ui';
 import { AuthProvider } from '../src/core/auth';
 import { AuthGate } from '../src/core/AuthGate';
+import { installHubClientHeader } from '../src/core/hubClient';
+
+installHubClientHeader();
 
 export default function RootLayout() {
   const [loaded] = useNunito({

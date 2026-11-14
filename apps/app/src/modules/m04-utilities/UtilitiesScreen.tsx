@@ -129,7 +129,7 @@ export function UtilitiesScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Header Info */}
       <View style={styles.heroBox}>
-        <Text style={styles.heroTitle}>Avarii & Utilități Timișoara</Text>
+        <Text style={styles.heroTitle}>Avarii & Utilități</Text>
         <Text style={styles.heroSubtitle}>
           Monitorizare în timp real: Colterm, Aquatim și Rețele Electrice
         </Text>
@@ -173,7 +173,7 @@ export function UtilitiesScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
         <ActivityIndicator size="large" color="#f97316" style={{ marginVertical: 24 }} />
       ) : outages.length === 0 ? (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Nu sunt întreruperi active în Timișoara! 🎉</Text>
+          <Text style={styles.emptyText}>Nu sunt întreruperi active în oraș! 🎉</Text>
         </View>
       ) : (
         outages.map((outage) => {

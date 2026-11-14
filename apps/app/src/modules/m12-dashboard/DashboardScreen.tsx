@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCity } from '@hub/map';
 import {
   StyleSheet,
   View,
@@ -114,7 +115,7 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero */}
       <View style={styles.heroBox}>
-        <Text style={styles.heroTitle}>Panou Oficial — Municipiul Timișoara</Text>
+        <Text style={styles.heroTitle}>Panou oficial · {getCity().name}</Text>
         <Text style={styles.heroSubtitle}>
           Indicatori urbani în timp real alimentați de Tiger Cloud TimescaleDB
         </Text>

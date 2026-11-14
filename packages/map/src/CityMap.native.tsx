@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
+import { getCity } from './city';
 import { useEngineBridge, type CityMapProps, type FromEngine, type ToEngine } from './bridge';
 import { ENGINE_HTML } from './engine.generated';
 
@@ -44,7 +45,7 @@ export function CityMap(props: CityMapProps & { style?: React.ComponentProps<typ
         automaticallyAdjustContentInsets={false}
         onMessage={onMessage}
         style={styles.fill}
-        accessibilityLabel="City map of Timișoara"
+        accessibilityLabel={`City map of ${getCity().name}`}
       />
     </View>
   );

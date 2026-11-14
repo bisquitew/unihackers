@@ -22,7 +22,7 @@ export default function ParkieCitizenRoute() {
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
             <View>
-              <Text style={styles.summaryLabel}>Locuri Libere în Timișoara</Text>
+              <Text style={styles.summaryLabel}>Locuri libere în oraș</Text>
               <Text style={styles.summaryValue}>{totalAvailable} <Text style={styles.summarySub}>/ {totalCapacity}</Text></Text>
             </View>
             <TouchableOpacity style={styles.mapButton} onPress={() => router.push('/(tabs)/map')}>

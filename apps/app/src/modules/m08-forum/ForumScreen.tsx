@@ -36,7 +36,7 @@ const AREAS = ['Cetate', 'Fabric', 'Iosefin', 'Elisabetin'];
 const GROUPS = [
   { id: 'grp-1', name: 'Fabric Creative Hub & Yard', area: 'Fabric', members: 142, desc: 'Artists, cultural organizers, and residents around Faber Yard and Traian Square.', tags: ['culture', 'art', 'events'] },
   { id: 'grp-2', name: 'UPT & UVT Student Socials', area: 'Complexul Studențesc', members: 380, desc: 'Campus news, study spots, student discounts, and indie social meetups.', tags: ['students', 'campus', 'study'] },
-  { id: 'grp-3', name: 'Timișoara Lost & Found Pets Network', area: 'All Timișoara', members: 95, desc: 'Rapid rescue and alert coordination for lost dogs and cats in Timișoara.', tags: ['pets', 'rescue'] },
+  { id: 'grp-3', name: 'Lost & Found Pets Network', area: 'Whole city', members: 95, desc: 'Rapid rescue and alert coordination for lost dogs and cats in Timișoara.', tags: ['pets', 'rescue'] },
   { id: 'grp-4', name: 'Bega Clean & Green Volunteers', area: 'Iosefin and D’arc', members: 64, desc: 'Environmental cleanups along the Bega canal banks and eco-workshops.', tags: ['ecology', 'volunteering', 'bega'] },
 ];
 const QUICK_REPLIES = ['Thanks for sharing', 'I can help with this', 'Where exactly?'];

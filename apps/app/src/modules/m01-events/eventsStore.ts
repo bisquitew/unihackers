@@ -134,7 +134,7 @@ class EventsStore {
       id: `evt-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
       title: data.title.trim(),
       category: data.category,
-      locationName: data.locationName.trim() || 'Timișoara Hub',
+      locationName: data.locationName.trim() || 'Community hub',
       neighbourhood: data.neighbourhood || 'Cetate',
       dateTime: data.dateTime.trim() || 'Upcoming',
       description: data.description.trim(),

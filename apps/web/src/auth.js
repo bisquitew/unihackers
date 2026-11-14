@@ -1,6 +1,7 @@
 import { fetchAuthMe, loginWithGoogle } from './api.js';
 
-let currentToken = localStorage.getItem('hub_auth_token') || 'dev_resident';
+// no saved sign-in means a guest: the website then shows the public preview
+let currentToken = localStorage.getItem('hub_auth_token') || '';
 let currentUser = null;
 const listeners = new Set();
 

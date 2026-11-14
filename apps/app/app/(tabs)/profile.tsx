@@ -2,10 +2,9 @@ import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { ScrollView, StyleSheet, Switch, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePersonalPins, type MapTheme } from '@hub/map';
-import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, SecondaryButton, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, type ThemeMode } from '@hub/ui';
+import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, type ThemeMode } from '@hub/ui';
 import { useAuth } from '../../src/core/auth';
 import { WebAccessGate } from '../../src/core/WebAccessGate';
-import { Auth0SecurityCard } from '../../src/core/Auth0SecurityCard';
 import { initialsOf, toneFor } from '../../src/core/people';
 import { setPrefs, usePrefs } from '../../src/core/prefs';
 import { chatStore } from '../../src/modules/m07-buddy/chatStore';
@@ -58,7 +57,7 @@ export default function ProfileTab() {
 function ProfileContent() {
   const router = useRouter();
   const { height: windowHeight } = useWindowDimensions();
-  const { user, isAdmin, logout, simulateMfaStepUp, loginAsAdmin, loginAsResident } = useAuth();
+  const { user, logout } = useAuth();
   const prefs = usePrefs();
   const { pins } = usePersonalPins();
   useSyncExternalStore(
@@ -76,8 +75,6 @@ function ProfileContent() {
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [security, setSecurity] = useState(false);
-  const [devTools, setDevTools] = useState(false);
-  const [verifying, setVerifying] = useState(false);
 
   const accountName = user?.name ?? 'Guest';
   const name = prefs.displayName.trim() || accountName;
@@ -148,17 +145,6 @@ function ProfileContent() {
             </RowGroup>
           </Section>
 
-          {isAdmin ? (
-            <Section title="City tools">
-              <RowGroup>
-                <LinkRow icon={<icons.Bell size={22} color={colors.foreground} />} title="Publish outages" detail="Water, heating and power notices" onPress={() => go('/m/utilities')} />
-                <LinkRow icon={<icons.MapPin size={22} color={colors.foreground} />} title="Transit detours" detail="Update tram and bus routes" onPress={() => go('/m/transit')} />
-                <LinkRow icon={<icons.ShieldCheck size={22} color={colors.foreground} />} title="Parking sensors" detail="Live occupancy from the city" onPress={() => go('/m/parkie')} />
-                <LinkRow icon={<icons.Sparkle size={22} color={colors.foreground} />} title="City dashboard" detail="Air, noise and parking figures" onPress={() => go('/m/dashboard')} />
-              </RowGroup>
-            </Section>
-          ) : null}
-
           <Section title="Help">
             <RowGroup>
               <LinkRow icon={<icons.PaperPlaneTilt size={22} color={colors.foreground} />} title="Send feedback" detail="Tell the team what to fix" onPress={() => go('/m/feedback')} />
@@ -199,8 +185,6 @@ function ProfileContent() {
           <Section title="Account">
             <RowGroup>
               <LinkRow icon={<icons.ShieldCheck size={22} color={colors.foreground} />} title="Sign-in and security" detail={user ? `Signed in with ${SIGN_IN_LABEL[user.idp] ?? user.idp}` : 'Not signed in'} onPress={() => setSecurity(true)} />
-              <LinkRow icon={<icons.Heart size={22} color={colors.foreground} />} title="Switch account" detail={isAdmin ? 'Admin now. Switch to a resident (demo)' : 'Resident now. Switch to the city admin (demo)'} onPress={() => void (isAdmin ? loginAsResident() : loginAsAdmin())} />
-              <LinkRow icon={<icons.Sparkle size={22} color={colors.foreground} />} title="Developer tools" detail="Test accounts for the demo" onPress={() => setDevTools(true)} />
             </RowGroup>
             <View style={{ marginTop: 16, alignItems: 'flex-start' }}>
               <TextButton label="Sign out" size="lg" onPress={logout} />
@@ -265,28 +249,6 @@ function ProfileContent() {
               ) : null}
             </RowGroup>
 
-            <View style={{ gap: 6 }}>
-              <Text variant="subheading">Two-step check</Text>
-              <Text variant="body" color="mutedForeground">
-                {user.mfa_verified
-                  ? 'Done for this session. Sensitive actions, like moderating, are unlocked.'
-                  : 'A second confirmation for sensitive actions, like moderating the forum. You only need it for those.'}
-              </Text>
-              {!user.mfa_verified ? (
-                <View style={{ marginTop: 6 }}>
-                  <SecondaryButton
-                    label={verifying ? 'Checking…' : 'Verify now'}
-                    size="lg"
-                    onPress={async () => {
-                      setVerifying(true);
-                      await simulateMfaStepUp();
-                      setVerifying(false);
-                    }}
-                  />
-                </View>
-              ) : null}
-            </View>
-
             <View style={{ gap: 8 }}>
               <Text variant="subheading">What you can do</Text>
               <Text variant="body" color="mutedForeground">
@@ -299,11 +261,6 @@ function ProfileContent() {
         ) : null}
       </Sheet>
 
-      <Sheet modal visible={devTools} onClose={() => setDevTools(false)} accessibilityLabel="Developer tools">
-        <ScrollView style={{ maxHeight: sheetMax }} showsVerticalScrollIndicator={false}>
-          <Auth0SecurityCard />
-        </ScrollView>
-      </Sheet>
     </Screen>
   );
 }

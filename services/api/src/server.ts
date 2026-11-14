@@ -21,6 +21,7 @@ import { assistantRoutes } from './modules/m10-assistant/routes.ts';
 import { feedbackRoutes } from './modules/m11-feedback/routes.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
+import { areaAlertsService } from './core/area-alerts.ts';
 import { 
   resolveAuthUser, 
   enforceSecurityPolicy, 
@@ -31,7 +32,10 @@ import {
   trustLocation,
   isLocationTrusted,
   DEV_USERS,
-  registerGoogleUser
+  registerGoogleUser,
+  hubClientOf,
+  roleAllowedOnClient,
+  wrongClientBody
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -75,7 +79,7 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Hub-Client'
   });
   res.end(JSON.stringify(data));
 }
@@ -168,7 +172,7 @@ async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, 
     'Content-Type': response.headers.get('content-type') ?? 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Hub-Client',
   });
   res.end(Buffer.from(await response.arrayBuffer()));
 }
@@ -183,7 +187,7 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(204, {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Hub-Client'
     });
     res.end();
     return;
@@ -191,7 +195,8 @@ const server = http.createServer(async (req, res) => {
 
   // Auth Context resolution (supports dev tokens, Auth0 RS256 JWTs, and M2M AI agents)
   const authHeader = req.headers.authorization || '';
-  const currentUser = await resolveAuthUser(authHeader);
+  const hubClient = hubClientOf(req.headers['x-hub-client']);
+  const currentUser = await resolveAuthUser(authHeader, hubClient);
 
   try {
     // 1. Health
@@ -207,6 +212,54 @@ const server = http.createServer(async (req, res) => {
     // 2. Core Areas
     if (pathname === '/v1/core/areas' && method === 'GET') {
       return sendJson(res, 200, TIMISOARA_AREAS);
+    }
+
+    // 2.1 Area Danger & Construction Alerts with Radius Mapping & Neighbour Signaling
+    if (pathname === '/v1/core/area-alerts' && method === 'GET') {
+      const type = (url.searchParams.get('type') as any) || undefined;
+      const status = url.searchParams.get('status') || undefined;
+      const neighbourhood = url.searchParams.get('neighbourhood') || undefined;
+      const alerts = areaAlertsService.getAll({ type, status, neighbourhood });
+      return sendJson(res, 200, alerts);
+    }
+
+    if (pathname.startsWith('/v1/core/area-alerts/') && !pathname.endsWith('/check-proximity') && method === 'GET') {
+      const id = pathname.replace('/v1/core/area-alerts/', '');
+      const alert = areaAlertsService.getById(id);
+      if (!alert) return sendJson(res, 404, { error: 'Area alert not found' });
+      return sendJson(res, 200, alert);
+    }
+
+    if (pathname === '/v1/core/area-alerts' && method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.title || !body.type || body.latitude === undefined || body.longitude === undefined || !body.radius_meters) {
+        return sendJson(res, 400, {
+          error: 'Missing required fields: title, type, latitude, longitude, radius_meters'
+        });
+      }
+      const newAlert = await areaAlertsService.create({
+        title: body.title,
+        description: body.description || '',
+        type: body.type,
+        severity: body.severity,
+        latitude: Number(body.latitude),
+        longitude: Number(body.longitude),
+        radius_meters: Number(body.radius_meters),
+        neighbourhood: body.neighbourhood,
+        expected_end_time: body.expected_end_time
+      });
+      return sendJson(res, 201, newAlert);
+    }
+
+    if (pathname === '/v1/core/area-alerts/check-proximity' && method === 'POST') {
+      const body = await parseBody(req);
+      const proximity = areaAlertsService.checkProximity({
+        latitude: body.latitude !== undefined ? Number(body.latitude) : undefined,
+        longitude: body.longitude !== undefined ? Number(body.longitude) : undefined,
+        address: body.address,
+        neighbourhood: body.neighbourhood
+      });
+      return sendJson(res, 200, proximity);
     }
 
     // 3. User & Auth0 Security (Sponsor Challenge)
@@ -256,6 +309,7 @@ const server = http.createServer(async (req, res) => {
       const body = await parseBody(req);
       const email = (body.email || '').toLowerCase().trim();
       const role = body.role || (email.includes('admin') ? 'admin' : 'resident');
+      if (hubClient && !roleAllowedOnClient(role, hubClient)) return sendJson(res, 403, wrongClientBody(role, hubClient));
 
       let targetUser = null;
       let token = role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
@@ -293,6 +347,7 @@ const server = http.createServer(async (req, res) => {
       const email = body.email || 'citizen.google@gmail.com';
       const name = body.name || 'Cetățean Conectat cu Google';
       const role = body.role || (email.endsWith('@timisoara-hub.ro') || email.toLowerCase().includes('admin') ? 'admin' : 'resident');
+      if (hubClient && !roleAllowedOnClient(role, hubClient)) return sendJson(res, 403, wrongClientBody(role, hubClient));
       const result = registerGoogleUser({ email, name, role, picture: body.picture });
       return sendJson(res, 200, result);
     }

@@ -20,6 +20,7 @@ import {
 } from '@hub/ui';
 import { alertById, unreadAlerts } from '../../src/core/mock/alerts';
 import { useAuth } from '../../src/core/auth';
+import { getCity } from '@hub/map';
 
 // Explore shows only modules that are NOT already visible in a list on this screen (each illustration once per screen).
 const explore: { id: ModuleArtId; label: string; route?: string }[] = [
@@ -86,7 +87,7 @@ export default function HomeScreen() {
         </View>
       )}
 
-      <AskBar label="Ask hop about Timișoara" onPress={() => go('/m/assistant')} />
+      <AskBar label={`Ask hop about ${getCity().name}`} onPress={() => go('/m/assistant')} />
 
       <Section title="Tonight">
         <View style={styles.featureHead}>

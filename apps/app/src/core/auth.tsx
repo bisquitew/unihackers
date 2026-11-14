@@ -30,7 +30,14 @@ interface AuthContextType {
   simulateMfaStepUp: (factor?: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
+  /** Set when a sign-in is refused, e.g. a staff account in the app. Cleared by the next attempt or `clearAuthError`. */
+  authError: string | null;
+  clearAuthError: () => void;
 }
+
+/** Staff (admin, moderator) sign in only on the web dashboard; the app is for residents. The API enforces the same rule. */
+export const STAFF_ROLES = ['admin', 'moderator'];
+export const STAFF_MESSAGE = 'City staff accounts sign in on the web dashboard, not in the app.';
 
 const STORAGE_KEY = '@hub_auth_token';
 
@@ -137,13 +144,16 @@ const AuthContext = createContext<AuthContextType>({
   loginAsAdmin: async () => {},
   simulateMfaStepUp: async () => false,
   logout: () => {},
-  isLoading: true
+  isLoading: true,
+  authError: null,
+  clearAuthError: () => {}
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   // Restore saved authentication token on app mount
   useEffect(() => {
@@ -153,7 +163,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const savedToken = await AsyncStorage.getItem(STORAGE_KEY);
         if (mounted && savedToken) {
           const profile = TOKEN_PROFILES[savedToken];
-          if (profile) {
+          // a saved staff session from an older build is not allowed in the app
+          if (profile && !STAFF_ROLES.includes(profile.user.role)) {
             setUser(profile.user);
             setToken(profile.token);
           }
@@ -179,6 +190,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     
     const selected = TOKEN_PROFILES[key] || TOKEN_PROFILES.dev_resident;
 
+    if (STAFF_ROLES.includes(selected.user.role)) {
+      setAuthError(STAFF_MESSAGE);
+      setIsLoading(false);
+      return;
+    }
+    setAuthError(null);
     setUser(selected.user);
     setToken(selected.token);
     try {
@@ -225,7 +242,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginAsAdmin,
         simulateMfaStepUp,
         logout,
-        isLoading
+        isLoading,
+        authError,
+        clearAuthError: () => setAuthError(null)
       }}
     >
       {children}

@@ -4,6 +4,7 @@
 //   3. pin kinds + visibility policy (kinds.ts)    what a pin looks like and who may see it
 //   4. mapHref / parseMapLink (link.ts)           open the map focused on something, and pins link back out
 export { CityMap } from './CityMap';
+export { getCity, setCity, TIMISOARA, type City } from './city';
 export type { CityMapProps, EnginePin } from './bridge';
 export * from './types';
 export * from './kinds';
