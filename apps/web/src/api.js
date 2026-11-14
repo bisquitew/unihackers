@@ -233,6 +233,38 @@ export async function createOutage(token, outageData) {
   return data;
 }
 
+// --- M10 NOTICE SCANNER (P4): photo of a printed notice -> Gemini draft -> staff publish ---
+/** Sends a photo; Gemini returns { isNotice, reason, draft, warnings }. Nothing is saved. */
+export async function parseNoticePhoto(file) {
+  const form = new FormData();
+  form.append('image', file, file.name || 'notice.jpg');
+  const res = await fetch(`${BASE_URL}/v1/m/assistant/notice/parse`, { method: 'POST', body: form });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+/** Publishes the checked draft as an outage. Needs a staff session with the second check (MFA). */
+export async function confirmNotice(token, draft) {
+  const res = await fetch(`${BASE_URL}/v1/m/assistant/notice/confirm`, {
+    method: 'POST',
+    headers: getHeaders(token),
+    body: JSON.stringify(draft),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error_description || data.message || data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
 // --- M05 TRANSIT ---
 export async function fetchTransitLines() {
   try {

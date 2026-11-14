@@ -229,7 +229,7 @@ async function inspect(identifier: string, item: WalletItem | null) {
     const note =
       summary.matchesApp && (!summary.matchesApp.sameId || !summary.matchesApp.sameEvent)
         ? 'The transaction exists and is confirmed, but the data written on-chain does not match the app\'s ticket (different id or event). Tell the user honestly; it is a demo record that points at another test transaction.'
-        : 'Explain in plain words: confirmed on Solana devnet, when, signed by the event organizer, and what the on-chain note says. Times are UTC: convert to Timișoara time.';
+        : 'Explain in plain words: confirmed on Solana devnet, when, signed by the event organizer, and what the on-chain note says.';
     return { ...base, ...summary, note };
   }
   // an account: keep the useful top-level fields only
