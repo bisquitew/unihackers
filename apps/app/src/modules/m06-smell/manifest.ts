@@ -1,18 +1,5 @@
 import type { ModuleManifest } from '@hub/contracts';
-import { SMELL_TYPES } from './api';
-import { useSmellPins } from './useSmellPins';
-
-/**
- * Layer for the app's one shared map (P1's Map tab). Data only, no map component:
- * the map calls `usePins()` inside its own pin-layer component and draws each pin at
- * (lat, lng) in `color`, with `label` as the accessible name / callout.
- */
-export const smellMapLayer = {
-  id: 'm06-smell',
-  label: 'Mirosuri',
-  usePins: useSmellPins,
-  legend: SMELL_TYPES.map(({ id, label, color }) => ({ id, label, color })),
-};
+import { smellMapLayer } from './mapLayer';
 
 export const manifest: ModuleManifest = {
   id: 'm06-smell',
@@ -21,5 +8,6 @@ export const manifest: ModuleManifest = {
   status: 'beta',
   icon: 'wind',
   entryRoute: '/m/smell',
+  // P1's shared map calls this (collectModuleLayers) and gets a MapLayer of 'smell' pins.
   mapLayer: smellMapLayer,
 };
