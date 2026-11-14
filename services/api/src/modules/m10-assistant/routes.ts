@@ -1,5 +1,8 @@
 import { Hono } from 'hono';
-import { rateLimit } from '../../core/rate-limit.ts';
+import { enforceSecurityPolicy, resolveAuthUser } from '../../core/auth.ts';
+import { clientKey, rateLimit } from '../../core/rate-limit.ts';
+import { utilitiesService } from '../m04-utilities/service.ts';
+import { NOTICE_IMAGE_TYPES, NOTICE_MAX_BYTES, NoticeUnavailableError, parseConfirmedDraft, parseNoticePhoto } from './notice.ts';
 import { assistantService, AssistantUnavailableError } from './service.ts';
 import { loadTour } from './tour.ts';
 import { parseChatInput } from './validation.ts';
@@ -117,3 +120,56 @@ assistantRoutes.post('/stt', sttLimit, async (c) => {
 
 // Narrated walking tour, read from docs/voice/tour.md.
 assistantRoutes.get('/tour', (c) => c.json(loadTour()));
+
+// --- Photo of a utility notice -> draft outage -> (admin with MFA) publish through m04's createOutage.
+
+// 10 photos per client per 10 minutes (each one is a Gemini call).
+const noticeLimit = rateLimit({ windowMs: 10 * 60_000, max: 10, message: 'Too many photos in a short time. Please wait a few minutes.' });
+
+// Anyone may ask for a draft; nothing is saved. Image as multipart field image or a raw image/* body.
+assistantRoutes.post('/notice/parse', noticeLimit, async (c) => {
+  const contentType = c.req.header('content-type') ?? '';
+  let image: Uint8Array | null = null;
+  let mime = '';
+  try {
+    if (contentType.startsWith('multipart/form-data')) {
+      const form = await c.req.parseBody();
+      const file = form.image ?? form.file;
+      if (file instanceof Blob) {
+        image = new Uint8Array(await file.arrayBuffer());
+        mime = file.type;
+      }
+    } else if (contentType.startsWith('image/')) {
+      image = new Uint8Array(await c.req.arrayBuffer());
+      mime = contentType.split(';')[0].trim();
+    }
+  } catch {
+    return c.json({ error: 'Could not read the uploaded photo' }, 400);
+  }
+  if (!image || image.byteLength === 0) return c.json({ error: 'Send the photo as multipart field "image" or as an image/* body' }, 400);
+  if (!NOTICE_IMAGE_TYPES.includes(mime)) return c.json({ error: `Photo must be one of: ${NOTICE_IMAGE_TYPES.join(', ')}` }, 400);
+  if (image.byteLength > NOTICE_MAX_BYTES) return c.json({ error: `Photo too large (max ${NOTICE_MAX_BYTES / 1024 / 1024} MB)` }, 400);
+  try {
+    return c.json(await parseNoticePhoto(image, mime));
+  } catch (err) {
+    if (err instanceof NoticeUnavailableError) return c.json({ error: err.message }, 503);
+    throw err;
+  }
+});
+
+// Publishing a city-wide alert follows P2's rule for creating outages: admin role with MFA.
+assistantRoutes.post('/notice/confirm', async (c) => {
+  const user = await resolveAuthUser(c.req.header('Authorization'));
+  const auth = enforceSecurityPolicy(user, 'utilities.outages_create_from_photo', { requiredRoles: ['admin'], requireMfa: true, ip: clientKey(c) });
+  if (auth.authorized === false) return c.json(auth.body, auth.status as 401 | 403);
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400);
+  }
+  const parsed = parseConfirmedDraft(body);
+  if (parsed.ok === false) return c.json({ error: parsed.error }, 400);
+  const outage = await utilitiesService.createOutage(parsed.value);
+  return c.json({ outage }, 201);
+});
