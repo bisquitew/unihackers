@@ -290,7 +290,27 @@ button.row:hover, .row.link-row:hover { background: var(--tint); border-radius: 
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 
-/* ---------- staff dashboard (the screens P2 built, restyled) ---------- */
+
+/* ---------- staff dashboard layout ---------- */
+.dash { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 48px; align-items: start; }
+.dash-nav { position: sticky; top: 96px; display: grid; gap: 22px; }
+.dash-nav .who { padding: 0 14px 16px; border-bottom: 1px solid var(--hair); }
+.dash-nav .who strong { display: block; font-family: var(--display); font-size: 17px; line-height: 22px; }
+.dash-nav .group { display: grid; gap: 2px; }
+.dash-nav .group > span { padding: 0 14px 6px; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+.dash-nav button { text-align: left; border: 0; border-radius: 14px; background: none; padding: 11px 14px; font-weight: 600; font-size: 15px; }
+.dash-nav button:hover { background: var(--tint); }
+.dash-nav button.active { background: var(--nav-active); font-weight: 700; }
+.dash-body .stats { margin-top: 28px; }
+.dash .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.dash .between { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.dash .notice { padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-size: 14px; color: var(--muted); }
+.dash .notice b { color: var(--ink); }
+.dash .mfa { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-weight: 600; font-size: 14px; }
+.dash .mfa.ok { color: var(--mint); } .dash .mfa.warn { color: var(--apricot); }
+@media (max-width: 1080px) { .dash { grid-template-columns: minmax(0, 1fr); gap: 24px; } .dash-nav { position: static; grid-auto-flow: column; overflow-x: auto; } .dash-nav .who { display: none; } }
+
+/* ---------- staff dashboard parts ---------- */
 .admin-subnav { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 2px; border-radius: 999px; background: var(--tint); margin-bottom: 28px; }
 .admin-sublink { min-height: 40px; padding: 0 20px; border: 0; border-radius: 999px; background: none; font-weight: 600; font-size: 14px; color: var(--muted); }
 .admin-sublink.active { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: var(--ring), var(--lift); }
@@ -368,3 +388,13 @@ button.row:hover, .row.link-row:hover { background: var(--tint); border-radius: 
   .map-panel { width: calc(100% - 32px); left: 16px; top: auto; bottom: 16px; height: 42%; }
   .page { padding: 28px 16px 80px; }
 }
+
+/* danger and works zones on the map: one line, apricot for danger, blue for works */
+.zone-line { margin-top: 6px; font-size: 13px; font-weight: 700; }
+.zone-line.danger { color: var(--apricot); } .zone-line.works { color: var(--blue); }
+
+/* language switch in the top bar: EN | RO */
+.lang { display: inline-flex; padding: 3px; gap: 2px; border-radius: 999px; background: var(--tint); }
+.lang button { min-width: 38px; min-height: 34px; padding: 0 10px; border: 0; border-radius: 999px; background: none; font: 700 13px/1 var(--ui); letter-spacing: 0.04em; color: var(--muted); }
+.lang button.on { background: var(--surface); color: var(--ink); box-shadow: var(--ring), var(--lift); }
+@media (max-width: 720px) { .lang button { min-width: 34px; padding: 0 8px; } }

@@ -59,7 +59,7 @@ export const areaCoord = (name) => AREAS[name] || [45.7537, 21.2257];
 /** Everything the map can show, as engine pins grouped by layer. */
 export function buildLayers({ lots = [], outages = [], events = [], smell = [], areaAlerts = [] }) {
   // `extra` carries what a pin shows when it is opened (`desc`, `link: { label, href }`) and, for danger and works zones,
-  // the circle drawn around it (radiusMeters, zoneType, fillColor, strokeColor, fillOpacity)
+  // the circle drawn around it (radiusMeters, zoneType; the engine colours it: apricot for danger, blue for works)
   const pin = (id, [lat, lng], artKey, title, kindLabel, extra = {}) => ({ id, lat, lng, art: artKey, title, kindLabel, badge: '', ...extra });
   return {
     areaAlerts: {
@@ -69,16 +69,13 @@ export function buildLayers({ lots = [], outages = [], events = [], smell = [], 
         `area-${a.id}`,
         [a.latitude, a.longitude],
         'safety',
-        `${a.type === 'danger' ? '🚨' : '🚧'} ${a.title}`,
-        `Radius: ${a.radius_meters}m • ${(a.affected_neighbourhoods || []).join(', ')}`,
+        String(a.title).replace(/^[^\p{L}\p{N}]+/u, ''),
+        `${a.type === 'danger' ? 'Danger zone' : 'Works zone'} · ${a.radius_meters} m`,
         {
           desc: [a.description, a.expected_end_time ? `Expected to end ${new Date(a.expected_end_time).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}.` : ''].filter(Boolean).join('\n\n'),
           link: { label: 'All alerts', href: '#/alerts' },
           radiusMeters: a.radius_meters,
           zoneType: a.type,
-          fillColor: a.type === 'danger' ? '#ef4444' : '#f59e0b',
-          strokeColor: a.type === 'danger' ? '#dc2626' : '#d97706',
-          fillOpacity: a.type === 'danger' ? 0.25 : 0.20,
         }
       ))
     },

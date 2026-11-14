@@ -2,7 +2,7 @@ import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEm
 import { renderNavbar, renderMenu } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
 import { applyTheme, toggleTheme } from './ui.js';
-import { fetchLots, saveLotPlots, inspectAccountType } from './api.js';
+import { fetchLots, saveLotPlots } from './api.js';
 import * as home from './views/HomeView.js';
 import * as map from './views/MapView.js';
 import * as alerts from './views/AlertsView.js';
@@ -30,6 +30,7 @@ export async function initApp() {
     show(activeTab === 'admin' && !isAdmin() ? 'home' : activeTab, false);
   });
   await show(tabFromHash(), false);
+  startI18n();
 }
 
 const tabFromHash = () => {
@@ -44,6 +45,7 @@ function renderHeader() {
   el.innerHTML = renderNavbar(activeTab);
   el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
   document.getElementById('themeBtn')?.addEventListener('click', toggleTheme);
+  el.querySelectorAll('[data-lang]').forEach((b) => b.addEventListener('click', () => { setLang(b.dataset.lang); renderHeader(); }));
   document.getElementById('loginBtn')?.addEventListener('click', openAuthModal);
   document.getElementById('userBtn')?.addEventListener('click', (e) => {
     e.stopPropagation();

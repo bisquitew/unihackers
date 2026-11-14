@@ -397,6 +397,16 @@ export async function sendDetection(lotId, detectedCars) {
   return await res.json();
 }
 
+export async function captureCameraFrame(cameraUrl) {
+  const res = await fetch(`${BASE_URL}/v1/m/parkie/capture-frame`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ camera_url: cameraUrl }),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
+}
+
 // --- FORUM MODERATION (staff) ---
 export async function fetchReportedPosts() {
   const res = await fetch(`${BASE_URL}/v1/m/forum/moderation/reported`);

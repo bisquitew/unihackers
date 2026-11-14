@@ -277,10 +277,26 @@ def main():
         status, colors = get("/v1/m/parkie/lots/colors")
         print(f"✅ [PARKIE] /v1/m/parkie/lots/colors -> {len(colors)} lightweight color items streamed")
 
+        # Live Camera Frame Capture for Admin Web Calibration
+        status, frame_resp = post("/v1/m/parkie/capture-frame", {"camera_url": "rtsp://cam.timisoara-hub.ro/live"})
+        assert status == 200, f"Expected 200 from capture-frame, got {status}: {frame_resp}"
+        assert "image" in frame_resp and frame_resp["image"].startswith("data:image/"), "Missing or invalid base64 image from capture-frame"
+        print(f"   📸 Camera Frame Captured: {len(frame_resp['image'])} bytes base64 payload ready for Canvas calibration")
+
+        # Lot Config retrieval for Vision Agent
+        status, lot_cfg = get("/v1/m/parkie/lots/lot-unirii-01/config")
+        assert status == 200, f"Expected 200 from lot config, got {status}: {lot_cfg}"
+        print(f"   ⚙️ Lot Config (Piața Unirii): {len(lot_cfg.get('slots_data', []))} slots mapped, Camera: {lot_cfg.get('camera_url') or 'default CCTV'}")
+
         # Update detection via CV agent simulation (camera detections are staff-only since 1387d78)
         status, updated_lot = post("/v1/m/parkie/detections", {"lot_id": "lot-unirii-01", "detected_cars": 42}, token="dev_admin")
         assert status == 200, f"Expected 200 from parkie detections, got {status}: {updated_lot}"
         print(f"   🚗 CV Detection Update (Piața Unirii): {updated_lot.get('available_spots')}/{updated_lot.get('capacity')} spots left [{updated_lot.get('status_color').upper()}]")
+
+        # Parkie Compatibility Endpoint: /vision/update_lot
+        status, compat_lot = post("/vision/update_lot", {"lot_id": "lot-unirii-01", "detected_cars": 20})
+        assert status == 200, f"Expected 200 from /vision/update_lot, got {status}: {compat_lot}"
+        print(f"   📡 /vision/update_lot compat: {compat_lot.get('available_spots')}/{compat_lot.get('capacity')} spots left [{compat_lot.get('status_color').upper()}]")
 
         status, nearest = get("/v1/m/parkie/nearest?lat=45.7581&lng=21.2290&limit=3")
         print(f"   📍 Nearest to Centru: {nearest[0].get('name')} ({nearest[0].get('distance_meters')}m away, {nearest[0].get('available_spots')} spots free)")

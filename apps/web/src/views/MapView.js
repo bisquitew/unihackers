@@ -76,7 +76,7 @@ export function mount(ctx, { showToast } = {}) {
         <div class="body"><div class="title">${esc(p.title)}</div><div class="detail">${esc(p.kindLabel)}</div></div>
       </button>`).join('');
     scroll.innerHTML = `${layerRows}
-      ${selected ? `<div class="pin-detail"><div class="head">${art(selected.art, 52)}<div><h3>${esc(selected.title)}</h3><div class="muted">${esc(selected.kindLabel)}</div>${selected.radiusMeters ? `<div style="margin-top:6px;padding:4px 8px;border-radius:6px;background:${selected.zoneType === 'danger' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'};border:1px solid ${selected.zoneType === 'danger' ? '#ef4444' : '#f59e0b'};font-size:12px;font-weight:700;color:${selected.zoneType === 'danger' ? '#fca5a5' : '#fcd34d'}">⭕ Rază perimetru: ${selected.radiusMeters}m (${selected.zoneType === 'danger' ? 'Pericol ISU' : 'Șantier'})</div>` : ''}</div></div></div>` : ''}
+      ${selected ? `<div class="pin-detail"><div class="head">${art(selected.art, 52)}<div><h3>${esc(selected.title)}</h3><div class="muted">${esc(selected.kindLabel)}</div>${selected.radiusMeters ? `<div class="zone-line ${selected.zoneType === 'danger' ? 'danger' : 'works'}">${selected.zoneType === 'danger' ? 'Keep away from the area' : 'Works in progress'} · ${selected.radiusMeters} m around</div>` : ''}</div></div></div>` : ''}
       <h3 style="font-size:17px;margin:18px 0 4px">Places</h3><div class="list">${places || '<div class="empty">Nothing shown.</div>'}</div>`;
     scroll.querySelectorAll('[data-layer]').forEach((el) => el.addEventListener('change', () => {
       hidden[el.dataset.layer] = !el.checked;

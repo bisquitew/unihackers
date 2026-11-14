@@ -21,8 +21,22 @@ export class CameraCanvas {
     this.onPlotsChanged = options.onPlotsChanged || (() => {});
     
     this.lotName = 'Parking';
+    this.backgroundImage = null;
     this.setupEvents();
     this.startRenderLoop();
+  }
+
+  setBackgroundImage(src) {
+    if (!src) {
+      this.backgroundImage = null;
+      return;
+    }
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      this.backgroundImage = img;
+    };
+    img.src = src;
   }
 
   setLot(lot) {
@@ -58,7 +72,18 @@ export class CameraCanvas {
   }
 
   getPlots() {
-    return this.plots;
+    return this.plots.map((p) => {
+      const box = this.toPx(p);
+      return {
+        ...p,
+        polygon: p.polygon || [
+          [Math.round(box.x), Math.round(box.y)],
+          [Math.round(box.x + box.w), Math.round(box.y)],
+          [Math.round(box.x + box.w), Math.round(box.y + box.h)],
+          [Math.round(box.x), Math.round(box.y + box.h)],
+        ],
+      };
+    });
   }
 
   getSelectedPlot() {
@@ -300,6 +325,13 @@ export class CameraCanvas {
   }
 
   drawCCTVBackground(ctx) {
+    if (this.backgroundImage && this.backgroundImage.complete && this.backgroundImage.naturalWidth > 0) {
+      ctx.drawImage(this.backgroundImage, 0, 0, this.width, this.height);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.fillRect(0, 0, this.width, this.height);
+      return;
+    }
+
     // Asphalt base
     ctx.fillStyle = '#1c1917';
     ctx.fillRect(0, 0, this.width, this.height);

@@ -349,8 +349,8 @@ function PinDetail({ pin, onOpen, onDelete, onToggleShare }: { pin: MapPin; onOp
       </View>
       {pin.subtitle ? <Text variant="body">{pin.subtitle}</Text> : null}
       {pin.radiusMeters ? (
-        <Text variant="rowDetail" style={{ color: pin.zoneType === 'danger' ? '#ef4444' : '#f59e0b', fontWeight: '700' }}>
-          ⭕ Rază activă: {pin.radiusMeters} metri ({pin.zoneType === 'danger' ? 'Perimetru de Siguranță' : 'Zonă de Șantier'})
+        <Text variant="rowDetail" color={pin.zoneType === 'danger' ? 'warning' : 'info'} style={{ fontWeight: '700' }}>
+          {pin.zoneType === 'danger' ? `Keep away from the area · ${pin.radiusMeters} m around` : `Works in progress · ${pin.radiusMeters} m around`}
         </Text>
       ) : null}
       {note ? (

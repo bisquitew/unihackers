@@ -4,6 +4,17 @@ import { transitService } from '../m05-transit/service.ts';
 import { smellService } from '../m06-smell/service.ts';
 import { safetyService } from '../m03-safety/service.ts';
 import { TIMISOARA_AREAS } from '../../core/areas.ts';
+
+// The database figures take a second or two to fetch from the cloud, so they are kept for 20 seconds and shared by every request.
+let slowCache: { at: number; value: Promise<[Awaited<ReturnType<typeof environmentFromTiger>>, Awaited<ReturnType<typeof tigerSummary>>, Awaited<ReturnType<typeof communityReports>>]> } | null = null;
+function slowParts() {
+  if (!slowCache || Date.now() - slowCache.at > 20_000) {
+    const value = Promise.all([environmentFromTiger(), tigerSummary(), communityReports()]);
+    slowCache = { at: Date.now(), value };
+    value.catch(() => { slowCache = null; });
+  }
+  return slowCache.value;
+}
 import { db } from '../../core/db.ts';
 
 /** Fallback values when Tiger Cloud is not connected; always sent with source: 'simulated'. */
@@ -105,7 +116,7 @@ export const dashboardService = {
       }));
 
     // Environmental metrics, Tiger status and community reports, all read live (or labelled simulated)
-    const [env, tiger, community] = await Promise.all([environmentFromTiger(), tigerSummary(), communityReports()]);
+    const [env, tiger, community] = await slowParts();
     const pm25 = env.air_quality_pm25.value;
 
     // Utilities & Transit disruptions

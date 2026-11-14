@@ -1,6 +1,7 @@
 import { getCurrentUser, isAdmin, isLoggedIn } from '../auth.js';
 import { esc, icons, initials, isDark, tone } from '../ui.js';
 import { CITY } from '../city.js';
+import { getLang } from '../i18n.js';
 
 const ITEMS = [
   { id: 'home', label: 'Home' },
@@ -21,6 +22,9 @@ export function renderNavbar(activeTab) {
         ${items.map((i) => `<button data-tab="${i.id}" class="${activeTab === i.id ? 'active' : ''}" ${activeTab === i.id ? 'aria-current="page"' : ''}>${i.label}</button>`).join('')}
       </nav>
       <div class="top-actions">
+        <div class="lang" role="group" aria-label="Switch language" data-notr>
+          ${['en', 'ro'].map((l) => `<button data-lang="${l}" class="${getLang() === l ? 'on' : ''}" aria-pressed="${getLang() === l}" lang="${l}">${l.toUpperCase()}</button>`).join('')}
+        </div>
         <button class="icon-btn" id="themeBtn" aria-label="Switch to ${isDark() ? 'light' : 'dark'} mode">${isDark() ? icons.sun : icons.moon}</button>
         <button class="icon-btn" data-tab="alerts" aria-label="City alerts">${icons.bell}<i class="dot"></i></button>
         ${isLoggedIn()

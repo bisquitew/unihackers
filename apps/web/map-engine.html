@@ -582,20 +582,14 @@
     var isSelected = (p.id === selectedId);
     var isDanger = p.zoneType === 'danger' || (p.title && p.title.indexOf('🚨') !== -1) || (p.kindLabel && p.kindLabel.indexOf('danger') !== -1);
 
-    var fillColor = isSelected
-      ? (isDanger ? 'rgba(239, 68, 68, 0.38)' : 'rgba(245, 158, 11, 0.35)')
-      : (isDanger ? 'rgba(239, 68, 68, 0.22)' : 'rgba(245, 158, 11, 0.20)');
-
-    var strokeColor = isSelected
-      ? (isDanger ? '#ef4444' : '#f59e0b')
-      : (isDanger ? '#dc2626' : '#d97706');
-
-    var glowColor = isSelected
-      ? (isDanger ? 'rgba(239, 68, 68, 0.70)' : 'rgba(245, 158, 11, 0.70)')
-      : (isDanger ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)');
-
-    var strokeWidth = isSelected ? 4.5 : 2.5;
-    var glowWidth = isSelected ? 12 : 6;
+    // identity colours: apricot = danger (a warning), blue = works (getting around). Calm fill, thin edge; the picked zone is a little stronger.
+    var fillColor = isDanger
+      ? (isSelected ? 'rgba(255, 154, 92, 0.30)' : 'rgba(255, 154, 92, 0.18)')
+      : (isSelected ? 'rgba(61, 91, 255, 0.24)' : 'rgba(61, 91, 255, 0.12)');
+    var strokeColor = isDanger ? '#E2711D' : '#3D5BFF';
+    var glowColor = 'rgba(0,0,0,0)';
+    var strokeWidth = isSelected ? 3 : 1.75;
+    var glowWidth = 0;
 
     return {
       type: 'Feature',
@@ -644,19 +638,8 @@
         type: 'fill',
         source: 'area-radii',
         paint: {
-          'fill-color': ['coalesce', ['get', 'fillColor'], 'rgba(239, 68, 68, 0.22)'],
+          'fill-color': ['get', 'fillColor'],
           'fill-opacity': 1
-        }
-      }, firstSymbolId);
-    }
-    if (!map.getLayer('area-radii-glow')) {
-      map.addLayer({
-        id: 'area-radii-glow',
-        type: 'line',
-        source: 'area-radii',
-        paint: {
-          'line-color': ['coalesce', ['get', 'glowColor'], 'rgba(239, 68, 68, 0.25)'],
-          'line-width': ['coalesce', ['get', 'glowWidth'], 6]
         }
       }, firstSymbolId);
     }
@@ -665,10 +648,19 @@
         id: 'area-radii-stroke',
         type: 'line',
         source: 'area-radii',
-        paint: {
-          'line-color': ['coalesce', ['get', 'strokeColor'], '#dc2626'],
-          'line-width': ['coalesce', ['get', 'strokeWidth'], 2.5]
-        }
+        filter: ['==', ['get', 'zoneType'], 'danger'],
+        layout: { 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'strokeColor'], 'line-width': ['get', 'strokeWidth'] }
+      }, firstSymbolId);
+    }
+    if (!map.getLayer('area-radii-works')) {
+      map.addLayer({
+        id: 'area-radii-works',
+        type: 'line',
+        source: 'area-radii',
+        filter: ['!=', ['get', 'zoneType'], 'danger'],
+        layout: { 'line-join': 'round' },
+        paint: { 'line-color': ['get', 'strokeColor'], 'line-width': ['get', 'strokeWidth'], 'line-dasharray': [2.5, 2] }
       }, firstSymbolId);
     }
   }
