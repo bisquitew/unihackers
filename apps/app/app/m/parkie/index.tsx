@@ -15,7 +15,7 @@ export default function ParkieCitizenRoute() {
     <>
       <Stack.Screen options={darkHeader('Parkie — Locuri de Parcare')} />
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-        
+
         {/* Overview Stats Card */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryRow}>
@@ -45,7 +45,7 @@ export default function ParkieCitizenRoute() {
               <View style={styles.lotHeader}>
                 <Text style={styles.lotName}>{lot.name}</Text>
                 <View style={[
-                  styles.statusBadge, 
+                  styles.statusBadge,
                   isGreen ? styles.badgeGreen : (isYellow ? styles.badgeYellow : styles.badgeRed)
                 ]}>
                   <Text style={[
