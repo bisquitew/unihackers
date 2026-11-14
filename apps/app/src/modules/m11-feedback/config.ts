@@ -5,8 +5,8 @@
  */
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
 
-/** Google Form link for the Living Labs survey. Fill in once the form is published. */
-export const SURVEY_URL = '';
+/** Google Form link for the Living Labs survey (docs/living-labs/survey.md). */
+export const SURVEY_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScFiycXp16VJzyTVT-7R1cXg4dxZZ1Mjwn4Qf-ET5fCNc02yA/viewform';
 
 /** Used only if the changelog can't be loaded. */
 export const FALLBACK_APP_VERSION = 'v0';
