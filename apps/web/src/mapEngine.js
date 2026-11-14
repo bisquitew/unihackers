@@ -57,7 +57,16 @@ export const areaCoord = (name) => AREAS[name] || [45.7537, 21.2257];
 
 /** Everything the map can show, as engine pins grouped by layer. */
 export function buildLayers({ lots = [], outages = [], events = [], smell = [], areaAlerts = [] }) {
-  const pin = (id, [lat, lng], artKey, title, kindLabel) => ({ id, lat, lng, art: artKey, title, kindLabel, badge: '' });
+  const pin = (id, [lat, lng], artKey, title, kindLabel, extra = {}) => ({
+    id,
+    lat,
+    lng,
+    art: artKey,
+    title,
+    kindLabel,
+    badge: '',
+    ...extra
+  });
   return {
     areaAlerts: {
       title: 'Danger & Construction',
@@ -67,7 +76,14 @@ export function buildLayers({ lots = [], outages = [], events = [], smell = [], 
         [a.latitude, a.longitude],
         'safety',
         `${a.type === 'danger' ? '🚨' : '🚧'} ${a.title}`,
-        `Radius: ${a.radius_meters}m • ${(a.affected_neighbourhoods || []).join(', ')}`
+        `Rază: ${a.radius_meters}m • ${(a.affected_neighbourhoods || []).join(', ')}`,
+        {
+          radiusMeters: a.radius_meters,
+          zoneType: a.type,
+          fillColor: a.type === 'danger' ? '#ef4444' : '#f59e0b',
+          strokeColor: a.type === 'danger' ? '#dc2626' : '#d97706',
+          fillOpacity: a.type === 'danger' ? 0.25 : 0.20,
+        }
       ))
     },
     parking: { title: 'Parking', art: 'parkie', pins: lots.map((l) => pin(`lot-${l.id}`, [l.latitude, l.longitude], 'parkie', l.name, `${l.available_spots} of ${l.capacity} free`)) },

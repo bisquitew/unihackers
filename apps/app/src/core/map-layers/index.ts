@@ -31,6 +31,8 @@ export function alertsLayer(): MapLayer {
     href: `/alerts/${a.id}`,
     createdAt: '2026-11-13T15:05:00Z',
     demo: true,
+    radiusMeters: a.radiusMeters,
+    zoneType: a.zoneType,
   }));
   return { id: 'alerts', title: 'Alerts', moduleId: 'm04-utilities', pins, defaultVisible: true };
 }

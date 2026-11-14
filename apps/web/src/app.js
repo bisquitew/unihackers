@@ -33,8 +33,8 @@ export async function initApp() {
 }
 
 const tabFromHash = () => {
-  // "#/map/evt-001" is the map with that place picked; only the first part names the page
-  const t = location.hash.replace(/^#\/?/, '').split('/')[0];
+  // "#/map/evt-001" or "#/map?alert=..." is the map; only the first part names the page
+  const t = location.hash.replace(/^#\/?/, '').split('?')[0].split('/')[0];
   return VIEWS[t] ? t : 'home';
 };
 

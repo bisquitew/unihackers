@@ -1,4 +1,4 @@
-import { fetchEvents, fetchForumPosts, fetchBuddyRequests, fetchLots, fetchOutages, fetchTransitLines } from '../api.js';
+import { fetchEvents, fetchForumPosts, fetchBuddyRequests, fetchLots, fetchOutages, fetchTransitLines, fetchAreaAlerts } from '../api.js';
 import { APP_LINK } from '../config.js';
 import { art, cap, esc, qrSvg, row, statusText, when } from '../ui.js';
 import { buildLayers, createMap } from '../mapEngine.js';
@@ -93,8 +93,8 @@ export function mount(ctx, { lotsData }) {
   const holder = document.getElementById('heroMap');
   if (!holder) return () => {};
   const map = createMap(holder);
-  Promise.all([fetchLots(), fetchOutages(), fetchEvents()]).then(([lots, outages, events]) => {
-    const layers = buildLayers({ lots, outages, events });
+  Promise.all([fetchLots(), fetchOutages(), fetchEvents(), fetchAreaAlerts()]).then(([lots, outages, events, areaAlerts]) => {
+    const layers = buildLayers({ lots, outages, events, areaAlerts: areaAlerts || [] });
     map.setPins(Object.values(layers).flatMap((l) => l.pins));
     map.overview();
   });

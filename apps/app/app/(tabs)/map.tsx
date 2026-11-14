@@ -93,7 +93,12 @@ export default function MapScreen() {
       setDraft(null);
       setListOpen(false);
       setSelectedId(pin?.id ?? null);
-      if (pin) goTo(pin.coordinate, 17);
+      if (pin) {
+        const zoom = pin.radiusMeters
+          ? (pin.radiusMeters >= 1000 ? 13.8 : pin.radiusMeters >= 600 ? 14.5 : 15.2)
+          : 17;
+        goTo(pin.coordinate, zoom);
+      }
     },
     [goTo],
   );
@@ -343,6 +348,11 @@ function PinDetail({ pin, onOpen, onDelete, onToggleShare }: { pin: MapPin; onOp
         </View>
       </View>
       {pin.subtitle ? <Text variant="body">{pin.subtitle}</Text> : null}
+      {pin.radiusMeters ? (
+        <Text variant="rowDetail" style={{ color: pin.zoneType === 'danger' ? '#ef4444' : '#f59e0b', fontWeight: '700' }}>
+          ⭕ Rază activă: {pin.radiusMeters} metri ({pin.zoneType === 'danger' ? 'Perimetru de Siguranță' : 'Zonă de Șantier'})
+        </Text>
+      ) : null}
       {note ? (
         <Text variant="rowDetail" color="mutedForeground">
           {note}

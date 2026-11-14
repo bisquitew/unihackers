@@ -13,6 +13,13 @@ export interface EnginePin {
   kindLabel: string;
   /** small corner badge: a lock for private pins of the user, people for pins they shared, none otherwise */
   badge: 'lock' | 'shared' | '';
+  /** actual visual geographic radius in meters drawn on the map */
+  radiusMeters?: number;
+  /** 'danger' | 'construction' */
+  zoneType?: string;
+  fillColor?: string;
+  strokeColor?: string;
+  fillOpacity?: number;
 }
 
 export type ToEngine =
@@ -44,6 +51,8 @@ export function toEnginePin(pin: MapPin): EnginePin {
     title: pin.title,
     kindLabel: def.label,
     badge: pin.owner === 'me' ? (pin.visibility === 'public' ? 'shared' : 'lock') : '',
+    radiusMeters: pin.radiusMeters,
+    zoneType: pin.zoneType,
   };
 }
 

@@ -119,7 +119,7 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
 
 function serveWebApp(req: http.IncomingMessage, res: http.ServerResponse, pathname: string) {
   let subPath = pathname.replace(/^(\/admin|\/web|\/app)\/?/, '');
-  if (!subPath || subPath === '') subPath = 'index.html';
+  if (!subPath || subPath === '' || subPath === '/') subPath = 'index.html';
 
   const webRoot = path.resolve(process.cwd(), 'apps/web');
   const filePath = path.normalize(path.join(webRoot, subPath));
@@ -947,6 +947,7 @@ const server = http.createServer(async (req, res) => {
 
     // --- [TIMIȘOARA CITY HUB WEB APP & ADMIN PORTAL] ---
     if (
+      pathname === '/' || pathname === '/map-engine.html' ||
       pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/') ||
       pathname === '/web' || pathname === '/web/' || pathname.startsWith('/web/') ||
       pathname === '/app' || pathname === '/app/' || pathname.startsWith('/app/') ||

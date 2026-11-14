@@ -28,7 +28,11 @@ export function mount(ctx, { showToast } = {}) {
   function pick(id) {
     selected = visiblePins().find((p) => p.id === id) || null;
     map.select(selected ? selected.id : null);
-    if (selected) map.flyTo(selected.lat, selected.lng, 16);
+    if (selected) {
+      const radius = selected.radiusMeters || 0;
+      const zoom = radius >= 1000 ? 13.8 : radius >= 600 ? 14.4 : radius >= 300 ? 15.2 : 16;
+      map.flyTo(selected.lat, selected.lng, zoom);
+    }
     draw();
   }
 
@@ -45,7 +49,7 @@ export function mount(ctx, { showToast } = {}) {
         <div class="body"><div class="title">${esc(p.title)}</div><div class="detail">${esc(p.kindLabel)}</div></div>
       </button>`).join('');
     scroll.innerHTML = `${layerRows}
-      ${selected ? `<div class="pin-detail"><div class="head">${art(selected.art, 52)}<div><h3>${esc(selected.title)}</h3><div class="muted">${esc(selected.kindLabel)}</div></div></div></div>` : ''}
+      ${selected ? `<div class="pin-detail"><div class="head">${art(selected.art, 52)}<div><h3>${esc(selected.title)}</h3><div class="muted">${esc(selected.kindLabel)}</div>${selected.radiusMeters ? `<div style="margin-top:6px;padding:4px 8px;border-radius:6px;background:${selected.zoneType === 'danger' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)'};border:1px solid ${selected.zoneType === 'danger' ? '#ef4444' : '#f59e0b'};font-size:12px;font-weight:700;color:${selected.zoneType === 'danger' ? '#fca5a5' : '#fcd34d'}">⭕ Rază perimetru: ${selected.radiusMeters}m (${selected.zoneType === 'danger' ? 'Pericol ISU' : 'Șantier'})</div>` : ''}</div></div></div>` : ''}
       <h3 style="font-size:17px;margin:18px 0 4px">Places</h3><div class="list">${places || '<div class="empty">Nothing shown.</div>'}</div>`;
     scroll.querySelectorAll('[data-layer]').forEach((el) => el.addEventListener('change', () => {
       hidden[el.dataset.layer] = !el.checked;
@@ -56,6 +60,32 @@ export function mount(ctx, { showToast } = {}) {
     scroll.querySelectorAll('[data-pin]').forEach((el) => el.addEventListener('click', () => pick(el.dataset.pin)));
   }
 
+  const getTarget = () => {
+    const raw = location.hash || '';
+    const m = raw.match(/[?&](?:alert|pin)=([^&]+)/);
+    if (m) return decodeURIComponent(m[1]);
+    const parts = raw.split('/');
+    if (parts.length >= 3 && parts[2]) return parts[2];
+    return null;
+  };
+
+  const applyTarget = () => {
+    const target = getTarget();
+    if (!target) return false;
+    const pinId = target.startsWith('area-') ? target : `area-${target}`;
+    const found = visiblePins().find((p) => p.id === pinId || p.id === target);
+    if (found) {
+      pick(found.id);
+      return true;
+    }
+    return false;
+  };
+
+  const onHash = () => {
+    applyTarget();
+  };
+  window.addEventListener('hashchange', onHash);
+
   // "you are here": the first press asks the browser for the position, then follows it; every press centres the map on you
   let watchId = null;
   let mine = null;
@@ -65,7 +95,7 @@ export function mount(ctx, { showToast } = {}) {
     mine = { lat: pos.coords.latitude, lng: pos.coords.longitude, heading: typeof h === 'number' && !Number.isNaN(h) ? h : undefined };
     map.setUserLocation(mine);
   };
-  locateBtn.addEventListener('click', () => {
+  locateBtn?.addEventListener('click', () => {
     if (!navigator.geolocation) return showToast?.('Your browser cannot share your location.');
     if (mine) return map.flyTo(mine.lat, mine.lng, 16.5);
     navigator.geolocation.getCurrentPosition(
@@ -84,12 +114,12 @@ export function mount(ctx, { showToast } = {}) {
     layers = buildLayers({ lots, outages, events, smell: smell.pins || [], areaAlerts: areaAlerts || [] });
     pushPins();
     draw();
-    // "#/map/evt-001": come here from an event and land on the place that holds it
-    const wanted = location.hash.split('/')[2];
-    if (wanted && visiblePins().some((p) => p.id === wanted)) pick(wanted);
-    else map.overview();
+    if (!applyTarget()) {
+      map.overview();
+    }
   });
   return () => {
+    window.removeEventListener('hashchange', onHash);
     if (watchId !== null) navigator.geolocation.clearWatch(watchId);
     map.destroy();
   };
