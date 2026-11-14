@@ -2,7 +2,7 @@
 
 Owner: P4. Updated with every P4 feature or fix. Hashes are short commit ids; "pending" means changed in the working tree but not committed yet.
 
-Last updated: 2026-11-14 · working branch: `p4/smell`
+Last updated: 2026-11-14 · working branch: `p4/next`
 
 Commit ids are from main's rewritten history (commit-message cleanup on 2026-11-14); older ids no longer exist.
 
@@ -26,8 +26,9 @@ Commit ids are from main's rewritten history (commit-message cleanup on 2026-11-
 | PR into main | done | `p4/integration` | PR #1, merged as `c3f77e5` | 2026-11-14 |
 | m02-visitor-info: 9 RO/EN entries parsed from `docs/visitor-info/content.md` into `seed.ts` (`generate-seed.ts`), list/detail/categories API, `search_visitor_info` assistant tool + prompt line, screen with category chips, RO/EN toggle and "check before you travel" badge, home tile, migration | done | `p4/visitor-info` | `27e6dba` (API + tool), `1147662` (prompt), `c6c92c1` (screen), `80d987f` (home tile), `264735d` (progress); merged into main as `2c8e5f2` | 2026-11-14 |
 | m06-smell: one-tap reports (type, intensity, area or location), repository with memory / Postgres (`core/db.ts`) + fallback, ~60 demo reports (`isDemo`, `?includeDemo=false`), pins / areas / timeseries / wind (Open-Meteo, 10 min cache, mock fallback) / source hint / health API, `get_smell_reports` tool + prompt topic, screen with wind arrow, hint, area bars and 24 h chart, demo toggle and label, home tile, hypertable migration (not run) | done | `p4/smell` | `a8bf8df` (API), `e7f39be` (prompt), `0186fca` (screen), `0d50a7f` (home tile), `4ead1d4` (progress); merges of main `980c9bf`, `03dd34e` | 2026-11-14 |
-| m06-smell on P1's shared map: `manifest.mapLayer` returns a `MapLayer` (`@hub/map`) of `smell` pins from a cache filled from `/pins` (with `isDemo`), refreshed after a report; P1 side: `core/map-layers/changes.ts` + one `useSyncExternalStore` line in `map.tsx` so pins that arrive after the Map tab mounted are drawn | done | `p4/smell` | pending | 2026-11-14 |
-| One API server (merge `server.ts` into `index.ts`) | to do | — | owner P2; plan in "Known issues" | — |
+| m06-smell on P1's shared map: `manifest.mapLayer` returns a `MapLayer` (`@hub/map`) of `smell` pins from a cache filled from `/pins` (with `isDemo`), refreshed after a report; P1 side: `core/map-layers/changes.ts` + one `useSyncExternalStore` line in `map.tsx` so pins that arrive after the Map tab mounted are drawn | done | `p4/smell` | `4b99c16` (API `isDemo`), `756eef9` (P1 map signal), `5afef4e` (map layer), `0423b87` (progress); merged into main via PR #3 (`d869b34`) | 2026-11-14 |
+| P4 modules on `server.ts` (port 8000, Docker/CI): P2 copied m02/m06/m10/m11 routes by hand in `04ba747`, which skipped validation, the survey ingest token (anyone could post fake survey answers), `await` on feedback summary/changelog (returned `{}`) and the `includeDemo` default. Now `server.ts` forwards those paths to the same Hono routers as port 3001; m11 relative imports got `.ts` so they load under `node --experimental-strip-types` | done | `p4/next` | pending | 2026-11-14 |
+| One API server (merge `server.ts` into `index.ts`) | partly | — | owner P2. `server.ts` now serves every module's routes (P4's through the shared Hono routers), but there are still two entry points | — |
 | ElevenLabs voice: spoken assistant replies, alerts, tour | to do | — | — | — |
 | m03-safety: reports + Gemini summary per area | to do | — | — | — |
 | m12-dashboard: dashboard analytics for officials | taken over by P2 | — | P2 implemented it in `0e3a331` (`services/api/src/modules/m12-dashboard/`); no longer a P4 task | 2026-11-14 |
@@ -82,7 +83,9 @@ Any other module with remote pins can do the same: cache, then call `notifyMapLa
 | Issue | Owner | What's needed |
 | --- | --- | --- |
 | Two API servers: `server.ts` (port 8000, Docker, P2's tests) has uploads, Tiger Data, open-data and parkie routes; `index.ts` (port 3001) has all modules and real auth | P2 | Move `server.ts` routes into Hono, run `index.ts` with `tsx` in Docker, delete `server.ts` |
-| Docker/Vultr deploy has no P3 or P4 modules (it runs `server.ts`) | P2 | Same as above |
+| Assistant on port 8000 (`server.ts`, Docker/CI) fails: it loads the module registry, and P3's `m01-events`, `m07-buddy`, `m08-forum`, `m09-wallet` import `./routes`, `./service` etc. without `.ts`, which `node --experimental-strip-types` cannot resolve (works on 3001 with `tsx`) | P3 | Add `.ts` to relative imports in those modules (P2 did the same for m11 in `04ba747`) |
+| `toqr` (used by `m09-wallet/QRCodeView.tsx`) is not declared in `apps/app/package.json`; only npm's hoisting finds it, so a pnpm install cannot bundle the web app | P3 | Add `"toqr": "^0.1.1"` to `apps/app/package.json` |
+| `packages/ui/src/TabBar.tsx` is back to `StyleSheet.absoluteFillObject` (removed in RN 0.88) after P3's merge `170d8de` | P1 / P3 | `...StyleSheet.absoluteFill` |
 | Tiger Data is simulated (`[MOCK]`), no `DATABASE_URL` locally | P2 | Share the connection string |
 | `pnpm-lock.yaml` on main doesn't include `@google/genai` (api) or `@types/react` (ui) | P2 / P1 | Regenerate the lockfile after merging |
 | `apps/app` typecheck: 17 errors in P1's new `packages/map` (`react` types and `react-native-svg` not resolvable from that package; implicit `any`s that follow) | P1 | Add `@types/react` and `react-native-svg` to `packages/map/package.json` (same fix as `packages/ui` earlier) |

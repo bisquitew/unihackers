@@ -9,12 +9,13 @@ import { transitService } from './modules/m05-transit/service.ts';
 import { parkieService } from './modules/parkie/service.ts';
 import { dashboardService } from './modules/m12-dashboard/index.ts';
 import { eventsService } from './modules/m01-events/service.ts';
-import { visitorInfoService } from './modules/m02-visitor-info/service.ts';
-import { smellService } from './modules/m06-smell/service.ts';
 import { buddyService } from './modules/m07-buddy/service.ts';
 import { forumService } from './modules/m08-forum/service.ts';
-import { assistantService } from './modules/m10-assistant/service.ts';
-import { feedbackService } from './modules/m11-feedback/service.ts';
+import { Hono } from 'hono';
+import { visitorInfoRoutes } from './modules/m02-visitor-info/routes.ts';
+import { smellRoutes } from './modules/m06-smell/routes.ts';
+import { assistantRoutes } from './modules/m10-assistant/routes.ts';
+import { feedbackRoutes } from './modules/m11-feedback/routes.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
 import { 
@@ -72,6 +73,45 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization'
   });
   res.end(JSON.stringify(data));
+}
+
+// P4 modules run on their Hono routers here too, mounted like index.ts does (short id and full id).
+const p4App = new Hono();
+const P4_ROUTERS: [Hono, string[]][] = [
+  [visitorInfoRoutes, ['visitor-info', 'm02-visitor-info']],
+  [smellRoutes, ['smell', 'm06-smell']],
+  [assistantRoutes, ['assistant', 'm10-assistant']],
+  [feedbackRoutes, ['feedback', 'm11-feedback']],
+];
+const P4_PREFIXES: string[] = [];
+for (const [routes, ids] of P4_ROUTERS) {
+  for (const id of ids) {
+    p4App.route(`/v1/m/${id}`, routes);
+    P4_PREFIXES.push(`/v1/m/${id}`);
+  }
+}
+
+function isP4Path(pathname: string): boolean {
+  return P4_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'));
+}
+
+async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, url: URL, method: string): Promise<void> {
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (typeof value === 'string') headers.set(key, value);
+    else if (Array.isArray(value)) headers.set(key, value.join(', '));
+  }
+  const body = method === 'GET' || method === 'HEAD' ? undefined : await parseRawBuffer(req);
+  const init: RequestInit = { method, headers };
+  if (body && body.length) init.body = new Uint8Array(body);
+  const response = await p4App.fetch(new Request(url.href, init));
+  res.writeHead(response.status, {
+    'Content-Type': response.headers.get('content-type') ?? 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  });
+  res.end(Buffer.from(await response.arrayBuffer()));
 }
 
 const server = http.createServer(async (req, res) => {
@@ -674,115 +714,10 @@ const server = http.createServer(async (req, res) => {
       });
     }
 
-    // --- [M02_VISITOR_INFO] Practical Visitor Information Endpoints ---
-    if ((pathname === '/v1/m/visitor-info' || pathname === '/v1/m/m02-visitor-info') && method === 'GET') {
-      const lang = (url.searchParams.get('lang') || 'ro') as 'ro' | 'en';
-      const category = (url.searchParams.get('category') || undefined) as any;
-      const entries = visitorInfoService.list(lang, category);
-      return sendJson(res, 200, { lang, category: category ?? null, count: entries.length, entries });
-    }
-
-    if ((pathname === '/v1/m/visitor-info/categories' || pathname === '/v1/m/m02-visitor-info/categories') && method === 'GET') {
-      return sendJson(res, 200, { categories: visitorInfoService.categories() });
-    }
-
-    if (pathname.startsWith('/v1/m/visitor-info/') && method === 'GET') {
-      const id = pathname.replace('/v1/m/visitor-info/', '');
-      const lang = (url.searchParams.get('lang') || 'ro') as 'ro' | 'en';
-      const entry = visitorInfoService.get(id, lang);
-      if (!entry) return sendJson(res, 404, { error: 'Visitor info entry not found', id });
-      return sendJson(res, 200, { entry });
-    }
-
-    // --- [M06_SMELL] Civic Smell Reports & Live Wind Correlation ---
-    if (pathname === '/v1/m/smell/health' && method === 'GET') {
-      const wind = await smellService.windNow();
-      return sendJson(res, 200, {
-        module: 'm06-smell',
-        status: 'ok',
-        storage: smellService.status(),
-        wind: { source: wind.source, cached: wind.cached, reason: wind.reason }
-      });
-    }
-
-    if (pathname === '/v1/m/smell/reports' && method === 'POST') {
-      const body = await parseBody(req);
-      const report = await smellService.create(body);
-      return sendJson(res, 201, { report, storage: smellService.status().active });
-    }
-
-    if (pathname === '/v1/m/smell/pins' && method === 'GET') {
-      const hours = parseInt(url.searchParams.get('hours') || '24', 10);
-      const includeDemo = url.searchParams.get('includeDemo') === 'true';
-      const { pins, demoCount } = await smellService.pins({ hours, includeDemo });
-      return sendJson(res, 200, { hours, includeDemo, demoCount, count: pins.length, pins });
-    }
-
-    if (pathname === '/v1/m/smell/areas' && method === 'GET') {
-      const hours = parseInt(url.searchParams.get('hours') || '24', 10);
-      const includeDemo = url.searchParams.get('includeDemo') === 'true';
-      const result = await smellService.areas({ hours, includeDemo });
-      return sendJson(res, 200, { hours, includeDemo, ...result });
-    }
-
-    if (pathname === '/v1/m/smell/timeseries' && method === 'GET') {
-      const hours = parseInt(url.searchParams.get('hours') || '48', 10);
-      const includeDemo = url.searchParams.get('includeDemo') === 'true';
-      const result = await smellService.timeseries({ hours, includeDemo });
-      return sendJson(res, 200, { hours, includeDemo, ...result });
-    }
-
-    if (pathname === '/v1/m/smell/wind' && method === 'GET') {
-      const wind = await smellService.windNow();
-      return sendJson(res, 200, { wind });
-    }
-
-    if (pathname === '/v1/m/smell/source-hint' && method === 'GET') {
-      const hours = parseInt(url.searchParams.get('hours') || '6', 10);
-      const includeDemo = url.searchParams.get('includeDemo') === 'true';
-      const result = await smellService.sourceHint({ hours, includeDemo });
-      return sendJson(res, 200, { hours, includeDemo, ...result });
-    }
-
-    // --- [M10_ASSISTANT] Gemini City Assistant with Function Calling ---
-    if ((pathname === '/v1/m/assistant/chat' || pathname === '/v1/m/m10-assistant/chat') && method === 'POST') {
-      const body = await parseBody(req);
-      try {
-        const result = await assistantService.chat(body);
-        return sendJson(res, 200, result);
-      } catch (err: any) {
-        return sendJson(res, 503, { error: err.message || 'The city assistant is unavailable.' });
-      }
-    }
-
-    if ((pathname === '/v1/m/assistant/tools' || pathname === '/v1/m/m10-assistant/tools') && method === 'GET') {
-      const modules = await assistantService.listTools();
-      const count = modules.reduce((n: number, m: any) => n + m.tools.length, 0);
-      return sendJson(res, 200, { count, modules });
-    }
-
-    // --- [M11_FEEDBACK] Living Labs In-App Feedback & Survey Ingest ---
-    if ((pathname === '/v1/m/feedback' || pathname === '/v1/m/m11-feedback') && method === 'POST') {
-      const body = await parseBody(req);
-      const feedback = await feedbackService.addInApp(body);
-      return sendJson(res, 201, { feedback });
-    }
-
-    if ((pathname === '/v1/m/feedback/ingest' || pathname === '/v1/m/m11-feedback/ingest') && method === 'POST') {
-      const body = await parseBody(req);
-      const { entry, duplicate } = await feedbackService.ingestSurvey(body);
-      return sendJson(res, duplicate ? 200 : 201, { feedback: entry, duplicate });
-    }
-
-    if ((pathname === '/v1/m/feedback/summary' || pathname === '/v1/m/m11-feedback/summary') && method === 'GET') {
-      const summary = feedbackService.getSummary();
-      return sendJson(res, 200, { summary });
-    }
-
-    if ((pathname === '/v1/m/feedback/changelog' || pathname === '/v1/m/m11-feedback/changelog') && method === 'GET') {
-      const changelog = feedbackService.getChangelog();
-      return sendJson(res, 200, { changelog });
-    }
+    // --- [M02_VISITOR_INFO] [M06_SMELL] [M10_ASSISTANT] [M11_FEEDBACK] (P4) ---
+    // Served by the same Hono routers as the modular API (index.ts, port 3001), so validation, defaults
+    // and the survey ingest token check are identical on both servers.
+    if (isP4Path(pathname)) return forwardToP4(req, res, url, method);
 
     // 404
     return sendJson(res, 404, { error: 'Route not found', path: pathname });
