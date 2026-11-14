@@ -122,7 +122,9 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
   };
   const showOnMap = (event: EventItem) => {
     closeEvent();
-    router.push(mapHref({ pin: `events:${event.id}` }) as any);
+    // send the event's spot too, so the map flies to it and opens the pin even before the pin list has loaded
+    const c = eventCoordinate(event);
+    router.push(mapHref(c ? { pin: `events:${event.id}`, lat: c.latitude, lng: c.longitude, zoom: 16 } : { pin: `events:${event.id}` }) as any);
   };
 
   // hosting an event
