@@ -18,6 +18,7 @@ import { db } from './core/db.ts';
 import honoApp from './index.ts';
 import { DEMO_AUTH, HttpError, isStaffEmail } from './core/config.ts';
 import { areaAlertsService } from './core/area-alerts.ts';
+import { avatarSvg } from './core/avatars.ts';
 import { 
   resolveAuthUser, 
   enforceSecurityPolicy, 
@@ -227,6 +228,13 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         version: '1.0.0',
         timestamp: new Date().toISOString()
       });
+    }
+
+    // Profile pictures: drawn from the seed in the address, so they are the same every time and need no storage
+    if (pathname.startsWith('/v1/core/avatars/') && pathname.endsWith('.svg') && method === 'GET') {
+      const seed = decodeURIComponent(pathname.slice('/v1/core/avatars/'.length, -4)).slice(0, 80);
+      res.writeHead(200, { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=31536000, immutable', 'Access-Control-Allow-Origin': '*' });
+      return res.end(avatarSvg(seed));
     }
 
     // 2. Core Areas

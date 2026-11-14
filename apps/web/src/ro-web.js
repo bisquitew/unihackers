@@ -46,5 +46,6 @@ export const RO_WEB = {
   'You are outside every active zone.': 'Ești în afara oricărei zone active.', 'There is an outage here.': 'Este o avarie aici.', 'No outage here.': 'Nicio avarie aici.', 'Heating, hot water and water are running.': 'Căldura, apa caldă și apa funcționează.',
   'This stop is on a detour.': 'Această stație este pe traseu deviat.', 'Normal service.': 'Circulație normală.', 'No detours at this stop.': 'Nicio deviere la această stație.', 'Line {}': 'Linia {}',
   'All quiet': 'Liniște', 'Keep away from the area': 'Evită zona', 'Works in progress': 'Lucrări în desfășurare',
+  'or': 'sau', 'Staff password': 'Parola personalului', 'City staff account. Enter your staff password.': 'Cont de personal municipal. Introdu parola de personal.', 'Logged in as {}.': 'Autentificat ca {}.', 'Log in': 'Autentificare', 'Email': 'E-mail', 'Continue with Google': 'Continuă cu Google',
   'Switch language': 'Schimbă limba',
 };
