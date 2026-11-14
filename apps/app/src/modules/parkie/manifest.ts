@@ -1,5 +1,6 @@
 import type { MapLayer, MapPin } from '@hub/map';
-import { PARKIE_SEED_LOTS } from '@hub/contracts';
+// Straight from the seed file: the @hub/contracts entry loads zod-shim (top-level await), which breaks Expo's web build.
+import { PARKIE_SEED_LOTS } from '../../../../../packages/contracts/src/seed/parkie.seed.ts';
 
 /**
  * Mobile App Parkie Integration:
