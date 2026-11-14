@@ -1,7 +1,7 @@
 import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
 import {
   approveReportedPost, createAreaAlert, createOutage, fetchAreaAlerts, fetchAuditLogs, fetchDashboardOverview, fetchLots,
-  fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
+  captureCameraFrame, fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
 } from '../api.js';
 import { CameraCanvas } from '../components/CameraCanvas.js';
 import { art, cap, esc, row, statusText } from '../ui.js';
@@ -256,16 +256,42 @@ const parking = {
             <div class="form-group"><label for="adminPlotStatus">Status</label><select id="adminPlotStatus" class="form-control" disabled><option value="available">Free</option><option value="occupied">Occupied</option></select></div>
             <div class="stack"><button class="btn btn-secondary btn-md btn-block" id="adminToggleOccupancyBtn" disabled>Test occupancy</button><button class="btn btn-danger btn-md btn-block" id="adminDeletePlotBtn" disabled>Delete spot</button></div>
           </div>
-          <div><div class="inspector-title">Camera address</div><input type="text" id="adminCameraUrl" class="form-control" placeholder="rtsp://camera.example/live" aria-label="Camera address"></div>
+          <div>
+            <div class="inspector-title">Camera address</div>
+            <input type="text" id="adminCameraUrl" class="form-control" placeholder="rtsp://camera.example/live" aria-label="Camera address">
+            <button class="btn btn-secondary btn-md btn-block" id="adminCaptureFrameBtn" style="margin-top:8px">Capture a live frame</button>
+            <div id="adminCaptureStatus" class="muted" style="font-size:13px;margin-top:6px"></div>
+          </div>
         </aside>
       </div>`;
   },
   mount(ctx, showToast) {
     const $ = (id) => document.getElementById(id);
     adminCanvas = new CameraCanvas($('adminCameraCanvas'), { onPlotSelected: (plot) => updateInspector(plot), onPlotsChanged: () => {} });
+    const camUrl = $('adminCameraUrl');
+    let loaded = [];
     fetchLots().then((lots) => {
-      if (lots.length) adminCanvas?.setLot(lots[0]);
-      $('adminLotSelect')?.addEventListener('change', (e) => { const l = lots.find((x) => x.id === e.target.value); if (l) adminCanvas?.setLot(l); });
+      loaded = lots;
+      if (lots.length) { adminCanvas?.setLot(lots[0]); camUrl.value = lots[0].camera_url || ''; }
+      $('adminLotSelect')?.addEventListener('change', (e) => {
+        const l = lots.find((x) => x.id === e.target.value);
+        if (l) { adminCanvas?.setLot(l); camUrl.value = l.camera_url || ''; }
+      });
+    });
+    const status = $('adminCaptureStatus');
+    $('adminCaptureFrameBtn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      btn.disabled = true;
+      status.textContent = 'Capturing a frame from the camera…';
+      try {
+        const res = await captureCameraFrame(camUrl.value.trim() || 'rtsp://cam.timisoara-hub.ro/live');
+        if (res?.image) { adminCanvas.setBackgroundImage(res.image); status.textContent = 'Frame captured. You can mark the spots now.'; }
+        else status.textContent = 'The camera did not return a picture.';
+      } catch (err) {
+        status.textContent = `Could not capture: ${err.message}`;
+      } finally {
+        btn.disabled = false;
+      }
     });
     const setMode = (m) => {
       adminCanvas.setMode(m);
@@ -278,8 +304,8 @@ const parking = {
     $('adminSavePlotsBtn').addEventListener('click', async () => {
       const plots = adminCanvas.getPlots();
       try {
-        await saveLotPlots($('adminLotSelect').value, { slots_data: plots, camera_url: $('adminCameraUrl').value.trim() || null, capacity: plots.length });
-        showToast?.(`Saved. ${plots.length} spots.`);
+        await saveLotPlots($('adminLotSelect').value, { slots_data: plots, camera_url: $('adminCameraUrl').value.trim() || null, capacity: plots.length || undefined });
+        showToast?.(`Saved ${plots.length} spots for ${loaded.find((l) => l.id === $('adminLotSelect').value)?.name || 'this lot'}. The vision agent will scan this camera.`);
       } catch (err) {
         showToast?.(`Could not save: ${err.message}`);
       }
