@@ -27,15 +27,32 @@ export function renderAuthModal() {
         </div>
 
         <div class="current-session-box">
-          <div class="session-header">Sesiune Curentă: <strong>${user?.name || 'Andrei Timișan'}</strong></div>
+          <div class="session-header">Sesiune Curentă: <strong>${user?.name || 'Neautentificat'}</strong></div>
           <div class="session-meta">
-            <span>Email: <strong>${user?.email || 'resident@timisoara-hub.ro'}</strong></span>
-            <span>Rol: <strong class="badge-${user?.role || 'resident'}">${(user?.role || 'resident').toUpperCase()}</strong></span>
-            <span>Securitate: <strong>${user?.security_tier || 'tier_1_standard'}</strong></span>
+            <span>Email: <strong>${user?.email || 'nedefinit'}</strong></span>
+            <span>Rol: <strong class="badge-${user?.role || 'none'}">${(user?.role || 'oaspete').toUpperCase()}</strong></span>
+            <span>Securitate: <strong>${user?.security_tier || 'standard'}</strong></span>
+          </div>
+          <div style="margin-top: 10px; display: flex; gap: 8px;">
+            <button class="btn btn-danger btn-sm" id="logoutBtn">🚪 Deconectare (Logout)</button>
           </div>
         </div>
 
-        <div class="section-label">Selectează Profil Utilizator (Auth0 Tokens):</div>
+        <div class="section-label">🌐 Conectare Rapidă cu Google:</div>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 18px;">
+          <button class="btn btn-primary" id="googleCitizenLoginBtn" style="justify-content: flex-start;">
+            <span style="font-weight: 800; font-size: 14px;">G</span> Conectare cu Google (Cetățean - alex@gmail.com)
+          </button>
+          <button class="btn btn-secondary" id="googleAdminLoginBtn" style="justify-content: flex-start; border-color: #38bdf8; color: #38bdf8;">
+            <span style="font-weight: 800; font-size: 14px;">G</span> Conectare cu Google Primărie (Admin - admin.elena@timisoara-hub.ro)
+          </button>
+          <div style="display: flex; gap: 6px; margin-top: 4px;">
+            <input type="email" id="googleCustomEmailInput" class="form-control" placeholder="Introduceți alt email Google (@timisoara-hub.ro pt Admin)..." />
+            <button class="btn btn-secondary btn-sm" id="googleCustomLoginBtn" style="white-space: nowrap;">Login Google</button>
+          </div>
+        </div>
+
+        <div class="section-label">Sau Selectează Profil de Test (Auth0 RBAC / MFA Tokens):</div>
         <div class="accounts-list">
           ${accounts.map(acc => `
             <div class="account-card ${currentToken === acc.token ? 'selected' : ''}" data-token="${acc.token}">

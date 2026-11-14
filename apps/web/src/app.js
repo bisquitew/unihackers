@@ -1,4 +1,4 @@
-import { initAuth, onAuthChange, switchToken, getCurrentUser } from './auth.js';
+import { initAuth, onAuthChange, switchToken, getCurrentUser, isAdmin, loginGoogleUser, logout } from './auth.js';
 import { renderNavbar } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
 import { renderHomeView } from './views/HomeView.js';
@@ -35,7 +35,11 @@ export async function initApp() {
   // 5. Setup Listeners
   onAuthChange(() => {
     renderHeader();
-    switchTab(activeTab);
+    if (activeTab === 'admin' && !isAdmin()) {
+      switchTab('home');
+    } else {
+      switchTab(activeTab);
+    }
   });
 }
 
@@ -60,6 +64,14 @@ function renderHeader() {
 }
 
 export async function switchTab(tabId) {
+  if (tabId === 'admin' && !isAdmin()) {
+    showToast('⚠️ Acces restricționat: Necesită autentificare cu rol de Administrator.');
+    activeTab = 'home';
+    await switchTab('home');
+    openAuthModal();
+    return;
+  }
+
   activeTab = tabId;
   renderHeader();
 
@@ -124,6 +136,60 @@ function openAuthModal() {
 
   document.getElementById('authModalBackdrop')?.addEventListener('click', (e) => {
     if (e.target.id === 'authModalBackdrop') modalContainer.innerHTML = '';
+  });
+
+  // Logout
+  document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    await logout();
+    modalContainer.innerHTML = '';
+    showToast('🚪 Deconectat cu succes. Sunteți în modul oaspete.');
+  });
+
+  // Google Citizen Login
+  document.getElementById('googleCitizenLoginBtn')?.addEventListener('click', async () => {
+    try {
+      const user = await loginGoogleUser({
+        email: 'alex.popescu@gmail.com',
+        name: 'Alex Popescu'
+      });
+      modalContainer.innerHTML = '';
+      showToast(`🔵 Conectat cu Google ca ${user.name} (${user.role})`);
+    } catch (e) {
+      showToast(`Eroare conectare: ${e.message}`);
+    }
+  });
+
+  // Google Admin Login
+  document.getElementById('googleAdminLoginBtn')?.addEventListener('click', async () => {
+    try {
+      const user = await loginGoogleUser({
+        email: 'admin.elena@timisoara-hub.ro',
+        name: 'Elena Dobre (Admin Primărie)',
+        role: 'admin'
+      });
+      modalContainer.innerHTML = '';
+      showToast(`🛡️ Conectat cu Google Workspace Primărie: ${user.name} (${user.role})`);
+    } catch (e) {
+      showToast(`Eroare conectare: ${e.message}`);
+    }
+  });
+
+  // Google Custom Email Login
+  document.getElementById('googleCustomLoginBtn')?.addEventListener('click', async () => {
+    const input = document.getElementById('googleCustomEmailInput');
+    const email = input?.value?.trim();
+    if (!email) {
+      showToast('Introduceți o adresă de email.');
+      return;
+    }
+    try {
+      const name = email.split('@')[0].replace(/[._]/g, ' ');
+      const user = await loginGoogleUser({ email, name });
+      modalContainer.innerHTML = '';
+      showToast(`🌐 Conectat cu Google ca ${user.name} (${user.role})`);
+    } catch (e) {
+      showToast(`Eroare conectare: ${e.message}`);
+    }
   });
 
   // Switch account

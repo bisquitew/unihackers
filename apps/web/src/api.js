@@ -13,6 +13,16 @@ function getHeaders(token) {
 }
 
 // --- AUTH0 & SECURITY ---
+export async function loginWithGoogle({ email, name, role } = {}) {
+  const res = await fetch(`${BASE_URL}/v1/core/auth/google-login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, name, role }),
+  });
+  if (!res.ok) throw new Error(`Google login failed: ${res.status}`);
+  return await res.json();
+}
+
 export async function fetchAuthMe(token = 'dev_resident') {
   try {
     const res = await fetch(`${BASE_URL}/v1/core/auth/me`, { headers: getHeaders(token) });

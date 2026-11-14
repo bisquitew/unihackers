@@ -493,6 +493,37 @@ export const GUEST_USER: AuthUser = {
   security_tier: 'tier_1_standard'
 };
 
+export function registerGoogleUser(googlePayload: {
+  email: string;
+  name: string;
+  sub?: string;
+  picture?: string;
+  role?: UserRole;
+}): { token: string; user: AuthUser } {
+  const isAdminEmail = googlePayload.email.endsWith('@timisoara-hub.ro') || googlePayload.email.toLowerCase().includes('admin');
+  const role: UserRole = googlePayload.role || (isAdminEmail ? 'admin' : 'resident');
+  const sub = googlePayload.sub || `google-oauth2|${Date.now()}`;
+  const token = `google_${sub.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+  const user: AuthUser = {
+    sub,
+    email: googlePayload.email,
+    name: googlePayload.name,
+    role,
+    permissions: ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.resident,
+    mfa_enabled: role === 'admin',
+    mfa_verified: role === 'admin',
+    amr: ['google-oauth2'],
+    idp: 'google-oauth2',
+    security_tier: role === 'admin' ? 'tier_2_mfa_verified' : 'tier_1_standard'
+  };
+
+  DEV_USERS[token] = user;
+  DEV_USERS[sub] = user;
+  recordAudit(user, 'auth.google_login', 'ALLOW');
+  return { token, user };
+}
+
 /**
  * Resolves Bearer token into an AuthUser context.
  * Supports both dev tokens and real Auth0 RS256 JWTs.

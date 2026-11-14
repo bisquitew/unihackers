@@ -132,6 +132,18 @@ def main():
         status, tokens_catalog = get("/v1/core/auth/dev-tokens")
         print(f"✅ Auth0 Dev Tokens Catalog: {len(tokens_catalog)} test profiles available for judges")
 
+        # Test Google OAuth Flow
+        status, g_citizen = post("/v1/core/auth/google-login", {"email": "alex.popescu@gmail.com", "name": "Alex Popescu"})
+        assert status == 200, f"Expected 200 for Google Citizen login, got {status}"
+        assert g_citizen["user"]["role"] == "resident", f"Expected resident role, got {g_citizen['user']['role']}"
+        print(f"✅ Google OAuth Citizen Sign-In: {g_citizen['user']['email']} -> Role: {g_citizen['user']['role']}")
+
+        status, g_admin = post("/v1/core/auth/google-login", {"email": "admin.elena@timisoara-hub.ro", "name": "Elena Dobre"})
+        assert status == 200, f"Expected 200 for Google Admin login, got {status}"
+        assert g_admin["user"]["role"] == "admin", f"Expected admin role, got {g_admin['user']['role']}"
+        assert g_admin["user"]["security_tier"] == "tier_2_mfa_verified", f"Expected tier_2_mfa_verified"
+        print(f"✅ Google Workspace Primărie Sign-In: {g_admin['user']['email']} -> Role: {g_admin['user']['role']} (MFA: {g_admin['user']['mfa_verified']})")
+
         # Test A: Resident attempts administrative action -> HTTP 403 insufficient_role
         test_outage = {
             "title": "Avarie Colterm Calea Șagului",

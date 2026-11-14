@@ -30,7 +30,8 @@ import {
   getSecurityEmails,
   trustLocation,
   isLocationTrusted,
-  DEV_USERS
+  DEV_USERS,
+  registerGoogleUser
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -285,6 +286,15 @@ const server = http.createServer(async (req, res) => {
         user: targetUser,
         example_header: `Authorization: Bearer ${token}`
       });
+    }
+
+    if (pathname === '/v1/core/auth/google-login' && method === 'POST') {
+      const body = await parseBody(req);
+      const email = body.email || 'citizen.google@gmail.com';
+      const name = body.name || 'Cetățean Conectat cu Google';
+      const role = body.role || (email.endsWith('@timisoara-hub.ro') || email.toLowerCase().includes('admin') ? 'admin' : 'resident');
+      const result = registerGoogleUser({ email, name, role, picture: body.picture });
+      return sendJson(res, 200, result);
     }
 
     if (pathname === '/v1/core/auth/dev-tokens' && method === 'GET') {

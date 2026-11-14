@@ -13,12 +13,14 @@ export function renderNavbar(activeTab, onTabSelect, onAuthClick) {
     { id: 'assistant', label: '🤖 Asistent AI' },
   ];
 
-  // Admin tab is always visible, but indicates badge/lock
-  navItems.push({
-    id: 'admin',
-    label: userIsAdmin ? '🛡️ Panou Admin' : '🔒 Admin',
-    isAdminOnly: true
-  });
+  // Admin tab is only visible when user has an active admin role
+  if (userIsAdmin) {
+    navItems.push({
+      id: 'admin',
+      label: '🛡️ Panou Admin',
+      isAdminOnly: true
+    });
+  }
 
   return `
     <header class="app-header">
