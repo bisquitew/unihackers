@@ -1,4 +1,4 @@
-import type { InAppFeedbackInput, SurveyPayload } from './types';
+import type { InAppFeedbackInput, SurveyPayload } from './types.ts';
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; error: string };
 

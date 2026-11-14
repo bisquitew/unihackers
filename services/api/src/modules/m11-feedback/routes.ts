@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
-import { feedbackService } from './service';
-import { parseInAppInput, parseSurveyPayload } from './validation';
+import { feedbackService } from './service.ts';
+import { parseInAppInput, parseSurveyPayload } from './validation.ts';
 
 export const feedbackRoutes = new Hono();
 
