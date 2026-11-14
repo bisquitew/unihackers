@@ -108,6 +108,59 @@ export async function fetchAnalyticsHeatmap() {
   }
 }
 
+// --- AREA DANGER & CONSTRUCTION ALERTS (RADIUS MAPPING & NEIGHBOUR SIGNALING) ---
+export async function fetchAreaAlerts(filter = {}) {
+  try {
+    const params = new URLSearchParams();
+    if (filter.type) params.set('type', filter.type);
+    if (filter.status) params.set('status', filter.status);
+    if (filter.neighbourhood) params.set('neighbourhood', filter.neighbourhood);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${BASE_URL}/v1/core/area-alerts${qs}`);
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchAreaAlertById(id) {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/area-alerts/${id}`);
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function createAreaAlert(token, alertData) {
+  const res = await fetch(`${BASE_URL}/v1/core/area-alerts`, {
+    method: 'POST',
+    headers: getHeaders(token),
+    body: JSON.stringify(alertData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+export async function checkAreaProximity(query = {}) {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/area-alerts/check-proximity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+    });
+    return await res.json();
+  } catch (err) {
+    return {
+      in_danger_zone: false,
+      in_construction_zone: false,
+      matching_alerts: [],
+      error: err.message
+    };
+  }
+}
+
 // --- M04 UTILITIES ---
 export async function fetchOutages() {
   try {

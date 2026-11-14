@@ -167,3 +167,47 @@ export interface UploadSignedUrlResponse {
   key: string;
   expires_in: number;
 }
+
+// Area Danger & Construction Alerts with Radius Mapping & Neighbour Signaling
+export const AreaAlertTypeSchema = z.enum(['danger', 'construction', 'hazard', 'safety'] as const);
+export type AreaAlertType = 'danger' | 'construction' | 'hazard' | 'safety';
+
+export const AreaAlertSeveritySchema = z.enum(['critical', 'high', 'medium', 'low'] as const);
+export type AreaAlertSeverity = 'critical' | 'high' | 'medium' | 'low';
+
+export const AreaAlertSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  description: z.string(),
+  type: AreaAlertTypeSchema,
+  severity: AreaAlertSeveritySchema.default('high'),
+  latitude: z.number(),
+  longitude: z.number(),
+  radius_meters: z.number(),
+  neighbourhood: z.string().optional(),
+  affected_neighbourhoods: z.array(z.string()).default([]),
+  affected_residents_count: z.number().default(0),
+  status: z.enum(['active', 'resolved'] as const).default('active'),
+  start_time: z.string(),
+  expected_end_time: z.string().optional().nullable(),
+  created_at: z.string(),
+  updated_at: z.string()
+});
+export interface AreaAlert {
+  id: string;
+  title: string;
+  description: string;
+  type: AreaAlertType;
+  severity: AreaAlertSeverity;
+  latitude: number;
+  longitude: number;
+  radius_meters: number;
+  neighbourhood?: string;
+  affected_neighbourhoods: string[];
+  affected_residents_count: number;
+  status: 'active' | 'resolved';
+  start_time: string;
+  expected_end_time?: string | null;
+  created_at: string;
+  updated_at: string;
+}

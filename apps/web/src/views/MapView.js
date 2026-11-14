@@ -1,4 +1,4 @@
-import { fetchEvents, fetchLots, fetchOutages, fetchSmellPins } from '../api.js';
+import { fetchEvents, fetchLots, fetchOutages, fetchSmellPins, fetchAreaAlerts } from '../api.js';
 import { art, esc } from '../ui.js';
 import { buildLayers, createMap } from '../mapEngine.js';
 
@@ -55,8 +55,8 @@ export function mount() {
     scroll.querySelectorAll('[data-pin]').forEach((el) => el.addEventListener('click', () => pick(el.dataset.pin)));
   }
 
-  Promise.all([fetchLots(), fetchOutages(), fetchEvents(), fetchSmellPins()]).then(([lots, outages, events, smell]) => {
-    layers = buildLayers({ lots, outages, events, smell: smell.pins || [] });
+  Promise.all([fetchLots(), fetchOutages(), fetchEvents(), fetchSmellPins(), fetchAreaAlerts()]).then(([lots, outages, events, smell, areaAlerts]) => {
+    layers = buildLayers({ lots, outages, events, smell: smell.pins || [], areaAlerts: areaAlerts || [] });
     pushPins();
     map.overview();
     draw();

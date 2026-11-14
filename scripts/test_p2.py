@@ -220,6 +220,38 @@ def main():
         print(f"   🔔 Push Dispatched: \"{anomaly_res.get('push_notification', {}).get('title')}\"")
         print(f"   📧 Security Email: \"{anomaly_res.get('security_email', {}).get('subject')}\" to {anomaly_res.get('security_email', {}).get('to_email')}")
 
+        # 3.1 [AREA_ALERTS] Danger & Construction Radius Alerts with Neighbour Signaling
+        status, area_alerts = get("/v1/core/area-alerts")
+        assert status == 200 and len(area_alerts) >= 4, f"Expected at least 4 area alerts, got {len(area_alerts)}"
+        print(f"✅ [AREA_ALERTS] /v1/core/area-alerts -> {len(area_alerts)} danger & construction alerts active")
+        danger_alert = next((a for a in area_alerts if a['type'] == 'danger'), None)
+        const_alert = next((a for a in area_alerts if a['type'] == 'construction'), None)
+        print(f"   🚨 Danger Event: \"{danger_alert['title']}\" (Radius: {danger_alert['radius_meters']}m | Signaled Neighbours: {', '.join(danger_alert['affected_neighbourhoods'])})")
+        print(f"   🚧 Construction Event: \"{const_alert['title']}\" (Radius: {const_alert['radius_meters']}m | Signaled Neighbours: {', '.join(const_alert['affected_neighbourhoods'])})")
+
+        # Test Proximity Check within Danger Radius (Circumvalațiunii)
+        status, prox_inside = post("/v1/core/area-alerts/check-proximity", {"neighbourhood": "Circumvalațiunii"})
+        assert status == 200, "Proximity check failed"
+        assert prox_inside.get("in_danger_zone") == True, "Expected resident in Circumvalatiunii to be within danger zone"
+        print(f"   📍 Proximity Check (Circumvalațiunii): Inside Danger Zone? {prox_inside['in_danger_zone']} | Matching: {len(prox_inside['matching_alerts'])} events")
+
+        # Test Creating New Area Alert with Dynamic Radius and Neighbour Computation
+        new_area_alert_payload = {
+            "title": "🚨 Risc Incendiu Depozit Calea Șagului",
+            "description": "Degajare masivă de fum. Perimetru de siguranță de 800m instituit.",
+            "type": "danger",
+            "severity": "critical",
+            "latitude": 45.7320,
+            "longitude": 21.2050,
+            "radius_meters": 800,
+            "neighbourhood": "Calea Șagului"
+        }
+        status, created_area_alert = post("/v1/core/area-alerts", new_area_alert_payload, token="dev_admin_mfa")
+        assert status == 201, f"Expected 201, got {status}"
+        assert len(created_area_alert["affected_neighbourhoods"]) > 0, "Expected computed affected neighbourhoods"
+        assert created_area_alert["affected_residents_count"] > 0, "Expected notified residents count"
+        print(f"   📡 Created Radius Alert: \"{created_area_alert['title']}\" -> {len(created_area_alert['affected_neighbourhoods'])} neighbours signaled ({created_area_alert['affected_residents_count']} residents notified)")
+
         # 4. [M04_UTILITIES] Outages
         status, outages = get("/v1/m/utilities/outages")
         print(f"✅ [M04_UTILITIES] /v1/m/utilities/outages -> {len(outages)} active outages in Timișoara")

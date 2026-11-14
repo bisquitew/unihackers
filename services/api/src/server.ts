@@ -21,6 +21,7 @@ import { assistantRoutes } from './modules/m10-assistant/routes.ts';
 import { feedbackRoutes } from './modules/m11-feedback/routes.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
+import { areaAlertsService } from './core/area-alerts.ts';
 import { 
   resolveAuthUser, 
   enforceSecurityPolicy, 
@@ -211,6 +212,54 @@ const server = http.createServer(async (req, res) => {
     // 2. Core Areas
     if (pathname === '/v1/core/areas' && method === 'GET') {
       return sendJson(res, 200, TIMISOARA_AREAS);
+    }
+
+    // 2.1 Area Danger & Construction Alerts with Radius Mapping & Neighbour Signaling
+    if (pathname === '/v1/core/area-alerts' && method === 'GET') {
+      const type = (url.searchParams.get('type') as any) || undefined;
+      const status = url.searchParams.get('status') || undefined;
+      const neighbourhood = url.searchParams.get('neighbourhood') || undefined;
+      const alerts = areaAlertsService.getAll({ type, status, neighbourhood });
+      return sendJson(res, 200, alerts);
+    }
+
+    if (pathname.startsWith('/v1/core/area-alerts/') && !pathname.endsWith('/check-proximity') && method === 'GET') {
+      const id = pathname.replace('/v1/core/area-alerts/', '');
+      const alert = areaAlertsService.getById(id);
+      if (!alert) return sendJson(res, 404, { error: 'Area alert not found' });
+      return sendJson(res, 200, alert);
+    }
+
+    if (pathname === '/v1/core/area-alerts' && method === 'POST') {
+      const body = await parseBody(req);
+      if (!body.title || !body.type || body.latitude === undefined || body.longitude === undefined || !body.radius_meters) {
+        return sendJson(res, 400, {
+          error: 'Missing required fields: title, type, latitude, longitude, radius_meters'
+        });
+      }
+      const newAlert = await areaAlertsService.create({
+        title: body.title,
+        description: body.description || '',
+        type: body.type,
+        severity: body.severity,
+        latitude: Number(body.latitude),
+        longitude: Number(body.longitude),
+        radius_meters: Number(body.radius_meters),
+        neighbourhood: body.neighbourhood,
+        expected_end_time: body.expected_end_time
+      });
+      return sendJson(res, 201, newAlert);
+    }
+
+    if (pathname === '/v1/core/area-alerts/check-proximity' && method === 'POST') {
+      const body = await parseBody(req);
+      const proximity = areaAlertsService.checkProximity({
+        latitude: body.latitude !== undefined ? Number(body.latitude) : undefined,
+        longitude: body.longitude !== undefined ? Number(body.longitude) : undefined,
+        address: body.address,
+        neighbourhood: body.neighbourhood
+      });
+      return sendJson(res, 200, proximity);
     }
 
     // 3. User & Auth0 Security (Sponsor Challenge)

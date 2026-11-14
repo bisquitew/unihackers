@@ -53,9 +53,20 @@ const AREAS = {
 export const areaCoord = (name) => AREAS[name] || [45.7537, 21.2257];
 
 /** Everything the map can show, as engine pins grouped by layer. */
-export function buildLayers({ lots = [], outages = [], events = [], smell = [] }) {
+export function buildLayers({ lots = [], outages = [], events = [], smell = [], areaAlerts = [] }) {
   const pin = (id, [lat, lng], artKey, title, kindLabel) => ({ id, lat, lng, art: artKey, title, kindLabel, badge: '' });
   return {
+    areaAlerts: {
+      title: 'Danger & Construction',
+      art: 'safety',
+      pins: areaAlerts.map((a) => pin(
+        `area-${a.id}`,
+        [a.latitude, a.longitude],
+        'safety',
+        `${a.type === 'danger' ? '🚨' : '🚧'} ${a.title}`,
+        `Radius: ${a.radius_meters}m • ${(a.affected_neighbourhoods || []).join(', ')}`
+      ))
+    },
     parking: { title: 'Parking', art: 'parkie', pins: lots.map((l) => pin(`lot-${l.id}`, [l.latitude, l.longitude], 'parkie', l.name, `${l.available_spots} of ${l.capacity} free`)) },
     alerts: { title: 'City alerts', art: 'utilities', pins: outages.map((o, i) => pin(`out-${o.id ?? i}`, areaCoord(o.affected_areas?.[0]), 'utilities', o.title, cap(o.provider))) },
     events: { title: 'Events', art: 'events', pins: events.filter((e) => e.latitude && e.longitude).map((e) => pin(`evt-${e.id}`, [e.latitude, e.longitude], 'events', e.title, e.locationName || 'Event')) },

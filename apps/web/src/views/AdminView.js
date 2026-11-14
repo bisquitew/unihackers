@@ -1,5 +1,5 @@
 import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
-import { createOutage, fetchAuditLogs, fetchLots, fetchTigerStatus, saveLotPlots } from '../api.js';
+import { createOutage, fetchAuditLogs, fetchLots, fetchTigerStatus, saveLotPlots, createAreaAlert } from '../api.js';
 import { CameraCanvas } from '../components/CameraCanvas.js';
 import { esc } from '../ui.js';
 
@@ -18,6 +18,7 @@ export async function render(ctx) {
 
     <div class="admin-subnav" role="tablist">
       <button class="admin-sublink active" role="tab" data-subtab="parkie-calib">Parking cameras</button>
+      <button class="admin-sublink" role="tab" data-subtab="area-alerts">🚨 Danger & Works Radius</button>
       <button class="admin-sublink" role="tab" data-subtab="outages-mfa">Publish an outage</button>
       <button class="admin-sublink" role="tab" data-subtab="audit-logs">Security log</button>
       <button class="admin-sublink" role="tab" data-subtab="tiger-db">Database</button>
@@ -67,6 +68,61 @@ export async function render(ctx) {
       </div>
     </div>
 
+    <!-- Tab 2: Danger & Works Area Alerts with Radius & Neighbour Signaling -->
+    <div class="admin-subcontent" id="subtab-area-alerts" style="display:none">
+      <div class="form-panel-card">
+        <div class="panel-header">
+          <h3>🚨 Issue Danger Perimeter or Construction Work Area Alert</h3>
+          <p>Maps the incident radius, computes overlapping Timișoara neighbourhoods, and instantly notifies nearest residents.</p>
+        </div>
+        <div class="stack" style="max-width: 640px;">
+          <label class="field"><span>Alert Kind</span>
+            <select id="newAlertKind">
+              <option value="danger">🚨 Danger (Gas leak, fire hazard, structural collapse, safety notice)</option>
+              <option value="construction">🚧 Construction (Roadworks, STPT track renewal, underground excavation)</option>
+            </select>
+          </label>
+          <label class="field"><span>Title</span><input id="newAlertTitle" placeholder="ex: Pasajul Jiul gas leak perimeter"></label>
+          <label class="field"><span>Description & citizen guidance</span>
+            <textarea id="newAlertDesc" rows="3" placeholder="Provide instructions for residents inside the perimeter..."></textarea>
+          </label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <label class="field"><span>Center Neighbourhood</span>
+              <select id="newAlertArea">
+                <option value="Circumvalațiunii" data-lat="45.7620" data-lng="21.2180">Circumvalațiunii</option>
+                <option value="Cetate (Centru)" data-lat="45.7578" data-lng="21.2290">Cetate (Centru)</option>
+                <option value="Complex Studențesc" data-lat="45.7480" data-lng="21.2410">Complex Studențesc</option>
+                <option value="Mehala" data-lat="45.7680" data-lng="21.2020">Mehala</option>
+                <option value="Fabric" data-lat="45.7580" data-lng="21.2510">Fabric</option>
+                <option value="Iosefin" data-lat="45.7450" data-lng="21.2050">Iosefin</option>
+                <option value="Girocului" data-lat="45.7320" data-lng="21.2350">Calea Girocului</option>
+              </select>
+            </label>
+            <label class="field"><span>Severity</span>
+              <select id="newAlertSeverity">
+                <option value="critical">Critical — Immediate safety action</option>
+                <option value="high">High — Significant area impact</option>
+                <option value="medium">Medium — Moderate work zone</option>
+              </select>
+            </label>
+          </div>
+          <div class="field">
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span>Perimeter Radius</span>
+              <b id="radiusLabel" style="color:var(--color-ink)">700 meters</b>
+            </div>
+            <input type="range" id="newAlertRadius" min="150" max="2500" step="50" value="700" style="width:100%">
+          </div>
+          <div id="affectedNeighboursPreview" style="background:var(--color-tint, rgba(0,0,0,0.04));border-radius:8px;padding:12px;font-size:13px">
+            <b>📡 Automatic Neighbour Signaling:</b>
+            <div style="margin-top:4px" class="muted">Residents in Circumvalațiunii, Cetate, Gara de Nord will receive prioritized alerts.</div>
+          </div>
+          <button class="btn btn-primary btn-md" id="publishAreaAlertBtn">📡 Broadcast Perimeter & Signal Neighbours</button>
+          <div class="result" id="areaAlertResult" hidden></div>
+        </div>
+      </div>
+    </div>
+
     <div class="admin-subcontent" id="subtab-outages-mfa" style="display:none">
       <div class="form-panel-card">
         <div class="panel-header">
@@ -79,48 +135,55 @@ export async function render(ctx) {
         </div>
         <div class="stack">
           <label class="field"><span>Title</span><input id="newOutageTitle" value="Colterm: main pipe works on Circumvalațiunii"></label>
-          <label class="field"><span>Operator</span><select id="newOutageProvider"><option value="Colterm">Colterm (heating and hot water)</option><option value="Aquatim">Aquatim (water and sewage)</option></select></label>
-          <label class="field"><span>Affected areas, separated by commas</span><input id="newOutageAreas" value="Circumvalatiunii, Mehala"></label>
-          <label class="field"><span>Details</span><textarea id="newOutageDesc" rows="3">Unplanned failure on the primary network. Repair crews are on site.</textarea></label>
-          <div><button class="btn btn-primary" id="publishOutageBtn">Publish outage</button></div>
-          <div id="outagePublishResult" class="result" hidden></div>
+          <label class="field"><span>Operator</span><select id="newOutageProvider"><option value="colterm">Colterm</option><option value="aquatim">Aquatim</option></select></label>
+          <label class="field"><span>Affected areas</span><input id="newOutageAreas" value="Circumvalațiunii, Mehala"></label>
+          <label class="field"><span>Description</span><textarea id="newOutageDesc" rows="3">A pipe renewal project will temporarily cut hot water.</textarea></label>
+          <button class="btn btn-primary btn-md" id="publishOutageBtn">Publish outage</button>
+          <div class="result" id="outagePublishResult" hidden></div>
         </div>
       </div>
     </div>
 
     <div class="admin-subcontent" id="subtab-audit-logs" style="display:none">
-      <div class="form-panel-card" style="max-width:none">
-        <div class="panel-header"><h3>Security log</h3><p>Every authorization decision, MFA challenge and privileged access, kept in the audit table.</p></div>
+      <div class="form-panel-card">
+        <div class="panel-header">
+          <h3>Security log</h3>
+          <p>Every privileged action and MFA decision is recorded here, in memory and on the server.</p>
+        </div>
         <div class="list">
-          ${(auditLogs.logs || []).map((log) => `
-            <div class="audit-row">
-              <span class="audit-badge ${log.decision === 'allow' ? 'badge-allow' : 'badge-challenge'}">${esc((log.decision || 'allow').toUpperCase())}</span>
-              <div class="audit-details">
-                <div><strong>${esc(log.action)}</strong></div>
-                <div class="audit-meta">User <code>${esc(log.user_id)}</code> · role ${esc(log.role)} · MFA ${log.mfa_verified ? 'yes' : 'no'} · IP ${esc(log.ip_address)}</div>
-              </div>
-              <div class="audit-time">${new Date(log.created_at).toLocaleTimeString()}</div>
-            </div>`).join('') || '<div class="empty">No events yet.</div>'}
+          ${auditLogs.map((l) => `<div class="row" style="padding:10px 4px">
+            <div class="body">
+              <div class="title"><code>${esc(l.action)}</code> · <b>${esc(l.outcome)}</b></div>
+              <div class="detail">${esc(l.user_email || 'anonymous')} · ${esc(l.user_role || 'guest')}</div>
+            </div>
+            <div class="side muted" style="font-size:12px">${new Date(l.created_at).toLocaleTimeString()}</div>
+          </div>`).join('') || '<div class="empty">No security events yet.</div>'}
         </div>
       </div>
     </div>
 
     <div class="admin-subcontent" id="subtab-tiger-db" style="display:none">
       <div class="form-panel-card">
-        <div class="panel-header"><h3>Database status</h3><p>Time-series database for sensors, parking cameras and audit events (TimescaleDB ${esc(tiger?.version || '2.x')}).</p></div>
-        <div class="tiger-grid">
-          <div><div class="muted">Host</div><div><code>${esc(tiger?.host || 'tsdb.cloud.timescale.com')}</code></div></div>
-          <div><div class="muted">Hypertables</div><div><strong>${tiger?.hypertables?.length || 3}</strong> partitioned tables</div></div>
-          <div><div class="muted">Continuous aggregates</div><div><strong>${tiger?.continuous_aggregates?.length || 2}</strong> materialized views</div></div>
+        <div class="panel-header">
+          <h3>Database status</h3>
+          <p>The time-series database runs on TimescaleDB. Live aggregates power the city metrics and the parking charts.</p>
+        </div>
+        <div class="cols">
+          <div>
+            <div class="detail-card"><div class="muted">Version</div><b style="font-size:18px">${esc(tiger?.version || '2.32.0')}</b></div>
+            <div class="detail-card"><div class="muted">Connected</div><b style="font-size:18px">${tiger?.connected ? 'Live' : 'Fallback (offline)'}</b></div>
+          </div>
+          <div>
+            <div class="detail-card"><div class="muted">Active hypertables</div><b style="font-size:18px">${tiger?.hypertables?.length || 3}</b></div>
+            <div class="detail-card"><div class="muted">Continuous aggregates</div><b style="font-size:18px">${tiger?.continuous_aggregates?.length || 2}</b></div>
+          </div>
         </div>
       </div>
     </div>
   </div>`;
 }
 
-export async function mount(ctx, { showToast } = {}) {
-  const lots = await fetchLots();
-
+export function mount(ctx, { saveLotPlots, showToast }) {
   document.querySelectorAll('.admin-sublink').forEach((btn) => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.admin-sublink').forEach((b) => b.classList.remove('active'));
@@ -134,11 +197,13 @@ export async function mount(ctx, { showToast } = {}) {
   const canvasEl = document.getElementById('adminCameraCanvas');
   if (canvasEl) {
     adminCanvas = new CameraCanvas(canvasEl, { onPlotSelected: (plot) => updateInspector(plot), onPlotsChanged: () => {} });
-    const lotSelect = document.getElementById('adminLotSelect');
-    if (lots.length) adminCanvas.setLot(lots[0]);
-    lotSelect?.addEventListener('change', (e) => {
-      const selected = lots.find((l) => l.id === e.target.value);
-      if (selected) adminCanvas.setLot(selected);
+    fetchLots().then((lots) => {
+      const lotSelect = document.getElementById('adminLotSelect');
+      if (lots.length) adminCanvas.setLot(lots[0]);
+      lotSelect?.addEventListener('change', (e) => {
+        const selected = lots.find((l) => l.id === e.target.value);
+        if (selected) adminCanvas.setLot(selected);
+      });
     });
     const modeBtns = { select: document.getElementById('adminSelectModeBtn'), draw: document.getElementById('adminDrawModeBtn') };
     const setMode = (m) => {
@@ -151,6 +216,7 @@ export async function mount(ctx, { showToast } = {}) {
     document.getElementById('adminAddGridBtn')?.addEventListener('click', () => adminCanvas.addGridSlots(5));
     document.getElementById('adminSavePlotsBtn')?.addEventListener('click', async () => {
       const plots = adminCanvas.getPlots();
+      const lotSelect = document.getElementById('adminLotSelect');
       try {
         await saveLotPlots(lotSelect.value, { slots_data: plots, camera_url: document.getElementById('adminCameraUrl').value.trim() || null, capacity: plots.length });
         showToast?.(`Saved. ${plots.length} spots configured.`);
@@ -170,6 +236,75 @@ export async function mount(ctx, { showToast } = {}) {
     });
     document.getElementById('adminDeletePlotBtn')?.addEventListener('click', () => adminCanvas.deleteSelectedPlot());
   }
+
+  // Area Danger & Construction Alert Form
+  const radiusSlider = document.getElementById('newAlertRadius');
+  const radiusLabel = document.getElementById('radiusLabel');
+  const areaSelect = document.getElementById('newAlertArea');
+  const previewBox = document.getElementById('affectedNeighboursPreview');
+
+  const updateRadiusPreview = () => {
+    if (!radiusSlider || !radiusLabel) return;
+    const radius = radiusSlider.value;
+    radiusLabel.textContent = `${radius} meters`;
+    const areaName = areaSelect?.value || 'Circumvalațiunii';
+    let suggestedNeighbours = [areaName];
+    if (radius > 500) {
+      if (areaName.includes('Circumvalațiunii')) suggestedNeighbours.push('Cetate (Centru)', 'Gara de Nord', 'Mehala');
+      else if (areaName.includes('Complex')) suggestedNeighbours.push('Elisabetin', 'Fabric', 'Soarelui');
+      else if (areaName.includes('Cetate')) suggestedNeighbours.push('Circumvalațiunii', 'Fabric', 'Iosefin');
+      else suggestedNeighbours.push('Cartiere limitrofe');
+    }
+    if (previewBox) {
+      previewBox.innerHTML = `<b>📡 Automatic Neighbour Signaling:</b><div style="margin-top:4px" class="muted">Residents in <b>${suggestedNeighbours.join(', ')}</b> will receive prioritized alerts and live radius mapping.</div>`;
+    }
+  };
+
+  radiusSlider?.addEventListener('input', updateRadiusPreview);
+  areaSelect?.addEventListener('change', updateRadiusPreview);
+
+  document.getElementById('publishAreaAlertBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('publishAreaAlertBtn');
+    const out = document.getElementById('areaAlertResult');
+    const title = document.getElementById('newAlertTitle')?.value?.trim();
+    const desc = document.getElementById('newAlertDesc')?.value?.trim();
+    const type = document.getElementById('newAlertKind')?.value || 'danger';
+    const severity = document.getElementById('newAlertSeverity')?.value || 'high';
+    const radius = parseInt(radiusSlider?.value || '700', 10);
+    const selectedOption = areaSelect?.options[areaSelect.selectedIndex];
+    const lat = parseFloat(selectedOption?.getAttribute('data-lat') || '45.7620');
+    const lng = parseFloat(selectedOption?.getAttribute('data-lng') || '21.2180');
+    const neighbourhood = selectedOption?.value || 'Circumvalațiunii';
+
+    if (!title || !desc) {
+      if (out) { out.hidden = false; out.innerHTML = '<b class="bad">Please enter both a title and description.</b>'; }
+      return;
+    }
+
+    btn.disabled = true;
+    out.hidden = false;
+    out.innerHTML = '<span class="muted">Broadcasting alert...</span>';
+
+    try {
+      const created = await createAreaAlert(getCurrentToken(), {
+        title,
+        description: desc,
+        type,
+        severity,
+        latitude: lat,
+        longitude: lng,
+        radius_meters: radius,
+        neighbourhood
+      });
+
+      out.innerHTML = `<b class="ok">Published & Signaled.</b><p style="margin-top:4px">Perimeter radius: <b>${created.radius_meters}m</b>. Signaled neighbours: <b>${(created.affected_neighbourhoods || []).join(', ')}</b> (${created.affected_residents_count || 0} residents notified).</p>`;
+      showToast?.('Perimeter alert published.');
+    } catch (err) {
+      out.innerHTML = `<b class="bad">Could not publish alert:</b> ${esc(err.message)}`;
+    } finally {
+      btn.disabled = false;
+    }
+  });
 
   document.getElementById('upgradeMfaPasskeyBtn')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); });
 

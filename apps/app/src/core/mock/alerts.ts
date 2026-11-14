@@ -22,6 +22,40 @@ export type AlertItem = {
 
 export const alerts: AlertItem[] = [
   {
+    id: 'danger-jiul',
+    coordinate: { latitude: 45.7530, longitude: 21.2160 },
+    module: 'safety',
+    group: 'places',
+    title: '🚨 Pericol Gaze: Pasajul Jiul (Rază 650m)',
+    detail: 'Perimetru de siguranță. Vecini semnalați: Circumvalațiunii, Cetate.',
+    trailing: { kind: 'new' },
+    headline: 'Perimetru Critic de Siguranță — Rază 650 metri',
+    context: 'Scurgere de gaze identificată la lucrările edilitare de la Pasajul Jiul. ISU Banat a instituit perimetrul de siguranță.',
+    steps: [
+      { state: 'done', title: 'Perimetru instituit de ISU', note: '17:30' },
+      { state: 'now', title: 'Vecini semnalați prin push & GIS', note: 'Circumvalațiunii & Cetate' },
+      { state: 'next', title: 'Remediere și redeschidere perimetru', note: 'Estimare 23:00' },
+    ],
+    confirmedBy: 48,
+  },
+  {
+    id: 'const-bogdanestilor',
+    coordinate: { latitude: 45.7665, longitude: 21.2050 },
+    module: 'transit',
+    group: 'places',
+    title: '🚧 Șantier Calea Bogdăneștilor (Rază 900m)',
+    detail: 'Reabilitare cale rulată STPT. Vecini semnalați: Mehala, Dâmbovița.',
+    trailing: { kind: 'new' },
+    headline: 'Zonă de Lucrări și Utilaje Grele — Rază 900 metri',
+    context: 'Șantier activ de modernizare a liniei de tramvai. Trafic restricționat doar pentru riveranii din perimetru.',
+    steps: [
+      { state: 'done', title: 'Deschidere șantier și delimitare GIS', note: 'Noiembrie' },
+      { state: 'now', title: 'Săpături și refacere fundație cale', note: 'Zilnic 08:00 - 17:00' },
+      { state: 'next', title: 'Finalizare și repunere în circulație', note: 'Decembrie 2026' },
+    ],
+    confirmedBy: 34,
+  },
+  {
     id: 'hot-water-garii-2',
     coordinate: { latitude: 45.7499, longitude: 21.2083 },
     module: 'utilities',
