@@ -1,5 +1,7 @@
 import 'dotenv/config';
 import http from 'node:http';
+import fs from 'node:fs';
+import path from 'node:path';
 import { TIMISOARA_AREAS } from './core/areas.ts';
 import { userService } from './core/users.ts';
 import { getAllFlags } from './core/flags.ts';
@@ -74,6 +76,50 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization'
   });
   res.end(JSON.stringify(data));
+}
+
+function serveWebAdmin(req: http.IncomingMessage, res: http.ServerResponse, pathname: string) {
+  let subPath = pathname.replace(/^\/admin\/?/, '');
+  if (!subPath || subPath === '') subPath = 'index.html';
+
+  const webRoot = path.resolve(process.cwd(), 'apps/web');
+  const filePath = path.normalize(path.join(webRoot, subPath));
+
+  if (!filePath.startsWith(webRoot)) {
+    return sendJson(res, 403, { error: 'Forbidden' });
+  }
+
+  const mimeMap: Record<string, string> = {
+    '.html': 'text/html; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+  };
+
+  if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+    const ext = path.extname(filePath).toLowerCase();
+    res.writeHead(200, {
+      'Content-Type': mimeMap[ext] || 'application/octet-stream',
+      'Access-Control-Allow-Origin': '*'
+    });
+    return fs.createReadStream(filePath).pipe(res);
+  }
+
+  // Fallback to index.html for SPA routes
+  const fallback = path.join(webRoot, 'index.html');
+  if (fs.existsSync(fallback)) {
+    res.writeHead(200, {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Access-Control-Allow-Origin': '*'
+    });
+    return fs.createReadStream(fallback).pipe(res);
+  }
+
+  return sendJson(res, 404, { error: 'Web admin not found' });
 }
 
 // P4 modules run on their Hono routers here too, mounted like index.ts does (short id and full id).
@@ -505,6 +551,30 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, nearest);
     }
 
+    // [PARKIE WEB ADMIN] Get and Update Camera Plots
+    if (pathname.startsWith('/v1/m/parkie/lots/') && pathname.endsWith('/plots')) {
+      const id = pathname.replace('/v1/m/parkie/lots/', '').replace('/plots', '');
+      if (method === 'GET') {
+        const lot = parkieService.getLotById(id);
+        if (!lot) return sendJson(res, 404, { error: 'Parking lot not found', id });
+        return sendJson(res, 200, {
+          id: lot.id,
+          name: lot.name,
+          camera_url: lot.camera_url,
+          slots_data: lot.slots_data,
+          capacity: lot.capacity,
+          available_spots: lot.available_spots,
+          status_color: lot.status_color
+        });
+      }
+      if (method === 'PUT' || method === 'POST') {
+        const body = await parseBody(req);
+        const updated = await parkieService.updateLotPlots(id, body);
+        if (!updated) return sendJson(res, 404, { error: 'Parking lot not found for plot update', id });
+        return sendJson(res, 200, updated);
+      }
+    }
+
     if (pathname.startsWith('/v1/m/parkie/lots/') && method === 'GET') {
       const id = pathname.replace('/v1/m/parkie/lots/', '');
       const lot = parkieService.getLotById(id);
@@ -730,6 +800,11 @@ const server = http.createServer(async (req, res) => {
     // and the survey ingest token check are identical on both servers.
     if (isP4Path(pathname)) return forwardToP4(req, res, url, method);
 
+    // --- [PARKIE WEB ADMIN PORTAL] ---
+    if (pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/')) {
+      return serveWebAdmin(req, res, pathname);
+    }
+
     // 404
     return sendJson(res, 404, { error: 'Route not found', path: pathname });
   } catch (err: any) {
@@ -758,6 +833,7 @@ function startServer(port: number) {
     console.log(`   Utilities: http://localhost:${port}/v1/m/utilities/outages`);
     console.log(`   Transit: http://localhost:${port}/v1/m/transit/lines`);
     console.log(`   Parkie: http://localhost:${port}/v1/m/parkie/lots`);
+    console.log(`   Parkie Web Admin: http://localhost:${port}/admin`);
     console.log(`   Tiger Status: http://localhost:${port}/v1/core/tiger/status`);
     console.log(`   Tiger Aggregates: http://localhost:${port}/v1/m/parkie/analytics/hourly`);
     console.log(`   Open Data: http://localhost:${port}/v1/core/open-data/export`);

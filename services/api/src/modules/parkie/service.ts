@@ -123,6 +123,78 @@ export const parkieService = {
       .slice(0, limit);
   },
 
+  async updateLotPlots(
+    lotId: string,
+    payload: {
+      slots_data?: any[];
+      camera_url?: string | null;
+      capacity?: number;
+    }
+  ): Promise<ParkingLot | null> {
+    const lot = parkingLots.find((l) => l.id === lotId);
+    if (!lot) return null;
+
+    if (payload.slots_data !== undefined) {
+      lot.slots_data = payload.slots_data;
+    }
+    if (payload.camera_url !== undefined) {
+      lot.camera_url = payload.camera_url;
+    }
+    if (payload.capacity !== undefined && payload.capacity > 0) {
+      lot.capacity = payload.capacity;
+    } else if (Array.isArray(payload.slots_data) && payload.slots_data.length > 0) {
+      lot.capacity = payload.slots_data.length;
+    }
+
+    // Recompute available spots based on slots_data status
+    if (Array.isArray(lot.slots_data) && lot.slots_data.length > 0) {
+      const occupiedCount = lot.slots_data.filter((slot: any) => 
+        slot && (slot.status === 'occupied' || slot.occupied === true)
+      ).length;
+      lot.available_spots = Math.max(0, lot.capacity - occupiedCount);
+    }
+    lot.status_color = computeStatusColor(lot.available_spots, lot.capacity);
+    lot.last_updated = new Date().toISOString();
+
+    // Persist to TimescaleDB if connected
+    if (db.isTigerConnected()) {
+      db.query(`
+        UPDATE parking_lots
+        SET slots_data = $1, camera_url = $2, capacity = $3, available_spots = $4, status_color = $5, updated_at = NOW()
+        WHERE id = $6;
+      `, [
+        JSON.stringify(lot.slots_data),
+        lot.camera_url,
+        lot.capacity,
+        lot.available_spots,
+        lot.status_color,
+        lot.id
+      ]).catch((err) => {
+        console.warn('⚠️ Database parking_lots plots update error:', err.message);
+      });
+    }
+
+    // Emit event so SSE stream and connected clients update in real time
+    await eventBus.emit('parkie.plots_updated', {
+      lotId: lot.id,
+      lotName: lot.name,
+      slotsCount: lot.slots_data.length,
+      availableSpots: lot.available_spots,
+      capacity: lot.capacity,
+      statusColor: lot.status_color
+    });
+
+    await eventBus.emit('parkie.detection_updated', {
+      lotId: lot.id,
+      lotName: lot.name,
+      availableSpots: lot.available_spots,
+      statusColor: lot.status_color
+    });
+
+    console.log(`[PARKIE ADMIN] 🎯 Lot "${lot.name}": Updated ${lot.slots_data.length} plots (${lot.available_spots}/${lot.capacity} available)`);
+    return lot;
+  },
+
   // ============================================================================
   // TIGER DATA (TimescaleDB) Continuous Aggregates Queries
   // ============================================================================

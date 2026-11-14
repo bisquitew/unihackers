@@ -3,6 +3,27 @@ import { z } from '../zod-shim.ts';
 export const ParkingLotStatusColorSchema = z.enum(['green', 'yellow', 'red', 'gray'] as const);
 export type ParkingLotStatusColor = 'green' | 'yellow' | 'red' | 'gray';
 
+export const ParkingSlotPlotSchema = z.object({
+  id: z.string(),
+  x: z.number(),
+  y: z.number(),
+  width: z.number(),
+  height: z.number(),
+  polygon: z.array(z.array(z.number())).optional(),
+  status: z.enum(['available', 'occupied']).optional(),
+  type: z.enum(['standard', 'ev', 'disabled']).optional()
+});
+export interface ParkingSlotPlot {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  polygon?: number[][];
+  status?: 'available' | 'occupied';
+  type?: 'standard' | 'ev' | 'disabled';
+}
+
 export const ParkingLotSchema = z.object({
   id: z.string().uuid(),
   owner_id: z.string().uuid().optional(),
@@ -10,7 +31,7 @@ export const ParkingLotSchema = z.object({
   latitude: z.number(),
   longitude: z.number(),
   camera_url: z.string().optional().nullable(),
-  slots_data: z.array(z.array(z.number())).default([]),
+  slots_data: z.array(z.any()).default([]),
   capacity: z.number(),
   available_spots: z.number(),
   status_color: ParkingLotStatusColorSchema,
@@ -24,7 +45,7 @@ export interface ParkingLot {
   latitude: number;
   longitude: number;
   camera_url?: string | null;
-  slots_data: number[][];
+  slots_data: any[];
   capacity: number;
   available_spots: number;
   status_color: ParkingLotStatusColor;

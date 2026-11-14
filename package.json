@@ -13,6 +13,7 @@
     "dev:api": "npm run dev --prefix services/api",
     "dev:workers": "node --experimental-strip-types services/workers/src/index.ts",
     "dev:app": "npm run start --prefix apps/app",
+    "dev:web": "node apps/web/server.mjs",
     "dev:app:tunnel": "npm run start --prefix apps/app -- --tunnel ngrok",
     "dev:app:wifi": "npm run start --prefix apps/app -- --host 10.109.24.138",
     "test:solana": "node --experimental-strip-types scripts/test-solana-real.ts",
