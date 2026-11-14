@@ -1,224 +1,143 @@
-import { initAuth, onAuthChange, switchToken, getCurrentUser, isAdmin, loginGoogleUser, logout } from './auth.js';
-import { renderNavbar } from './components/Navbar.js';
+import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, logout, onAuthChange, switchToken } from './auth.js';
+import { renderNavbar, renderMenu } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
-import { renderHomeView } from './views/HomeView.js';
-import { renderMapView, initMapLogic } from './views/MapView.js';
-import { renderAlertsView, initAlertsLogic } from './views/AlertsView.js';
-import { renderCommunityView } from './views/CommunityView.js';
-import { renderParkieView } from './views/ParkieView.js';
-import { renderAssistantView, initAssistantLogic } from './views/AssistantView.js';
-import { renderAdminView, initAdminLogic } from './views/AdminView.js';
-import { fetchLots, fetchOutages, fetchEvents, fetchSmellPins, saveLotPlots, simulateLocationAnomaly } from './api.js';
+import { applyTheme, toggleTheme } from './ui.js';
+import { fetchLots, saveLotPlots } from './api.js';
+import * as home from './views/HomeView.js';
+import * as map from './views/MapView.js';
+import * as alerts from './views/AlertsView.js';
+import * as community from './views/CommunityView.js';
+import * as parkie from './views/ParkieView.js';
+import * as assistant from './views/AssistantView.js';
+import * as admin from './views/AdminView.js';
 
+const VIEWS = { home, map, alerts, community, parkie, assistant, admin };
 let activeTab = 'home';
-let cachedLots = [];
+let cleanup = () => {};
+let navToken = 0;
+
+const ctx = () => ({ user: getCurrentUser(), loggedIn: isLoggedIn(), staff: isAdmin() });
 
 export async function initApp() {
-  console.log('[Timișoara Hub Web] Initializing unified platform...');
-
-  // 1. Initialize Auth state
+  applyTheme();
   await initAuth();
-
-  // 2. Initial Data Load
-  try {
-    cachedLots = await fetchLots();
-  } catch (e) {
-    console.warn('Could not prefetch lots:', e);
-  }
-
-  // 3. Render Navbar
-  renderHeader();
-
-  // 4. Render Active Tab
-  await switchTab(activeTab);
-
-  // 5. Setup Listeners
+  window.addEventListener('hop-theme', renderHeader);
+  window.addEventListener('hashchange', () => show(tabFromHash(), false));
   onAuthChange(() => {
     renderHeader();
-    if (activeTab === 'admin' && !isAdmin()) {
-      switchTab('home');
-    } else {
-      switchTab(activeTab);
-    }
+    // a signed-out or non-staff visitor cannot stay on the dashboard
+    show(activeTab === 'admin' && !isAdmin() ? 'home' : activeTab, false);
   });
+  await show(tabFromHash(), false);
 }
+
+const tabFromHash = () => {
+  const t = location.hash.replace(/^#\/?/, '');
+  return VIEWS[t] ? t : 'home';
+};
 
 function renderHeader() {
-  const headerContainer = document.getElementById('navbarContainer');
-  if (!headerContainer) return;
-
-  headerContainer.innerHTML = renderNavbar(activeTab);
-
-  // Nav link clicks
-  headerContainer.querySelectorAll('.nav-link').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tab = btn.getAttribute('data-tab');
-      switchTab(tab);
-    });
-  });
-
-  // User chip click -> open auth modal
-  document.getElementById('userChipBtn')?.addEventListener('click', () => {
-    openAuthModal();
+  const el = document.getElementById('navbarContainer');
+  if (!el) return;
+  el.innerHTML = renderNavbar(activeTab);
+  el.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => go(b.dataset.tab)));
+  document.getElementById('themeBtn')?.addEventListener('click', toggleTheme);
+  document.getElementById('loginBtn')?.addEventListener('click', openAuthModal);
+  document.getElementById('userBtn')?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleMenu();
   });
 }
 
-export async function switchTab(tabId) {
-  if (tabId === 'admin' && !isAdmin()) {
-    showToast('⚠️ Acces restricționat: Necesită autentificare cu rol de Administrator.');
-    activeTab = 'home';
-    await switchTab('home');
-    openAuthModal();
-    return;
-  }
-
-  activeTab = tabId;
-  renderHeader();
-
-  const mainEl = document.getElementById('mainContent');
-  if (!mainEl) return;
-
-  mainEl.innerHTML = '<div class="view-content" style="text-align: center; padding: 48px;"><p>Se încarcă datele orașului...</p></div>';
-
-  if (tabId === 'home') {
-    mainEl.innerHTML = await renderHomeView();
-    setupHomeNavigation();
-  } else if (tabId === 'map') {
-    mainEl.innerHTML = await renderMapView();
-    const [lots, outages, events, smell] = await Promise.all([
-      fetchLots(),
-      fetchOutages(),
-      fetchEvents(),
-      fetchSmellPins(),
-    ]);
-    initMapLogic(lots, outages, events, smell.pins || []);
-  } else if (tabId === 'alerts') {
-    mainEl.innerHTML = await renderAlertsView();
-    initAlertsLogic();
-  } else if (tabId === 'community') {
-    mainEl.innerHTML = await renderCommunityView();
-  } else if (tabId === 'parkie') {
-    mainEl.innerHTML = await renderParkieView();
-    document.getElementById('openAdminCalibrationBtn')?.addEventListener('click', () => {
-      switchTab('admin');
-    });
-  } else if (tabId === 'assistant') {
-    mainEl.innerHTML = renderAssistantView();
-    initAssistantLogic();
-  } else if (tabId === 'admin') {
-    mainEl.innerHTML = await renderAdminView();
-    const lots = await fetchLots();
-    initAdminLogic(lots, async (lotId, payload) => {
-      const updated = await saveLotPlots(lotId, payload);
-      showToast(`✅ Salvat în baza de date! ${payload.slots_data.length} plots configurate.`);
-      return updated;
-    });
-  }
-}
-
-function setupHomeNavigation() {
-  document.querySelectorAll('[data-goto]').forEach(el => {
-    el.addEventListener('click', () => {
-      const target = el.getAttribute('data-goto');
-      if (target) switchTab(target);
-    });
-  });
-}
-
-function openAuthModal() {
-  const modalContainer = document.getElementById('modalContainer');
-  modalContainer.innerHTML = renderAuthModal();
-
-  // Close modal
-  document.getElementById('closeAuthModalBtn')?.addEventListener('click', () => {
-    modalContainer.innerHTML = '';
-  });
-
-  document.getElementById('authModalBackdrop')?.addEventListener('click', (e) => {
-    if (e.target.id === 'authModalBackdrop') modalContainer.innerHTML = '';
-  });
-
-  // Logout
+function toggleMenu() {
+  const host = document.getElementById('menuHost');
+  if (host.innerHTML) { host.innerHTML = ''; return; }
+  host.innerHTML = renderMenu();
+  host.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { host.innerHTML = ''; go(b.dataset.tab); }));
   document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    host.innerHTML = '';
     await logout();
-    modalContainer.innerHTML = '';
-    showToast('🚪 Deconectat cu succes. Sunteți în modul oaspete.');
+    showToast('You are logged out.');
   });
+}
+document.addEventListener('click', () => { const h = document.getElementById('menuHost'); if (h) h.innerHTML = ''; });
 
-  // Google Citizen Login
-  document.getElementById('googleCitizenLoginBtn')?.addEventListener('click', async () => {
+export function go(tab) {
+  if (location.hash !== `#/${tab}`) location.hash = `#/${tab}`;
+  else show(tab, true);
+}
+
+async function show(tab, scrollTop = true) {
+  if (tab === 'admin' && !isAdmin()) {
+    if (isLoggedIn()) showToast('The dashboard is for city staff.');
+    else openAuthModal();
+    tab = 'home';
+  }
+  const mine = ++navToken;
+  activeTab = tab;
+  renderHeader();
+  cleanup();
+  cleanup = () => {};
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '<div class="page"><p class="muted" style="padding:48px 0;text-align:center">Loading…</p></div>';
+  const view = VIEWS[tab];
+  const c = ctx();
+  let html;
+  try {
+    html = await view.render(c);
+  } catch (e) {
+    console.error(e);
+    html = `<div class="page"><div class="empty">Could not load this page. Is the API running?</div></div>`;
+  }
+  if (mine !== navToken) return; // the person moved on while this was loading
+  main.innerHTML = html;
+  main.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => go(b.dataset.goto)));
+  main.querySelectorAll('[data-login]').forEach((b) => b.addEventListener('click', openAuthModal));
+  if (tab === 'admin') {
+    cleanup = (await view.mount(c, { fetchLots, saveLotPlots, showToast })) || (() => {});
+  } else {
+    cleanup = view.mount ? view.mount(c, {}) || (() => {}) : () => {};
+  }
+  if (scrollTop) window.scrollTo(0, 0);
+}
+
+function openAuthModal(error = '') {
+  const host = document.getElementById('modalContainer');
+  const close = () => { host.innerHTML = ''; };
+  host.innerHTML = renderAuthModal({ error: typeof error === 'string' ? error : '' });
+  document.getElementById('closeAuthBtn')?.addEventListener('click', close);
+  document.getElementById('authBackdrop')?.addEventListener('click', (e) => { if (e.target.id === 'authBackdrop') close(); });
+  document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
+
+  const signIn = async (fn) => {
     try {
-      const user = await loginGoogleUser({
-        email: 'alex.popescu@gmail.com',
-        name: 'Alex Popescu'
-      });
-      modalContainer.innerHTML = '';
-      showToast(`🔵 Conectat cu Google ca ${user.name} (${user.role})`);
+      const user = await fn();
+      close();
+      showToast(`Welcome, ${user.name.split(' ')[0]}.`);
+      // staff go straight to their dashboard, everyone else stays where they were
+      if (user.role === 'admin' && activeTab === 'home') go('admin');
     } catch (e) {
-      showToast(`Eroare conectare: ${e.message}`);
+      openAuthModal(e.message);
     }
+  };
+  document.getElementById('googleLoginBtn')?.addEventListener('click', () => signIn(() => loginGoogleUser({ email: 'alex.popescu@gmail.com', name: 'Alex Popescu' })));
+  document.getElementById('emailForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = document.getElementById('emailInput').value.trim();
+    signIn(() => loginGoogleUser({ email, name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) }));
   });
-
-  // Google Admin Login
-  document.getElementById('googleAdminLoginBtn')?.addEventListener('click', async () => {
-    try {
-      const user = await loginGoogleUser({
-        email: 'admin.elena@timisoara-hub.ro',
-        name: 'Elena Dobre (Admin Primărie)',
-        role: 'admin'
-      });
-      modalContainer.innerHTML = '';
-      showToast(`🛡️ Conectat cu Google Workspace Primărie: ${user.name} (${user.role})`);
-    } catch (e) {
-      showToast(`Eroare conectare: ${e.message}`);
-    }
-  });
-
-  // Google Custom Email Login
-  document.getElementById('googleCustomLoginBtn')?.addEventListener('click', async () => {
-    const input = document.getElementById('googleCustomEmailInput');
-    const email = input?.value?.trim();
-    if (!email) {
-      showToast('Introduceți o adresă de email.');
-      return;
-    }
-    try {
-      const name = email.split('@')[0].replace(/[._]/g, ' ');
-      const user = await loginGoogleUser({ email, name });
-      modalContainer.innerHTML = '';
-      showToast(`🌐 Conectat cu Google ca ${user.name} (${user.role})`);
-    } catch (e) {
-      showToast(`Eroare conectare: ${e.message}`);
-    }
-  });
-
-  // Switch account
-  modalContainer.querySelectorAll('.account-card').forEach(card => {
-    card.addEventListener('click', async () => {
-      const token = card.getAttribute('data-token');
-      await switchToken(token);
-      modalContainer.innerHTML = '';
-      const user = getCurrentUser();
-      showToast(`🔑 Autentificat ca ${user?.name} (${user?.role})`);
-    });
-  });
-
-  // Anomaly alert simulation
-  document.getElementById('simulateAnomalyBtn')?.addEventListener('click', async () => {
-    const res = await simulateLocationAnomaly('București', 'România', '86.120.45.12');
-    showToast(`🚨 Alertă securitate declanșată! Email și push trimise către ${res.target_email || 'rezident'}.`);
-    modalContainer.innerHTML = '';
-  });
+  document.getElementById('demoResidentBtn')?.addEventListener('click', () => signIn(() => switchToken('dev_resident')));
+  document.getElementById('demoAdminBtn')?.addEventListener('click', () => signIn(() => switchToken('dev_admin_mfa')));
+  document.getElementById('emailInput')?.focus();
 }
 
 export function showToast(msg) {
-  const toastEl = document.getElementById('toast');
-  if (!toastEl) return;
-  toastEl.textContent = msg;
-  toastEl.classList.add('show');
-  setTimeout(() => toastEl.classList.remove('show'), 3500);
+  const el = document.getElementById('toast');
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast.t);
+  showToast.t = setTimeout(() => el.classList.remove('show'), 3500);
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  initApp();
-});
+window.addEventListener('DOMContentLoaded', initApp);

@@ -21,7 +21,7 @@ app.use('*', logger());
 app.use('*', cors({
   origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Hub-Client']
 }));
 app.use('*', authMiddleware);
 

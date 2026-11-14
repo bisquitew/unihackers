@@ -45,7 +45,7 @@ const STATUSES: { id: Status; label: string }[] = [
 const DEMO_OPERATOR_TOKEN = 'dev_admin';
 
 const tz = 'Europe/Bucharest';
-/** ISO → "YYYY-MM-DD HH:mm" in Timișoara time. */
+/** ISO → "YYYY-MM-DD HH:mm" in the city's local time. */
 function isoToLocal(iso: string | null): string {
   if (!iso) return '';
   const p = Object.fromEntries(
@@ -55,7 +55,7 @@ function isoToLocal(iso: string | null): string {
   );
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 }
-/** "YYYY-MM-DD HH:mm" (Timișoara time) → ISO, '' for empty, null if invalid. */
+/** "YYYY-MM-DD HH:mm" (the city's local time) → ISO, '' for empty, null if invalid. */
 function localToIso(local: string): string | null | '' {
   const v = local.trim();
   if (!v) return '';
@@ -131,7 +131,7 @@ export function NoticeScanScreen({ apiBaseUrl = API_URL }: { apiBaseUrl?: string
     if (!draft) return;
     const start = localToIso(startText);
     const end = localToIso(endText);
-    if (start === null || end === null) return setError('Folosește formatul AAAA-LL-ZZ OO:MM pentru ore (ora Timișoarei).');
+    if (start === null || end === null) return setError('Folosește formatul AAAA-LL-ZZ OO:MM pentru ore (ora locală).');
     if (!draft.provider || !draft.type) return setError('Alege furnizorul și tipul întreruperii.');
     if (draft.affected_areas.length === 0) return setError('Alege cel puțin un cartier.');
     setPublishing(true);

@@ -28,7 +28,7 @@ export function WebAccessGate({
             <Text style={styles.title}>Acces Restricționat: Doar Administratori</Text>
             <Text style={styles.description}>
               Ești conectat ca <Text style={{ fontWeight: '700', color: '#ffffff' }}>{user?.name}</Text> (Rol: {user?.role}).
-              {'\n'}Pentru a accesa {featureName}, este necesar un cont cu rol de Administrator (Primăria Timișoara).
+              {'\n'}Pentru a accesa {featureName}, este necesar un cont cu rol de Administrator (Primăria).
             </Text>
             <View style={styles.buttonGroup}>
               <TouchableOpacity

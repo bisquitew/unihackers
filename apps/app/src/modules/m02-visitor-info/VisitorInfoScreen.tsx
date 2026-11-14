@@ -5,7 +5,7 @@ import { fetchCategories, fetchEntries, type VisitorCategory, type VisitorInfoEn
 const UI: Record<VisitorLang, Record<string, string>> = {
   ro: {
     title: 'Informații practice',
-    subtitle: 'Ce e bine să știi când ajungi în Timișoara.',
+    subtitle: 'Ce e bine să știi când ajungi în oraș.',
     all: 'Toate',
     verify: 'Verifică înainte de drum',
     source: 'Sursa',
@@ -17,7 +17,7 @@ const UI: Record<VisitorLang, Record<string, string>> = {
   },
   en: {
     title: 'Practical info',
-    subtitle: 'Good to know when you arrive in Timișoara.',
+    subtitle: 'Good to know when you arrive in the city.',
     all: 'All',
     verify: 'Check before you travel',
     source: 'Source',

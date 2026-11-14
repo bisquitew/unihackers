@@ -1,5 +1,5 @@
 /* hop map engine. Runs inside the WebView (native) or iframe (web) and talks to the app through a tiny message bridge.
-   App -> engine: setPins, flyTo, select, setTheme, setReducedMotion, setInsets, setUserLocation
+   App -> engine: setPins, flyTo, setCity, select, setTheme, setReducedMotion, setInsets, setUserLocation
    Engine -> app: ready, pinPress, longPress, tap, camera, error                                          */
 (function () {
   var ART = window.__PIN_ART__ || {};
@@ -8,7 +8,7 @@
   var skin = 'flat'; // 'flat' (2D, default) or 'city3d'
   function skinPitch() { return skin === 'flat' ? 0 : 45; }
   function skinBearing() { return skin === 'flat' ? 0 : -15; }
-  var BOUNDS = [[20.9, 45.55], [21.55, 45.95]];
+  var BOUNDS = [[20.9, 45.55], [21.55, 45.95]]; // replaced by the app's city (setCity)
 
   var map = null;
   var loaded = false;
@@ -153,6 +153,11 @@
     switch (msg.type) {
       case 'setPins': setPins(msg.pins || []); break;
       case 'flyTo': flyTo(msg); break;
+      case 'setCity': // the city this map shows: where it opens and how far it can be dragged
+        START = { center: [msg.lng, msg.lat], zoom: msg.zoom };
+        BOUNDS = msg.bounds;
+        if (map) { map.setMaxBounds(BOUNDS); map.jumpTo({ center: START.center, zoom: START.zoom }); }
+        break;
       case 'select': select(msg.id); break;
       case 'setTheme': themeSetting = msg.theme || 'auto'; if (map) applyTheme(false); break;
       case 'setReducedMotion': reduceMotion = !!msg.value; break;

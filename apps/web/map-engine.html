@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hop map</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<style>
+  :root { --hub-bottom: 0px; --ink: #1A1033; --muted: #5A5070; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #E4DEF0; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+  html[data-theme="golden"], html[data-theme="golden"] body { background: #F1E7E0; }
+  html[data-theme="night"], html[data-theme="night"] body { background: #14091F; }
+  #map { position: absolute; inset: 0; touch-action: none; }
+  .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { margin-bottom: var(--hub-bottom); }
+  .maplibregl-ctrl-attrib { font: 500 11px/1.3 system-ui, sans-serif; border-radius: 12px 12px 12px 12px; }
+
+  /* pins: a white disc with the kind's flat illustration inside and a small pointer (the identity retired arches around marks) */
+  /* MapLibre positions markers with position:absolute + transform. Never override either on the marker element itself. */
+  .maplibregl-marker.pin { position: absolute; top: 0; left: 0; }
+  .pin { width: 48px; height: 56px; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; }
+  .pin .disc { position: absolute; left: 2px; top: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; z-index: 2;
+    display: grid; place-items: center; box-shadow: 0 0 0 1px rgba(26,16,51,.08), 0 2px 4px rgba(26,16,51,.10), 0 8px 16px -6px rgba(26,16,51,.32);
+    transition: transform .16s cubic-bezier(.3,1.5,.5,1), box-shadow .16s ease-out; transform-origin: 50% 100%; }
+  .pin .tip { position: absolute; left: 18px; top: 36px; width: 12px; height: 12px; background: #fff; border-radius: 2px; transform: rotate(45deg); z-index: 1;
+    box-shadow: 1px 1px 0 0 rgba(26,16,51,.08), 3px 4px 8px -3px rgba(26,16,51,.25); }
+  .pin .foot { position: absolute; left: 15px; bottom: 0; width: 18px; height: 5px; border-radius: 50%; background: rgba(26,16,51,.20); filter: blur(2px); z-index: 0; }
+  .pin .badge { position: absolute; right: -1px; top: -1px; width: 18px; height: 18px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 1px rgba(26,16,51,.10); z-index: 3; }
+  .pin.selected { z-index: 5; }
+  .pin.selected .disc { transform: scale(1.15); box-shadow: 0 0 0 3px var(--ink), 0 12px 20px -8px rgba(26,16,51,.45); }
+  .pin:focus-visible .disc { outline: 3px solid var(--ink); outline-offset: 2px; }
+  html[data-theme="night"] .pin .disc { box-shadow: 0 0 0 1px rgba(255,255,255,.18), 0 0 16px rgba(255,185,102,.35), 0 8px 16px -6px rgba(0,0,0,.6); }
+  html[data-theme="night"] .pin.selected .disc { box-shadow: 0 0 0 3px #FFD9A8, 0 0 22px rgba(255,185,102,.5); }
+  .me { width: 18px; height: 18px; border-radius: 50%; background: #3D5BFF; box-shadow: 0 0 0 4px rgba(61,91,255,.25), 0 0 0 7px #fff; }
+
+  /* offline notice */
+  #offline { position: absolute; left: 16px; right: 16px; top: 96px; margin: 0 auto; max-width: 360px; padding: 12px 14px; border-radius: 18px;
+    background: #fff; color: var(--ink); font: 600 14px/20px system-ui, sans-serif; box-shadow: 0 10px 30px -10px rgba(26,16,51,.35); display: flex; gap: 12px; align-items: center; z-index: 10; }
+  #offline[hidden] { display: none; }
+  #offline span { flex: 1; font-weight: 500; color: var(--muted); }
+  #offline button { border: 0; border-radius: 999px; height: 40px; padding: 0 16px; background: #FF3D7F; color: #1A1033; font: 700 15px system-ui, sans-serif; cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { .pin .disc { transition: none; } }
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="City map of Timișoara"></div>
+<div id="offline" hidden role="alert"><span>The map needs an internet connection.</span><button id="retry" type="button">Try again</button></div>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script>window.__PIN_ART__ = {"events":"<path d=\"M6 16Q28 30 50 16\" fill=\"none\" stroke=\"#3A2F5C\" stroke-width=\"2\" stroke-linecap=\"round\"/> <path d=\"M8 18L16 21L12 30Z\" fill=\"#3D5BFF\"/><path d=\"M19 22.2L27 23L23 32Z\" fill=\"#12C99B\"/><path d=\"M29 23L37 22.2L33 32Z\" fill=\"#FF7A2F\"/><path d=\"M40 21L48 18L44 30Z\" fill=\"#8FA3FF\"/> <circle cx=\"14\" cy=\"44\" r=\"2.5\" fill=\"#FF7A2F\"/><circle cx=\"28\" cy=\"46\" r=\"2\" fill=\"#3D5BFF\"/><circle cx=\"42\" cy=\"43\" r=\"2.5\" fill=\"#12C99B\"/>","buddy":"<circle cx=\"37\" cy=\"23\" r=\"6\" fill=\"#FF7A2F\"/><path d=\"M26 46a11 11 0 0 1 22 0Z\" fill=\"#FF7A2F\"/> <circle cx=\"20\" cy=\"22\" r=\"6\" fill=\"#3D5BFF\" stroke=\"#EFEDF5\" stroke-width=\"2\"/><path d=\"M9 46a11 11 0 0 1 22 0Z\" fill=\"#3D5BFF\" stroke=\"#EFEDF5\" stroke-width=\"2\"/>","forum":"<rect x=\"22\" y=\"10\" width=\"26\" height=\"20\" rx=\"8\" fill=\"#FFB88A\"/><path d=\"M40 28l6 6v-8Z\" fill=\"#FFB88A\"/> <rect x=\"8\" y=\"22\" width=\"30\" height=\"22\" rx=\"9\" fill=\"#3D5BFF\"/><path d=\"M16 42l-4 7 10-5Z\" fill=\"#3D5BFF\"/> <circle cx=\"17\" cy=\"33\" r=\"2.2\" fill=\"#fff\"/><circle cx=\"23\" cy=\"33\" r=\"2.2\" fill=\"#fff\"/><circle cx=\"29\" cy=\"33\" r=\"2.2\" fill=\"#fff\"/>","transit":"<path d=\"M22 8h12M28 8v6\" fill=\"none\" stroke=\"#3A2F5C\" stroke-width=\"2.4\" stroke-linecap=\"round\"/> <rect x=\"13\" y=\"14\" width=\"30\" height=\"26\" rx=\"8\" fill=\"#3D5BFF\"/><rect x=\"18\" y=\"18\" width=\"20\" height=\"11\" rx=\"4\" fill=\"#8FA3FF\"/> <circle cx=\"21\" cy=\"35\" r=\"2.6\" fill=\"#FF7A2F\"/><circle cx=\"35\" cy=\"35\" r=\"2.6\" fill=\"#FF7A2F\"/> <path d=\"M16 49l4-9M40 49l-4-9M10 49h36\" fill=\"none\" stroke=\"#3A2F5C\" stroke-width=\"2.4\" stroke-linecap=\"round\"/>","parkie":"<ellipse cx=\"28\" cy=\"50\" rx=\"13\" ry=\"2.4\" fill=\"#8FA3FF\"/><rect x=\"26\" y=\"38\" width=\"4\" height=\"12\" rx=\"2\" fill=\"#3A2F5C\"/> <rect x=\"11\" y=\"8\" width=\"34\" height=\"32\" rx=\"10\" fill=\"#3D5BFF\"/> <path d=\"M22 32V16h6.500a5 5 0 0 1 0 10H22\" fill=\"none\" stroke=\"#fff\" stroke-width=\"4.500\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>","visitorInfo":"<path d=\"M8 24l13-4v26L8 50Z\" fill=\"#8FA3FF\"/><path d=\"M21 20l14 4v26l-14-4Z\" fill=\"#6C84FF\"/><path d=\"M35 24l13-4v26l-13 4Z\" fill=\"#8FA3FF\"/> <path d=\"M28 10a8 8 0 0 0-8 8c0 6 8 13 8 13s8-7 8-13a8 8 0 0 0-8-8Z\" fill=\"#FF7A2F\"/><circle cx=\"28\" cy=\"18\" r=\"3\" fill=\"#fff\"/>","assistant":"<path d=\"M24 8c1.500 10 7 16 17 17-10 1-15.500 7-17 17-1.500-10-7-16-17-17 10-1 15.500-7 17-17Z\" fill=\"#3D5BFF\"/> <path d=\"M43 6c.6 4 2.500 6 6.500 6.500-4 .5-5.900 2.500-6.500 6.500-.6-4-2.500-6-6.500-6.500 4-.5 5.900-2.500 6.500-6.500Z\" fill=\"#FF7A2F\"/><circle cx=\"44\" cy=\"40\" r=\"3\" fill=\"#12C99B\"/><circle cx=\"12\" cy=\"46\" r=\"2\" fill=\"#8FA3FF\"/>","utilities":"<ellipse cx=\"28\" cy=\"50\" rx=\"14\" ry=\"2.500\" fill=\"#7EE6C8\"/> <path d=\"M28 7S14 23 14 33a14 14 0 0 0 28 0C42 23 28 7 28 7Z\" fill=\"#12C99B\"/> <path d=\"M20 34a8 8 0 0 0 6 7\" fill=\"none\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\".85\"/>","wallet":"<circle cx=\"36\" cy=\"14\" r=\"7\" fill=\"#FF7A2F\"/><circle cx=\"36\" cy=\"14\" r=\"3.500\" fill=\"#FFB88A\"/> <rect x=\"8\" y=\"20\" width=\"40\" height=\"28\" rx=\"9\" fill=\"#12C99B\"/><path d=\"M8 29a9 9 0 0 1 9-9h22a9 9 0 0 1 9 9Z\" fill=\"#0BB58C\"/> <rect x=\"33\" y=\"31\" width=\"15\" height=\"10\" rx=\"5\" fill=\"#00704F\"/><circle cx=\"39\" cy=\"36\" r=\"2\" fill=\"#fff\"/>","feedback":"<path d=\"M28 47C12 36 9 25 15 18c4.500-4.500 10-2 13 3 3-5 8.500-7.500 13-3 6 7 3 18-13 29Z\" fill=\"#12C99B\"/> <path d=\"M17 24a6 6 0 0 1 5-4\" fill=\"none\" stroke=\"#fff\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\".75\"/> <circle cx=\"46\" cy=\"12\" r=\"3\" fill=\"#FF7A2F\"/><circle cx=\"10\" cy=\"10\" r=\"2\" fill=\"#3D5BFF\"/>","safety":"<circle cx=\"28\" cy=\"20\" r=\"15\" fill=\"#FFB88A\"/><path d=\"M19.500 15.500L28 8l8.500 7.500Z\" fill=\"#3A2F5C\"/> <rect x=\"20.500\" y=\"15\" width=\"15\" height=\"14\" rx=\"5\" fill=\"#FF7A2F\"/><rect x=\"26.500\" y=\"27\" width=\"3\" height=\"19\" fill=\"#3A2F5C\"/><rect x=\"20\" y=\"45\" width=\"16\" height=\"4\" rx=\"2\" fill=\"#3A2F5C\"/>","smell":"<path d=\"M16 33a8 8 0 0 1 1.500-15.800A10 10 0 0 1 36 15a9 9 0 0 1 2 18Z\" fill=\"#FFB88A\"/> <path d=\"M8 41h24a4.500 4.500 0 1 0-4.500-4.500\" fill=\"none\" stroke=\"#A84300\" stroke-width=\"3\" stroke-linecap=\"round\"/> <path d=\"M16 48h20a3.500 3.500 0 1 1-3.500 3.500\" fill=\"none\" stroke=\"#A84300\" stroke-width=\"3\" stroke-linecap=\"round\"/>","dashboard":"<rect x=\"10\" y=\"28\" width=\"10\" height=\"18\" rx=\"4\" fill=\"#3D5BFF\"/><rect x=\"23\" y=\"12\" width=\"10\" height=\"34\" rx=\"4\" fill=\"#12C99B\"/><rect x=\"36\" y=\"21\" width=\"10\" height=\"25\" rx=\"4\" fill=\"#FF7A2F\"/> <rect x=\"7\" y=\"48\" width=\"42\" height=\"3\" rx=\"1.500\" fill=\"#3A2F5C\"/>","home":"<path d=\"M10 48V28Q10 24 14 22Q18 20 20 15Q22 10 28 10Q34 10 36 15Q38 20 42 22Q46 24 46 28V48Z\" fill=\"#FF7A2F\"/><path d=\"M23 48V38a5 5 0 0 1 10 0V48Z\" fill=\"#fff\"/>","work":"<rect x=\"9\" y=\"19\" width=\"38\" height=\"27\" rx=\"7\" fill=\"#3D5BFF\"/><path d=\"M21 19v-3a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v3\" fill=\"none\" stroke=\"#3A2F5C\" stroke-width=\"3\" stroke-linecap=\"round\"/><rect x=\"9\" y=\"30\" width=\"38\" height=\"4\" fill=\"#8FA3FF\"/><rect x=\"25\" y=\"28\" width=\"6\" height=\"8\" rx=\"2\" fill=\"#fff\"/>","note":"<path d=\"M12 12h32a2 2 0 0 1 2 2v22l-12 12H14a2 2 0 0 1-2-2Z\" fill=\"#FFB88A\"/><path d=\"M34 48V38a2 2 0 0 1 2-2h10Z\" fill=\"#FF7A2F\"/><path d=\"M19 22h18M19 29h12\" stroke=\"#3A2F5C\" stroke-width=\"3\" stroke-linecap=\"round\" fill=\"none\"/>","lostFound":"<circle cx=\"17\" cy=\"24\" r=\"4.5\" fill=\"#FF7A2F\"/><circle cx=\"28\" cy=\"16\" r=\"4.5\" fill=\"#FF7A2F\"/><circle cx=\"39\" cy=\"24\" r=\"4.5\" fill=\"#FF7A2F\"/><path d=\"M28 29c-7 0-12 6-12 11 0 5 5 6 8 5 3-1 5-1 8 0 3 1 8 0 8-5 0-5-5-11-12-11Z\" fill=\"#FFB88A\"/>"};</script>
+<script>/* hop city style for MapLibre GL JS, over OpenFreeMap (OpenMapTiles schema).
+   The map is a quiet stage in the brand's look (docs/brand/identity.md): near-white ground, white buildings with soft
+   ink shading, mint and blue only for parks and water. The colour comes from the pins and illustrations on top of it.
+   Runs inside the map WebView/iframe. Exposes window.HubStyle = { buildStyle, themeForNow, sunAltitude }. */
+(function () {
+  var THEMES = {
+    day: {
+      bg: '#F1EDF9', park: '#C2EFDD', wood: '#B3EAD2', water: '#C4D4FF', waterLine: '#8FA3FF',
+      road: '#FFFFFF', roadCasing: 'rgba(26,16,51,0.15)', rail: 'rgba(36,56,201,0.45)', glow: null,
+      bldLow: '#FFFFFF', bldHigh: '#D5CCEA', bldFlat: '#FBFAFE',
+      label: '#1A1033', labelMuted: '#5A5070', halo: '#FFFFFF',
+      sky: '#E3DDF2', horizon: '#F6F3FB', fog: '#EFEBF8',
+      light: { color: '#FFFFFF', intensity: 0.3, position: [1.5, 200, 45] }
+    },
+    golden: {
+      bg: '#F6EFE8', park: '#D6EDD8', wood: '#C6E5CB', water: '#CFD6F5', waterLine: '#A3B0EE',
+      road: '#FFFDFA', roadCasing: 'rgba(58,47,92,0.12)', rail: 'rgba(36,56,201,0.40)', glow: null,
+      bldLow: '#FFFFFF', bldHigh: '#EBD9CD', bldFlat: '#FFFDFA',
+      label: '#3A2F5C', labelMuted: '#6B5C7A', halo: '#FFF9F2',
+      sky: '#FFD9BC', horizon: '#FFEBDC', fog: '#FBEFE4',
+      light: { color: '#FFD9B0', intensity: 0.3, position: [1.5, 235, 50] }
+    },
+    night: {
+      bg: '#14091F', park: '#1A2733', wood: '#16222E', water: '#1D2466', waterLine: '#3D5BFF',
+      road: '#FFD9A8', roadCasing: 'rgba(255,217,168,0.0)', rail: 'rgba(108,132,255,0.65)', glow: '#FFB866',
+      bldLow: '#2A1B49', bldHigh: '#3E2D68', bldFlat: '#241540',
+      label: '#F8F6FB', labelMuted: '#B9A8DD', halo: '#14091F',
+      sky: '#0B0618', horizon: '#2A1B49', fog: '#1B1030',
+      light: { color: '#B9A8FF', intensity: 0.25, position: [1.5, 210, 38] }
+    }
+  };
+
+  var BLD_H = ['max', ['coalesce', ['get', 'render_height'], 6], 5];
+  var BLD_BASE = ['coalesce', ['get', 'render_min_height'], 0];
+  /* Every building gets one of five soft tints from the identity palette (cream, lilac, periwinkle, mint, apricot),
+     picked from its own height/id so neighbours differ but a building never changes. The ground floor is a deeper band
+     of the same tint, which gives each block a base and a little architecture without textures (textures shimmer). */
+  var TINTS = {
+    day:    { wall: ['#F2DCC2', '#D6C8F4', '#C3D1FB', '#FFCFAF', '#E2DCEC'], plinth: ['#DDC19F', '#BFAEE8', '#A9BDF2', '#F2B58F', '#CBC2DA'], roof: ['#EDBBA2', '#CFC6E8', '#EBD6B8', '#BFCDF4', '#E3BFB4'] },
+    golden: { wall: ['#F5D9BC', '#E3CBE3', '#D5CEF0', '#FFC9A3', '#E8DACB'], plinth: ['#E2BE98', '#CCAECC', '#BBB2E0', '#F2AE86', '#D3C0AD'], roof: ['#E9B08F', '#C9BADF', '#E8CFA8', '#B5BFEA', '#DDB1A0'] },
+    night:  { wall: ['#3A2A63', '#33295A', '#2C2F66', '#2A3A5E', '#40285E'], plinth: ['#2A1B49', '#241A44', '#1F2250', '#1D2B49', '#301C4A'], roof: ['#5B4A8C', '#4E4380', '#444C8E', '#42557F', '#614384'] }
+  };
+  var N_TINTS = 5;
+  var VARIANT = ['%', ['abs', ['floor', ['+', ['*', ['coalesce', ['get', 'render_height'], 6], 3.7], ['*', BLD_BASE, 1.9], ['to-number', ['id'], 0]]]], N_TINTS];
+  function tintMatch(list) { return ['match', VARIANT, 0, list[0], 1, list[1], 2, list[2], 3, list[3], list[4]]; }
+  var PLINTH_H = ['min', 3.5, ['*', BLD_H, 0.4]];
+
+  /* Facade texture, painted on a canvas (no image files). Modern ribbon windows: soft glass with a sky reflection,
+     a thin slab line between floors. Low contrast on purpose: high-contrast textures shimmer when they shrink.
+     Night: some windows are lit warm. One tile = 2 bays x 2 floors. */
+  var GLASS = {
+    day:    { top: '#C8D6FF', bottom: '#9DB0F0', lit: 0, litTop: '#C8D6FF', litBottom: '#9DB0F0' },
+    golden: { top: '#FFDDBE', bottom: '#F2A877', lit: 0.1, litTop: '#FFE3B8', litBottom: '#FFB866' },
+    night:  { top: '#241C4A', bottom: '#181238', lit: 0.5, litTop: '#FFE2B5', litBottom: '#FFB866' }
+  };
+  /* Ground and park textures: a fine dotted-paper grid and a leafy speckle, painted on a canvas, transparent so the
+     flat colour shows through. They fade in with zoom (see fade()) because world-fixed patterns shimmer when small. */
+  var DOT = {
+    day:    { ground: 'rgba(26,16,51,0.17)', park: 'rgba(0,112,79,0.30)' },
+    golden: { ground: 'rgba(58,47,92,0.16)', park: 'rgba(0,112,79,0.28)' },
+    night:  { ground: 'rgba(255,255,255,0.09)', park: 'rgba(126,230,200,0.24)' }
+  };
+  function groundImage(kind, theme) {
+    var d = DOT[theme] || DOT.day, S = kind === 'park' ? 32 : 24;
+    var c = document.createElement('canvas'); c.width = S; c.height = S;
+    var g = c.getContext('2d');
+    g.fillStyle = kind === 'park' ? d.park : d.ground;
+    var dots = kind === 'park' ? [[6, 7, 1.7], [21, 5, 1.2], [14, 18, 1.9], [27, 24, 1.3], [5, 27, 1.2]] : [[S / 2, S / 2, 1.6]];
+    for (var i = 0; i < dots.length; i++) { g.beginPath(); g.arc(dots[i][0], dots[i][1], dots[i][2], 0, Math.PI * 2); g.fill(); }
+    var im = g.getImageData(0, 0, S, S);
+    return { width: S, height: S, data: new Uint8Array(im.data.buffer) };
+  }
+  /* Roof texture: courses of tiles. Painted on a canvas, like the facades. */
+  function roofImage(theme, idx) {
+    var t = TINTS[theme] || TINTS.day, S = 32;
+    var c = document.createElement('canvas'); c.width = S; c.height = S;
+    var g = c.getContext('2d');
+    g.fillStyle = t.roof[idx % t.roof.length]; g.fillRect(0, 0, S, S);
+    for (var row = 0; row < 4; row++) {
+      var y = row * 8;
+      g.fillStyle = 'rgba(26,16,51,0.13)'; g.fillRect(0, y, S, 1.5);       // shadow under each course
+      g.fillStyle = 'rgba(255,255,255,0.22)'; g.fillRect(0, y + 1.5, S, 1.5); // light on the tile edge
+      var off = row % 2 ? 8 : 0;                                            // staggered seams
+      g.fillStyle = 'rgba(26,16,51,0.07)';
+      for (var x = off; x < S; x += 16) g.fillRect(x, y + 3, 1, 5);
+    }
+    var im = g.getImageData(0, 0, S, S);
+    return { width: S, height: S, data: new Uint8Array(im.data.buffer) };
+  }
+  function hash(n) { var x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); }
+  function roundRect(g, x, y, w, h, r) {
+    g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+  }
+  function wallImage(theme, idx) {
+    var t = TINTS[theme] || TINTS.day, gl = GLASS[theme] || GLASS.day, S = 48, F = 24;
+    var c = document.createElement('canvas'); c.width = S; c.height = S;
+    var g = c.getContext('2d');
+    g.fillStyle = t.wall[idx % t.wall.length]; g.fillRect(0, 0, S, S);
+    for (var row = 0; row < 2; row++) {
+      var y0 = row * F;
+      g.fillStyle = 'rgba(26,16,51,0.07)'; g.fillRect(0, y0 + F - 2, S, 2); // slab line
+      for (var col = 0; col < 2; col++) {
+        var lit = hash(idx * 17 + col * 5 + row * 3 + theme.length) < gl.lit;
+        var x = col * 24 + 4, y = y0 + 5;
+        var grad = g.createLinearGradient(0, y, 0, y + 14);
+        grad.addColorStop(0, lit ? gl.litTop : gl.top); grad.addColorStop(1, lit ? gl.litBottom : gl.bottom);
+        g.fillStyle = grad; roundRect(g, x, y, 16, 14, 3); g.fill();
+        if (!lit) { // sky reflection
+          g.save(); roundRect(g, x, y, 16, 14, 3); g.clip();
+          g.fillStyle = 'rgba(255,255,255,0.28)'; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 9, y); g.lineTo(x, y + 9); g.closePath(); g.fill();
+          g.restore();
+        }
+      }
+    }
+    var d = g.getImageData(0, 0, S, S);
+    return { width: S, height: S, data: new Uint8Array(d.data.buffer) };
+  }
+  // buildings fade in/out with zoom instead of changing height, so nothing pops
+  function fade(a, b) { return ['interpolate', ['linear'], ['zoom'], a, 0, b, 1]; }
+
+  var ROAD_CLASSES =['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
+
+  var NAME = ['coalesce', ['get', 'name:latin'], ['get', 'name']];
+
+  /* ---------- points of interest: landmarks, public drinking fountains and a few useful services ----------
+     The map data holds thousands of POIs (parking, bollards, litter bins...). Only the useful groups are drawn, each
+     revealed at the zoom where it stops being clutter. Icons are painted on a canvas (see poiImage), no image files.
+     Colour follows the app's hue-by-meaning: blue = getting around and water, mint = health and services, a ringed
+     star = a landmark worth a look, a small plain dot = food and shops. */
+  var POI_DOT = ['restaurant', 'cafe', 'bar', 'fast_food', 'bakery', 'grocery'];
+  var POI_HEALTH = ['pharmacy', 'hospital', 'dentist', 'doctors'];
+  var POI_LANDMARK = ['attraction', 'monument', 'museum', 'castle', 'theatre', 'ruins', 'viewpoint', 'zoo'];
+
+  function poiImage(kind) {
+    var S = 48, c = document.createElement('canvas'); c.width = S; c.height = S;
+    var g = c.getContext('2d'), INK = '#1A1033', BLUE = '#3D5BFF', MINT = '#12C99B';
+    function disc(r, fill, ring, ringW) {
+      g.save(); g.shadowColor = 'rgba(26,16,51,0.28)'; g.shadowBlur = 5; g.shadowOffsetY = 1.5;
+      g.beginPath(); g.arc(24, 24, r, 0, Math.PI * 2); g.fillStyle = fill; g.fill(); g.restore();
+      if (ring) { g.beginPath(); g.arc(24, 24, r - ringW / 2, 0, Math.PI * 2); g.lineWidth = ringW; g.strokeStyle = ring; g.stroke(); }
+    }
+    if (kind === 'landmark') {
+      disc(20, '#FFFFFF', INK, 3);
+      g.beginPath();
+      for (var i = 0; i < 10; i++) { var r = i % 2 ? 5.2 : 12.5, a = -Math.PI / 2 + i * Math.PI / 5; g.lineTo(24 + r * Math.cos(a), 24.5 + r * Math.sin(a)); }
+      g.closePath(); g.fillStyle = INK; g.fill();
+    } else if (kind === 'fountain') {
+      disc(19, '#FFFFFF', BLUE, 2.5);
+      g.beginPath(); g.moveTo(24, 10); g.bezierCurveTo(24, 10, 14, 22, 14, 29); g.arc(24, 29, 10, Math.PI, 0, true); g.bezierCurveTo(34, 22, 24, 10, 24, 10); g.closePath();
+      g.fillStyle = BLUE; g.fill();
+      g.beginPath(); g.ellipse(20.5, 29, 2.2, 4, 0.3, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fill();
+    } else if (kind === 'health') {
+      disc(18, MINT, '#FFFFFF', 2.5);
+      g.fillStyle = '#FFFFFF'; g.fillRect(21, 14, 6, 20); g.fillRect(14, 21, 20, 6);
+    } else if (kind === 'transit') {
+      disc(18, BLUE, '#FFFFFF', 2.5);
+      g.fillStyle = '#FFFFFF'; g.beginPath(); g.moveTo(17, 17); g.arcTo(31, 17, 31, 31, 3); g.lineTo(31, 29); g.arcTo(31, 31, 17, 31, 3); g.lineTo(17, 31); g.closePath(); g.fill();
+      g.fillRect(17, 17, 14, 13);
+      g.fillStyle = BLUE; g.fillRect(19.5, 19.5, 9, 5);
+      g.beginPath(); g.arc(20.5, 33.5, 1.8, 0, Math.PI * 2); g.arc(27.5, 33.5, 1.8, 0, Math.PI * 2); g.fillStyle = '#FFFFFF'; g.fill();
+    } else { // dot: food and shops
+      disc(10, '#FFFFFF', 'rgba(26,16,51,0.75)', 3);
+    }
+    var d = g.getImageData(0, 0, S, S);
+    return { width: S, height: S, data: new Uint8Array(d.data.buffer) };
+  }
+
+  function poiLayers(f) {
+    var text = function (size, bold, fromZoom) {
+      return {
+        'text-field': fromZoom ? ['step', ['zoom'], '', fromZoom, NAME] : NAME,
+        'text-font': [bold ? 'Noto Sans Bold' : 'Noto Sans Regular'], 'text-size': size, 'text-max-width': 7,
+        'text-anchor': 'top', 'text-offset': [0, 1.1], 'text-optional': true
+      };
+    };
+    var icon = function (img, a, b) {
+      return { 'icon-image': img, 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, a, 18, b], 'icon-padding': 3 };
+    };
+    var paint = function (muted) { return { 'text-color': muted ? f.labelMuted : f.label, 'text-halo-color': f.halo, 'text-halo-width': 1.6 }; };
+    var layer = function (id, minzoom, filter, layout, p) {
+      return { id: id, type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: minzoom, filter: filter, layout: layout, paint: p };
+    };
+    var cls = function (list) { return ['in', ['get', 'class'], ['literal', list]]; };
+    var sortByRank = { 'symbol-sort-key': ['coalesce', ['get', 'rank'], 99] };
+    return [
+      layer('poi-dot', 16.5, cls(POI_DOT), Object.assign(icon('hop-poi-dot', 0.5, 0.7), text(11, false, 17.5), sortByRank), paint(true)),
+      layer('poi-bus', 17.2, cls(['bus']), icon('hop-poi-transit', 0.5, 0.65), {}),
+      layer('poi-transit', 15.5, ['all', ['==', ['get', 'class'], 'railway'], ['in', ['get', 'subclass'], ['literal', ['tram_stop', 'station', 'halt']]]],
+        Object.assign(icon('hop-poi-transit', 0.6, 0.85), text(11, false, 16.8), sortByRank), paint(true)),
+      layer('poi-health', 16, cls(POI_HEALTH), Object.assign(icon('hop-poi-health', 0.6, 0.8), text(11, false, 17.2), sortByRank), paint(true)),
+      layer('poi-fountain', 15.5, ['==', ['get', 'class'], 'drinking_water'], icon('hop-poi-fountain', 0.65, 0.9), {}),
+      // churches and similar: the major ones earlier, the rest only close up
+      layer('poi-landmark-minor', 16.5, ['all', ['has', 'name'], ['==', ['get', 'class'], 'place_of_worship'], ['>', ['coalesce', ['get', 'rank'], 99], 10]],
+        Object.assign(icon('hop-poi-landmark', 0.55, 0.75), text(11, false, 17.2), sortByRank), paint(true)),
+      layer('poi-landmark', 14.5, ['all', ['has', 'name'], ['any', cls(POI_LANDMARK), ['all', ['==', ['get', 'class'], 'place_of_worship'], ['<=', ['coalesce', ['get', 'rank'], 99], 10]]]],
+        Object.assign(icon('hop-poi-landmark', 0.8, 1.1), text(12.5, true, 14.5), sortByRank, { 'text-optional': false, 'text-padding': 4 }), paint(false))
+    ];
+  }
+
+  function roadWidth(base) {
+    var w = function (m, p, s, t, mi, sv) {
+      return ['match', ['get', 'class'], ['motorway', 'trunk'], m, 'primary', p, 'secondary', s, 'tertiary', t, 'minor', mi, sv];
+    };
+    return ['interpolate', ['exponential', 1.5], ['zoom'],
+      12, w(base * 1.6, base * 1.3, base * 1.0, base * 0.8, base * 0.5, base * 0.3),
+      18, w(base * 12, base * 10, base * 8, base * 6.5, base * 5, base * 3)];
+  }
+
+  /* ---------- flat 2D skin ----------
+     The recipe borrowed from bright "no label" maps (flat, saturated, almost no text, vivid water), in hop's colours:
+     near-white lilac ground, the illustration palette's richer tones for water, parks and buildings, a soft offset
+     shadow under each building for depth, and only the city and district names as labels. */
+  var FLAT = {
+    day: {
+      bg: '#F7F3FD', city: '#F2E6F2', park: '#A8EFD6', wood: '#93E8CB', water: '#9DB8FF', waterLine: '#6C84FF',
+      road: '#FFFFFF', casing: 'rgba(26,16,51,0.22)', rail: 'rgba(36,56,201,0.5)', shadow: 'rgba(26,16,51,0.13)', edge: 'rgba(26,16,51,0.10)',
+      blds: ['#FFCFA8', '#D3C5F8', '#B9CBFF', '#F4DDB6', '#FFBBA3'],
+      label: '#1A1033', labelMuted: '#5A5070', halo: '#FFFFFF'
+    },
+    golden: {
+      bg: '#FBF1E8', city: '#F8DEC6', park: '#BDEBC8', wood: '#A9E2B7', water: '#AFC0F5', waterLine: '#8294EE',
+      road: '#FFFDFA', casing: 'rgba(58,47,92,0.14)', rail: 'rgba(36,56,201,0.45)', shadow: 'rgba(58,47,92,0.14)', edge: 'rgba(58,47,92,0.10)',
+      blds: ['#FFAA73', '#8FA0F5', '#BFA2F0', '#FFC7A0', '#A3B0F2'],
+      ramp: ['#F5EDF1', '#E2D3E4', '#C2AAD0', '#6E5A92'],
+      label: '#3A2F5C', labelMuted: '#6B5C7A', halo: '#FFF9F2'
+    },
+    night: {
+      bg: '#14091F', city: '#2A1850', park: '#14343B', wood: '#112C34', water: '#1B2A82', waterLine: '#3D5BFF',
+      road: '#4A3A7C', casing: 'rgba(0,0,0,0.0)', rail: 'rgba(108,132,255,0.7)', shadow: 'rgba(0,0,0,0.35)', edge: 'rgba(255,255,255,0.06)',
+      blds: ['#5A3FA0', '#3347C4', '#6B3FB0', '#2E63A8', '#7C46A0'],
+      ramp: ['#2A2147', '#3A2D66', '#52408F', '#7A62C4'],
+      label: '#F8F6FB', labelMuted: '#B9A8DD', halo: '#14091F'
+    }
+  };
+  /* Alternative day palettes for the flat skin, to compare side by side (engine message setPalette).
+     soft: the original pastel buildings. mono: calm neutral lilac buildings, colour only in parks and water.
+     vivid: the illustration palette's richer tones on the buildings. */
+  var FLAT_ALT = {
+    mono: {
+      bg: '#F6F3FB', city: '#E9E3F6', park: '#98EBCE', wood: '#82E5C3', water: '#86A8FF', waterLine: '#6C84FF',
+      road: '#FFFFFF', casing: 'rgba(26,16,51,0.22)', rail: 'rgba(36,56,201,0.55)', shadow: 'rgba(26,16,51,0.14)', edge: 'rgba(26,16,51,0.10)',
+      blds: ['#E6E0F3', '#DAD2EC', '#EEEAF8', '#E0D9F0', '#D3CAE7'],
+      label: '#1A1033', labelMuted: '#5A5070', halo: '#FFFFFF'
+    },
+    vivid: {
+      bg: '#FFFBF5', city: '#FFE6CF', park: '#8BE9CD', wood: '#74E2C2', water: '#7C96FF', waterLine: '#3D5BFF',
+      road: '#FFFFFF', casing: 'rgba(26,16,51,0.22)', rail: 'rgba(36,56,201,0.55)', shadow: 'rgba(26,16,51,0.16)', edge: 'rgba(26,16,51,0.10)',
+      blds: ['#FFB88A', '#8FA3FF', '#C3A8FF', '#FFD0B0', '#A9B8FF'],
+      ramp: ['#F1EDF8', '#DCD3EC', '#B5A8D6', '#5E4F94'], // plum: the ink and lilac family, deeper as buildings get taller
+      label: '#1A1033', labelMuted: '#5A5070', halo: '#FFFFFF'
+    }
+  };
+  function buildFlat(themeName, palette) {
+    var f = (themeName === 'day' && FLAT_ALT[palette || 'vivid']) || FLAT[themeName] || FLAT.day;
+    // Colour means height: one hue, deeper as the building gets taller. (Random per-building colours meant nothing.)
+    var variantColor = f.ramp
+      ? ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, f.ramp[0], 8, f.ramp[1], 16, f.ramp[2], 32, f.ramp[3]]
+      : ['match', VARIANT, 0, f.blds[0], 1, f.blds[1], 2, f.blds[2], 3, f.blds[3], f.blds[4]];
+    var roadFilter = ['all', ['in', ['get', 'class'], ['literal', ROAD_CLASSES]], ['any', ['!=', ['get', 'class'], 'service'], ['>=', ['zoom'], 17]]];
+    var cap = { 'line-cap': 'round', 'line-join': 'round' };
+    var layers = [
+      { id: 'background', type: 'background', paint: { 'background-color': f.bg } },
+      // built-up areas: carries the shape of the city while zoomed out, fades out as the buildings take over
+      { id: 'landuse-city', type: 'fill', source: 'ofm', 'source-layer': 'landuse',
+        filter: ['in', ['get', 'class'], ['literal', ['residential', 'suburb', 'commercial', 'retail', 'industrial', 'neighbourhood']]],
+        paint: { 'fill-color': f.city, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 11, 1, 14, 1, 16, 0] } },
+      { id: 'landcover', type: 'fill', source: 'ofm', 'source-layer': 'landcover',
+        filter: ['in', ['get', 'class'], ['literal', ['grass', 'wood', 'forest']]], paint: { 'fill-color': f.wood, 'fill-opacity': 0.85 } },
+      { id: 'park', type: 'fill', source: 'ofm', 'source-layer': 'park', paint: { 'fill-color': f.park } },
+      { id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water', paint: { 'fill-color': f.water } },
+      { id: 'waterway', type: 'line', source: 'ofm', 'source-layer': 'waterway',
+        paint: { 'line-color': f.water, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1.5, 18, 10] } },
+      { id: 'road-casing', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: roadFilter, layout: cap,
+        paint: { 'line-color': f.casing, 'line-width': roadWidth(2.3) } },
+      { id: 'road', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: roadFilter, layout: cap,
+        paint: { 'line-color': f.road, 'line-width': roadWidth(1.8) } },
+      { id: 'rail', type: 'line', source: 'ofm', 'source-layer': 'transportation', filter: ['==', ['get', 'class'], 'rail'], minzoom: 12,
+        paint: { 'line-color': f.rail, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 3.5], 'line-dasharray': [2, 2] } },
+      // soft offset shadow, then the flat building shapes in five palette tones, then a hairline edge
+      { id: 'building-shadow', type: 'fill', source: 'ofm', 'source-layer': 'building', minzoom: 14.5,
+        paint: { 'fill-color': f.shadow, 'fill-translate': [2.5, 4], 'fill-translate-anchor': 'viewport', 'fill-opacity': fade(14.5, 16) } },
+      { id: 'building', type: 'fill', source: 'ofm', 'source-layer': 'building', paint: { 'fill-color': variantColor } },
+      { id: 'building-edge', type: 'line', source: 'ofm', 'source-layer': 'building', minzoom: 17.2,
+        paint: { 'line-color': f.edge, 'line-width': 0.8 } },
+      // text is kept to a minimum: the city, and district names while zoomed out
+      { id: 'place-suburb', type: 'symbol', source: 'ofm', 'source-layer': 'place',
+        filter: ['in', ['get', 'class'], ['literal', ['suburb', 'quarter', 'neighbourhood']]], minzoom: 12.5, maxzoom: 16,
+        layout: { 'text-field': NAME, 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-max-width': 7 },
+        paint: { 'text-color': f.labelMuted, 'text-halo-color': f.halo, 'text-halo-width': 1.6 } },
+      { id: 'place-city', type: 'symbol', source: 'ofm', 'source-layer': 'place', filter: ['in', ['get', 'class'], ['literal', ['city', 'town']]],
+        layout: { 'text-field': NAME, 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 13, 14, 20], 'text-max-width': 8 },
+        paint: { 'text-color': f.label, 'text-halo-color': f.halo, 'text-halo-width': 2 } }
+    ];
+    var labelAt = layers.map(function (l) { return l.id; }).indexOf('place-suburb');
+    Array.prototype.splice.apply(layers, [labelAt, 0].concat(poiLayers(f)));
+    return {
+      version: 8, name: 'hop-flat-' + themeName,
+      glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+      sources: { ofm: { type: 'vector', url: 'https://tiles.openfreemap.org/planet',
+        attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>' } },
+      layers: layers
+    };
+  }
+
+  function buildStyle(themeName, skin, palette) {
+    if (skin === 'flat') return buildFlat(THEMES[themeName] ? themeName : 'day', palette);
+    themeName = THEMES[themeName] ? themeName : 'day';
+    var t = THEMES[themeName];
+    // service lanes and alleys are noise at city scale; they only appear up close
+    var roadFilter = ['all',
+      ['in', ['get', 'class'], ['literal', ROAD_CLASSES]],
+      ['any', ['!=', ['get', 'class'], 'service'], ['>=', ['zoom'], 17]]];
+    var layers = [
+      { id: 'background', type: 'background', paint: { 'background-color': t.bg } },
+      { id: 'ground-dots', type: 'background', paint: { 'background-pattern': 'hop-ground-' + themeName, 'background-opacity': fade(14.2, 16) } },
+      { id: 'landcover', type: 'fill', source: 'ofm', 'source-layer': 'landcover',
+        filter: ['in', ['get', 'class'], ['literal', ['grass', 'wood', 'forest']]],
+        paint: { 'fill-color': t.wood, 'fill-opacity': 0.75 } },
+      { id: 'park', type: 'fill', source: 'ofm', 'source-layer': 'park',
+        paint: { 'fill-color': t.park, 'fill-opacity': 0.9 } },
+      { id: 'park-speckle', type: 'fill', source: 'ofm', 'source-layer': 'park', minzoom: 14,
+        paint: { 'fill-pattern': 'hop-park-' + themeName, 'fill-opacity': fade(14.2, 16) } },
+      { id: 'park-edge', type: 'line', source: 'ofm', 'source-layer': 'park', layout: { 'line-join': 'round' },
+        paint: { 'line-color': t.wood, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 17, 4], 'line-opacity': 0.9 } },
+      { id: 'water', type: 'fill', source: 'ofm', 'source-layer': 'water',
+        paint: { 'fill-color': t.water } },
+      { id: 'water-edge', type: 'line', source: 'ofm', 'source-layer': 'water', layout: { 'line-join': 'round' },
+        paint: { 'line-color': t.waterLine, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 17, 3.5], 'line-opacity': 0.7 } },
+      { id: 'waterway', type: 'line', source: 'ofm', 'source-layer': 'waterway',
+        paint: { 'line-color': t.waterLine, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 8], 'line-opacity': 0.9 } }
+    ];
+
+    if (t.glow) {
+      layers.push({ id: 'road-glow', type: 'line', source: 'ofm', 'source-layer': 'transportation',
+        filter: roadFilter, layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': t.glow, 'line-width': roadWidth(2.4), 'line-blur': 6, 'line-opacity': 0.28 } });
+    }
+
+    layers.push(
+      { id: 'road-casing', type: 'line', source: 'ofm', 'source-layer': 'transportation',
+        filter: roadFilter, layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': t.roadCasing, 'line-width': roadWidth(2.2) } },
+      { id: 'road', type: 'line', source: 'ofm', 'source-layer': 'transportation',
+        filter: roadFilter, layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': t.road, 'line-width': roadWidth(1.7), 'line-opacity': t.glow ? 0.85 : 1 } },
+      { id: 'rail', type: 'line', source: 'ofm', 'source-layer': 'transportation',
+        filter: ['==', ['get', 'class'], 'rail'], minzoom: 12,
+        paint: { 'line-color': t.rail, 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.8, 18, 3], 'line-dasharray': [2, 2] } },
+      { id: 'building-flat', type: 'fill', source: 'ofm', 'source-layer': 'building',
+        paint: { 'fill-color': t.bldFlat, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 11.5, 0.6, 13.5, 1] } },
+      // soft contact shadow where buildings meet the street
+      { id: 'building-shadow', type: 'line', source: 'ofm', 'source-layer': 'building', minzoom: 15,
+        paint: { 'line-color': themeName === 'night' ? '#0B0720' : '#1A1033', 'line-opacity': themeName === 'night' ? 0.5 : 0.12, 'line-width': ['interpolate', ['linear'], ['zoom'], 15, 2, 18, 8], 'line-blur': ['interpolate', ['linear'], ['zoom'], 15, 2, 18, 6] } },
+      // the building above its ground floor
+      { id: 'building-3d', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 13, maxzoom: 15,
+        filter: ['>=', ['coalesce', ['get', 'render_height'], 6], 5],
+        paint: {
+          'fill-extrusion-color': tintMatch(TINTS[themeName].wall),
+          'fill-extrusion-height': BLD_H,
+          'fill-extrusion-base': ['max', BLD_BASE, PLINTH_H],
+          'fill-extrusion-opacity': fade(13, 14.6),
+          'fill-extrusion-vertical-gradient': true
+        } },
+      // the ground-floor band, a deeper shade of the same tint
+      { id: 'building-plinth', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 13,
+        filter: ['all', ['>=', ['coalesce', ['get', 'render_height'], 6], 5], ['==', BLD_BASE, 0]],
+        paint: {
+          'fill-extrusion-color': tintMatch(TINTS[themeName].plinth),
+          'fill-extrusion-height': PLINTH_H,
+          'fill-extrusion-base': 0,
+          'fill-extrusion-opacity': fade(13, 14.6),
+          'fill-extrusion-vertical-gradient': true
+        } }
+    );
+    // close view: facade textures (one layer per tint, a pattern per layer is the most reliable across MapLibre versions)
+    for (var v = 0; v < N_TINTS; v++) {
+      layers.push({ id: 'building-facade-' + v, type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 15,
+        filter: ['all', ['>=', ['coalesce', ['get', 'render_height'], 6], 5], ['==', VARIANT, v]],
+        paint: {
+          'fill-extrusion-pattern': 'hop-wall-' + themeName + '-' + v,
+          'fill-extrusion-height': BLD_H,
+          'fill-extrusion-base': ['max', BLD_BASE, PLINTH_H],
+          'fill-extrusion-opacity': 1,
+          'fill-extrusion-vertical-gradient': true
+        } });
+    }
+    // roofs: a solid cap while far away, a tile texture up close (so the facade pattern never climbs onto the roof)
+    layers.push({ id: 'building-roof', type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 15, maxzoom: 16,
+      filter: ['>=', ['coalesce', ['get', 'render_height'], 6], 5],
+      paint: {
+        'fill-extrusion-color': tintMatch(TINTS[themeName].roof),
+        'fill-extrusion-height': ['+', BLD_H, 0.6],
+        'fill-extrusion-base': BLD_H,
+        'fill-extrusion-opacity': 1,
+        'fill-extrusion-vertical-gradient': false
+      } });
+    for (var r = 0; r < N_TINTS; r++) {
+      layers.push({ id: 'building-roof-tiles-' + r, type: 'fill-extrusion', source: 'ofm', 'source-layer': 'building', minzoom: 16,
+        filter: ['all', ['>=', ['coalesce', ['get', 'render_height'], 6], 5], ['==', VARIANT, r]],
+        paint: {
+          'fill-extrusion-pattern': 'hop-roof-' + themeName + '-' + r,
+          'fill-extrusion-height': ['+', BLD_H, 0.6],
+          'fill-extrusion-base': BLD_H,
+          'fill-extrusion-opacity': 1,
+          'fill-extrusion-vertical-gradient': false
+        } });
+    }
+    layers.push();
+    layers.push.apply(layers, poiLayers(t));
+    layers.push(
+      { id: 'water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 13,
+        layout: { 'text-field': NAME, 'text-font': ['Noto Sans Italic'], 'text-size': 12, 'text-letter-spacing': 0.1 },
+        paint: { 'text-color': t.waterLine, 'text-halo-color': t.halo, 'text-halo-width': 1 } },
+      // street names only for the main streets, and only when close: the map should be calm, not a directory
+      { id: 'road-name', type: 'symbol', source: 'ofm', 'source-layer': 'transportation_name', minzoom: 16.6,
+        filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]],
+        layout: { 'text-field': NAME, 'text-font': ['Noto Sans Regular'], 'text-size': 11, 'symbol-placement': 'line', 'text-rotation-alignment': 'map', 'text-pitch-alignment': 'viewport' },
+        paint: { 'text-color': t.labelMuted, 'text-halo-color': t.halo, 'text-halo-width': 1.4 } },
+      { id: 'place-suburb', type: 'symbol', source: 'ofm', 'source-layer': 'place',
+        filter: ['in', ['get', 'class'], ['literal', ['suburb', 'quarter', 'neighbourhood']]], minzoom: 12.5, maxzoom: 16,
+        layout: { 'text-field': NAME, 'text-font': ['Noto Sans Bold'], 'text-size': 12, 'text-transform': 'none', 'text-letter-spacing': 0.04, 'text-max-width': 7 },
+        paint: { 'text-color': t.labelMuted, 'text-halo-color': t.halo, 'text-halo-width': 1.6 } },
+      { id: 'place-city', type: 'symbol', source: 'ofm', 'source-layer': 'place',
+        filter: ['in', ['get', 'class'], ['literal', ['city', 'town']]],
+        layout: { 'text-field': NAME, 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 13, 14, 20], 'text-max-width': 8 },
+        paint: { 'text-color': t.label, 'text-halo-color': t.halo, 'text-halo-width': 2 } }
+    );
+
+    return {
+      version: 8,
+      name: 'hop-' + themeName,
+      glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
+      sources: {
+        ofm: {
+          type: 'vector',
+          url: 'https://tiles.openfreemap.org/planet',
+          attribution: '<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>'
+        }
+      },
+      sky: {
+        'sky-color': t.sky, 'horizon-color': t.horizon, 'fog-color': t.fog,
+        'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.7, 'fog-ground-blend': 0.55
+      },
+      light: { anchor: 'map', color: t.light.color, intensity: t.light.intensity, position: t.light.position },
+      layers: layers
+    };
+  }
+
+  /* Solar altitude (degrees) for Timisoara. Used for the automatic day / golden hour / night theme. */
+  function sunAltitude(date) {
+    var rad = Math.PI / 180, lat = 45.7489, lon = 21.2087;
+    var d = date.getTime() / 86400000 + 2440587.5 - 2451545.0;
+    var g = (357.529 + 0.98560028 * d) % 360;
+    var q = (280.459 + 0.98564736 * d) % 360;
+    var L = q + 1.915 * Math.sin(g * rad) + 0.020 * Math.sin(2 * g * rad);
+    var e = 23.439 - 0.00000036 * d;
+    var ra = Math.atan2(Math.cos(e * rad) * Math.sin(L * rad), Math.cos(L * rad)) / rad;
+    var dec = Math.asin(Math.sin(e * rad) * Math.sin(L * rad)) / rad;
+    var gmst = (18.697374558 + 24.06570982441908 * d) % 24;
+    var lst = (gmst * 15 + lon) % 360;
+    var ha = (lst - ra) * rad;
+    return Math.asin(Math.sin(lat * rad) * Math.sin(dec * rad) + Math.cos(lat * rad) * Math.cos(dec * rad) * Math.cos(ha)) / rad;
+  }
+
+  /* The automatic theme. Night is a clock-time choice (22:00 to 06:00 on the phone's clock), not the moment the sun sets:
+     in winter the sun is down by 17:00, and a dark map at tea time feels like a bug. The rest of the day follows the sun:
+     day while it is high, the warm golden look for the low sun and for the evening and early morning hours. */
+  var NIGHT_FROM_HOUR = 22;
+  var NIGHT_UNTIL_HOUR = 6;
+  function themeForNow(date) {
+    var now = date || new Date();
+    var hour = now.getHours();
+    if (hour >= NIGHT_FROM_HOUR || hour < NIGHT_UNTIL_HOUR) return 'night';
+    return sunAltitude(now) > 12 ? 'day' : 'golden';
+  }
+
+  window.HubStyle = { buildStyle: buildStyle, themeForNow: themeForNow, sunAltitude: sunAltitude, themes: THEMES, wallImage: wallImage, groundImage: groundImage, roofImage: roofImage, poiImage: poiImage };
+})();
+</script>
+<script>/* hop map engine. Runs inside the WebView (native) or iframe (web) and talks to the app through a tiny message bridge.
+   App -> engine: setPins, flyTo, setCity, select, setTheme, setReducedMotion, setInsets, setUserLocation
+   Engine -> app: ready, pinPress, longPress, tap, camera, error                                          */
+(function () {
+  var ART = window.__PIN_ART__ || {};
+  var START = { center: [21.2272, 45.7537], zoom: 15.4 };
+  var palette = 'vivid'; // flat-skin day palette: 'vivid' (default) | 'mono' | 'soft'
+  var skin = 'flat'; // 'flat' (2D, default) or 'city3d'
+  function skinPitch() { return skin === 'flat' ? 0 : 45; }
+  function skinBearing() { return skin === 'flat' ? 0 : -15; }
+  var BOUNDS = [[20.9, 45.55], [21.55, 45.95]]; // replaced by the app's city (setCity)
+
+  var map = null;
+  var loaded = false;
+  var queue = [];
+  var themeSetting = 'auto';
+  var activeTheme = null;
+  var reduceMotion = false;
+  var insets = { top: 0, right: 0, bottom: 0, left: 0 };
+  var pins = {}; // id -> { data, marker, el }
+  var selectedId = null;
+  var userMarker = null;
+
+  function send(msg) {
+    try {
+      if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(msg));
+      else if (window.parent && window.parent !== window) window.parent.postMessage({ hubMap: true, msg: msg }, '*');
+    } catch (e) { /* bridge not ready */ }
+  }
+
+  /* ---------- pins ---------- */
+  function pinHtml(p) {
+    var art = ART[p.art] || ART.note || '';
+    var badge = p.badge === 'shared'
+      ? '<span class="badge" title="Shared"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><circle cx="5.5" cy="6" r="2.4" fill="#1A1033"/><circle cx="11" cy="6.6" r="2" fill="#1A1033"/><path d="M1.5 13a4 4 0 0 1 8 0Z M8 13a3.2 3.2 0 0 1 6.4 0Z" fill="#1A1033"/></svg></span>'
+      : p.badge === 'lock'
+      ? '<span class="badge" title="Private"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="#1A1033"/><path d="M5.2 7V5.4a2.8 2.8 0 0 1 5.6 0V7" fill="none" stroke="#1A1033" stroke-width="1.6"/></svg></span>'
+      : '';
+    return '<span class="tip"></span><span class="disc"><svg viewBox="0 0 56 56" width="28" height="28" aria-hidden="true">' + art + '</svg></span>' + badge + '<span class="foot"></span>';
+  }
+
+  function makeMarker(p) {
+    var el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'pin' + (p.id === selectedId ? ' selected' : '');
+    el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : ''));
+    el.innerHTML = pinHtml(p);
+    el.addEventListener('click', function (ev) { ev.stopPropagation(); send({ type: 'pinPress', id: p.id }); });
+    var marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(map);
+    return { data: p, marker: marker, el: el };
+  }
+
+  function setPins(list) {
+    var next = {};
+    list.forEach(function (p) { next[p.id] = p; });
+    Object.keys(pins).forEach(function (id) {
+      if (!next[id]) { pins[id].marker.remove(); delete pins[id]; }
+    });
+    list.forEach(function (p) {
+      var cur = pins[p.id];
+      if (!cur) { pins[p.id] = makeMarker(p); return; }
+      var changed = cur.data.title !== p.title || cur.data.art !== p.art || cur.data.badge !== p.badge || cur.data.kindLabel !== p.kindLabel;
+      if (cur.data.lng !== p.lng || cur.data.lat !== p.lat) cur.marker.setLngLat([p.lng, p.lat]);
+      if (changed) {
+        cur.el.innerHTML = pinHtml(p);
+        cur.el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : ''));
+      }
+      cur.data = p;
+    });
+  }
+
+  function select(id) {
+    if (selectedId && pins[selectedId]) pins[selectedId].el.classList.remove('selected');
+    selectedId = id || null;
+    if (selectedId && pins[selectedId]) {
+      pins[selectedId].el.classList.add('selected');
+      pins[selectedId].marker.getElement().style.zIndex = 5;
+    }
+  }
+
+  /* ---------- camera ---------- */
+  function flyTo(c) {
+    var opts = { center: [c.lng, c.lat], padding: insets };
+    if (typeof c.zoom === 'number') opts.zoom = c.zoom;
+    if (typeof c.pitch === 'number') opts.pitch = c.pitch;
+    if (typeof c.bearing === 'number') opts.bearing = c.bearing;
+    if (reduceMotion || c.instant) map.jumpTo(opts);
+    else { opts.duration = 900; opts.essential = false; map.easeTo(opts); }
+  }
+
+  function setInsets(i) {
+    insets = { top: i.top || 0, right: i.right || 0, bottom: i.bottom || 0, left: i.left || 0 };
+    document.documentElement.style.setProperty('--hub-bottom', insets.bottom + 'px');
+    if (map) map.setPadding(insets);
+  }
+
+  /* ---------- theme ---------- */
+  function resolveTheme() { return themeSetting === 'auto' ? HubStyle.themeForNow(new Date()) : themeSetting; }
+  function setSkin(next) {
+    next = next === 'city3d' ? 'city3d' : 'flat';
+    if (next === skin) return;
+    skin = next;
+    if (!map) return;
+    map.setMaxPitch(skin === 'flat' ? 0 : 70);
+    map.setStyle(HubStyle.buildStyle(activeTheme || resolveTheme(), skin, palette));
+    map.easeTo({ pitch: skinPitch(), bearing: skinBearing(), duration: reduceMotion ? 0 : 600 });
+  }
+  function applyTheme(force) {
+    var next = resolveTheme();
+    if (!force && next === activeTheme) return;
+    activeTheme = next;
+    document.documentElement.setAttribute('data-theme', next);
+    if (map) map.setStyle(HubStyle.buildStyle(next, skin, palette));
+  }
+
+  /* ---------- user location dot ---------- */
+  function setUserLocation(p) {
+    if (!p) { if (userMarker) { userMarker.remove(); userMarker = null; } return; }
+    if (!userMarker) {
+      var el = document.createElement('div');
+      el.className = 'me';
+      el.setAttribute('aria-label', 'Your location');
+      userMarker = new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map);
+    } else userMarker.setLngLat([p.lng, p.lat]);
+  }
+
+  /* ---------- long press ---------- */
+  var press = null;
+  function startPress(e) {
+    cancelPress();
+    var pt = e.point;
+    press = { x: pt.x, y: pt.y, ll: e.lngLat, t: setTimeout(function () {
+      if (!press) return;
+      send({ type: 'longPress', lat: press.ll.lat, lng: press.ll.lng });
+      press = null;
+    }, 550) };
+  }
+  function movePress(e) {
+    if (!press) return;
+    var dx = e.point.x - press.x, dy = e.point.y - press.y;
+    if (dx * dx + dy * dy > 64) cancelPress();
+  }
+  function cancelPress() { if (press) { clearTimeout(press.t); press = null; } }
+
+  /* ---------- offline / errors ---------- */
+  var errorTimer = null;
+  function showOffline(on) { var n = document.getElementById('offline'); if (n) n.hidden = !on; }
+
+  /* ---------- commands ---------- */
+  function handle(msg) {
+    if (!msg || !msg.type) return;
+    if (!loaded && msg.type !== 'setTheme' && msg.type !== 'setReducedMotion' && msg.type !== 'setInsets') { queue.push(msg); return; }
+    switch (msg.type) {
+      case 'setPins': setPins(msg.pins || []); break;
+      case 'flyTo': flyTo(msg); break;
+      case 'setCity': // the city this map shows: where it opens and how far it can be dragged
+        START = { center: [msg.lng, msg.lat], zoom: msg.zoom };
+        BOUNDS = msg.bounds;
+        if (map) { map.setMaxBounds(BOUNDS); map.jumpTo({ center: START.center, zoom: START.zoom }); }
+        break;
+      case 'select': select(msg.id); break;
+      case 'setTheme': themeSetting = msg.theme || 'auto'; if (map) applyTheme(false); break;
+      case 'setReducedMotion': reduceMotion = !!msg.value; break;
+      case 'setInsets': setInsets(msg); break;
+      case 'setUserLocation': setUserLocation(msg.location); break;
+      case 'retry': showOffline(false); if (map) map.setStyle(HubStyle.buildStyle(activeTheme || resolveTheme(), skin, palette)); break;
+      case 'setSkin': setSkin(msg.skin); break;
+      case 'setPalette': palette = msg.palette || 'soft'; if (map) map.setStyle(HubStyle.buildStyle(activeTheme || resolveTheme(), skin, palette)); break;
+    }
+  }
+
+  window.__hubMap = { receive: function (json) { try { handle(typeof json === 'string' ? JSON.parse(json) : json); } catch (e) { send({ type: 'error', message: String(e) }); } } };
+  window.addEventListener('message', function (ev) { var d = ev.data; if (d && d.hubMapCmd) window.__hubMap.receive(d.hubMapCmd); });
+  document.addEventListener('message', function (ev) { window.__hubMap.receive(ev.data); }); // Android WebView
+
+  /* ---------- boot ---------- */
+  function boot() {
+    if (!window.maplibregl) { document.getElementById('offline').hidden = false; send({ type: 'error', message: 'maplibre failed to load' }); return; }
+    activeTheme = resolveTheme();
+    document.documentElement.setAttribute('data-theme', activeTheme);
+    map = new maplibregl.Map({
+      container: 'map',
+      style: HubStyle.buildStyle(activeTheme, skin, palette),
+      center: START.center, zoom: START.zoom, pitch: skinPitch(), bearing: skinBearing(),
+      maxPitch: skin === 'flat' ? 0 : 70, minZoom: 11.5, maxZoom: 19, maxBounds: BOUNDS,
+      attributionControl: false,
+      canvasContextAttributes: { antialias: true },
+      dragRotate: true, touchPitch: true, pitchWithRotate: true
+    });
+    // facade textures are painted on demand: the style asks for 'hop-wall-<theme>-<n>'
+    map.on('styleimagemissing', function (ev) {
+      var m = /^hop-wall-(day|golden|night)-([0-9]+)$/.exec(ev.id);
+      if (m && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.wallImage(m[1], parseInt(m[2], 10)), { pixelRatio: 1.5 });
+    });
+    map.on('styleimagemissing', function (ev) {
+      var g = /^hop-(ground|park)-(day|golden|night)$/.exec(ev.id);
+      if (g && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.groundImage(g[1], g[2]), { pixelRatio: 2 });
+    });
+    map.on('styleimagemissing', function (ev) {
+      var rf = /^hop-roof-(day|golden|night)-([0-9]+)$/.exec(ev.id);
+      if (rf && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.roofImage(rf[1], parseInt(rf[2], 10)), { pixelRatio: 2 });
+    });
+    map.on('styleimagemissing', function (ev) {
+      var p = /^hop-poi-(landmark|fountain|health|transit|dot)$/.exec(ev.id);
+      if (p && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.poiImage(p[1]), { pixelRatio: 2 });
+    });
+    map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+    map.touchZoomRotate.enableRotation();
+
+    map.on('load', function () {
+      loaded = true;
+      send({ type: 'ready', theme: activeTheme });
+      var q = queue; queue = [];
+      q.forEach(handle);
+    });
+    map.on('click', function (e) { send({ type: 'tap', lat: e.lngLat.lat, lng: e.lngLat.lng }); });
+    map.on('mousedown', startPress); map.on('touchstart', startPress);
+    map.on('mousemove', movePress); map.on('touchmove', movePress);
+    ['mouseup', 'touchend', 'touchcancel', 'movestart', 'zoomstart', 'dragstart'].forEach(function (n) { map.on(n, cancelPress); });
+    var idle = null;
+    map.on('moveend', function () {
+      clearTimeout(idle);
+      idle = setTimeout(function () {
+        var c = map.getCenter();
+        send({ type: 'camera', lat: c.lat, lng: c.lng, zoom: map.getZoom(), bearing: map.getBearing(), pitch: map.getPitch() });
+      }, 250);
+    });
+    map.on('error', function (e) {
+      var m = (e && e.error && e.error.message) || 'map error';
+      if (/Failed to fetch|NetworkError|Load failed|Not allowed|403|404/i.test(m)) {
+        clearTimeout(errorTimer);
+        errorTimer = setTimeout(function () { showOffline(true); send({ type: 'error', message: m }); }, 1500);
+      }
+    });
+    map.on('data', function (e) { if (e && e.dataType === 'source' && e.isSourceLoaded) { clearTimeout(errorTimer); showOffline(false); } });
+    setInterval(function () { if (themeSetting === 'auto') applyTheme(false); }, 5 * 60 * 1000);
+    document.getElementById('retry').addEventListener('click', function () { handle({ type: 'retry' }); });
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+</body>
+</html>

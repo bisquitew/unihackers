@@ -1,106 +1,33 @@
-import { fetchEvents, fetchForumPosts, fetchBuddyRequests, fetchSolanaStatus } from '../api.js';
+import { fetchBuddyRequests, fetchEvents, fetchForumPosts } from '../api.js';
+import { art, esc, row, when } from '../ui.js';
+import { CITY } from '../city.js';
 
-export async function renderCommunityView() {
-  const [events, posts, buddies, solana] = await Promise.all([
-    fetchEvents(),
-    fetchForumPosts(),
-    fetchBuddyRequests(),
-    fetchSolanaStatus(),
-  ]);
+const eventRows = (events) => events.map((e) => row({
+  art: art('events', 52), title: esc(e.title),
+  detail: `${esc((e.description || '').slice(0, 110))}<br><span class="muted">${esc(e.locationName || e.location || CITY.name)} · ${esc(when(e.dateTime || e.date))}</span>`,
+  side: e.isFree ? '<span class="tag mint">Free</span>' : '',
+})).join('') || '<div class="empty">No events yet.</div>';
+const postRows = (posts) => posts.map((p) => row({ art: art('forum', 52), title: esc(p.title), detail: esc((p.content || '').slice(0, 140)), side: `${p.likes || 0} likes` })).join('') || '<div class="empty">No posts yet.</div>';
+const buddyRows = (buddies) => buddies.map((b) => row({ art: art('buddy', 52), title: esc(b.title || `${b.userName || 'Someone'} is looking for company`), detail: esc((b.description || b.bio || b.eventTitle || '').slice(0, 120)) })).join('') || '<div class="empty">No requests yet.</div>';
 
-  return `
-    <div class="view-content community-view">
-      
-      <!-- Solana Banner -->
-      <section class="solana-hero-box">
-        <div class="solana-left">
-          <span class="solana-pill">⚡ SOLANA DEVNET CLUSTER</span>
-          <h2 class="solana-title">Bilete Culturale & Ecusoane POAP Verificabile pe Blockchain</h2>
-          <p class="solana-desc">
-            Evenimentele din Timișoara utilizează programul Solana SPL Memo pentru bilete de acces securizate și suveniruri digitale POAP fără costuri de gaz pentru cetățeni.
-          </p>
-        </div>
-        <div class="solana-stats">
-          <div class="solana-stat-item">
-            <span class="stat-lbl">Cluster RPC:</span>
-            <span class="stat-val">https://api.devnet.solana.com</span>
-          </div>
-          <div class="solana-stat-item">
-            <span class="stat-lbl">Portofel Organizator:</span>
-            <span class="stat-val"><code>H6oCfQHkpFg6rUhZmx1e6szoRveAVFrN4ji7P4HJvPU1</code></span>
-          </div>
-          <div class="solana-stat-item">
-            <span class="stat-lbl">Stare Blockchain:</span>
-            <span class="stat-val" style="color: #4ade80;">🟢 ONLINE (Slot #${solana.slot || '522113911'})</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Events & Forum Grid -->
-      <div class="two-column-feed">
-        
-        <!-- Left Column: Events -->
-        <div class="feed-column">
-          <div class="feed-header">
-            <h3>🎭 Evenimente Culturale (${events.length})</h3>
-          </div>
-          <div class="cards-grid">
-            ${events.map(evt => `
-              <div class="detail-card">
-                <div class="detail-card-top">
-                  <span class="provider-tag tag-colterm">${evt.category ? evt.category.toUpperCase() : 'CULTURĂ'}</span>
-                  <span class="status-badge status-green">Confirmat</span>
-                </div>
-                <div class="detail-card-title">${evt.title}</div>
-                <div class="detail-card-body">${evt.description || 'Eveniment organizat în cadrul Timișoara City Hub.'}</div>
-                <div class="detail-card-footer">
-                  <span>📍 ${evt.location || 'Centrul Cultural'}</span>
-                  <span>📅 ${evt.date || 'În curând'}</span>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-
-        <!-- Right Column: Forum & Buddies -->
-        <div class="feed-column">
-          
-          <div class="feed-header">
-            <h3>💬 Discuții Comunitare & Forum (${posts.length})</h3>
-          </div>
-          <div class="notice-list">
-            ${posts.slice(0, 3).map(post => `
-              <div class="notice-item">
-                <div class="notice-top">
-                  <span class="notice-provider">${post.category || 'GENERAL'}</span>
-                  <span class="notice-time">${post.likes || 0} aprecieri</span>
-                </div>
-                <div class="notice-title">${post.title}</div>
-                <div class="notice-desc">${post.content}</div>
-              </div>
-            `).join('')}
-          </div>
-
-          <div class="feed-header" style="margin-top: 24px;">
-            <h3>🤝 Cereri Buddy Timișoara (${buddies.length})</h3>
-          </div>
-          <div class="notice-list">
-            ${buddies.slice(0, 2).map(b => `
-              <div class="notice-item">
-                <div class="notice-top">
-                  <span class="notice-provider banat">${b.activity_type || 'ACTIVITATE'}</span>
-                  <span class="notice-time">Nivel: ${b.skill_level || 'Începător'}</span>
-                </div>
-                <div class="notice-title">${b.title}</div>
-                <div class="notice-desc">${b.description}</div>
-              </div>
-            `).join('')}
-          </div>
-
-        </div>
-
+export async function render(ctx) {
+  const [events, posts, buddies] = await Promise.all([fetchEvents(), fetchForumPosts(), fetchBuddyRequests()]);
+  const feed = `<div class="cols section">
+      <div><div class="section-head"><h2>Events (${events.length})</h2></div><div class="list">${eventRows(events)}</div></div>
+      <div>
+        <div class="section-head"><h2>Forum</h2></div><div class="list">${postRows(posts.slice(0, 5))}</div>
+        <div class="section"><div class="section-head"><h2>People to go with</h2></div><div class="list">${buddyRows(buddies.slice(0, 4))}</div></div>
       </div>
-
-    </div>
-  `;
+    </div>`;
+  const wallet = `<div class="section"><div class="section-head"><h2>Wallet</h2></div>
+    <div class="list">${row({ art: art('wallet', 52), title: 'Tickets and badges on Solana devnet', detail: 'Get a ticket for an event, keep it in your wallet and scan it at the door. Open the app to use it.' })}</div></div>`;
+  return `<div class="page">
+    <h1 class="page-title">Community</h1>
+    <p class="page-sub">Events, neighbours and people to go with.</p>
+    ${ctx.loggedIn
+      ? feed + wallet
+      : `<div class="locked" style="margin-top:32px"><div class="blurred">${feed}</div>
+          <div class="door"><div><h3>Join your neighbours</h3><p>Log in to read the forum, reply, find someone to go to an event with, and get tickets.</p><button class="btn btn-primary" data-login>Log in</button></div></div></div>`}
+  </div>`;
 }
+export const mount = () => () => {};

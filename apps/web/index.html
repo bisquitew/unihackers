@@ -1,34 +1,33 @@
 <!DOCTYPE html>
-<html lang="ro">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Timișoara City Hub — Platformă Civică & Comunitară</title>
-  
-  <!-- Leaflet Map CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  
-  <!-- App Styles -->
+  <title>hop</title>
+  <meta name="description" content="Live alerts, parking, events and your neighbours in your city. Look around, then log in to join in.">
+  <meta property="og:title" content="hop">
+  <meta property="og:description" content="Your city, in one place: live alerts, parking, events and people to go with.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./styles.css">
+  <script>
+    // set the theme before first paint so there is no light flash in dark mode
+    (function () {
+      var s = localStorage.getItem('hop_theme') || 'system';
+      var dark = s === 'dark' || (s === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    })();
+  </script>
 </head>
 <body>
-
-  <!-- Sticky Navbar Header -->
   <div id="navbarContainer"></div>
-
-  <!-- Dynamic View Content -->
-  <main id="mainContent" class="app-main"></main>
-
-  <!-- Modals Container (Auth0 Switcher, Step-Up MFA Challenge) -->
+  <div id="menuHost"></div>
+  <main id="mainContent"></main>
   <div id="modalContainer"></div>
-
-  <!-- Toast Notification -->
-  <div id="toast" class="toast"></div>
-
-  <!-- Leaflet Map JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-  
-  <!-- Main Application Script (ES Module) -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
   <script type="module" src="./src/app.js"></script>
 </body>
 </html>

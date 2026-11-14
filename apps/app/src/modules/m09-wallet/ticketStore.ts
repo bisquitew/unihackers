@@ -66,7 +66,7 @@ const INITIAL_POAPS: PoapResult[] = [
     eventId: 'evt-003',
     eventTitle: 'Sunset Acoustic & Jazz Session',
     attendeeWallet: ORGANIZER_WALLET_ADDRESS,
-    badgeName: 'Timișoara 2026 Culture Explorer: Bega Jazz Session',
+    badgeName: 'Culture Explorer: Bega Jazz Session',
     txSignature: '3XmuCJr2h7XCU3NKkwiN96ocrhSy9b2d56d8KdvvRMMwcayZ9i2nJd6Mcpky2m17AGWF6tiPpRzGD5twXZUhuSXr',
     explorerUrl: 'https://explorer.solana.com/tx/3XmuCJr2h7XCU3NKkwiN96ocrhSy9b2d56d8KdvvRMMwcayZ9i2nJd6Mcpky2m17AGWF6tiPpRzGD5twXZUhuSXr?cluster=devnet',
     issuedAt: '2026-11-14T07:35:00Z',
@@ -76,7 +76,7 @@ const INITIAL_POAPS: PoapResult[] = [
     eventId: 'evt-001',
     eventTitle: 'Underground Indie Cinema Night',
     attendeeWallet: ORGANIZER_WALLET_ADDRESS,
-    badgeName: 'Timișoara Culture Explorer: Faber Cinema Night',
+    badgeName: 'Culture Explorer: Faber Cinema Night',
     txSignature: 'GPq2W9MujbkVC2cqoRpwuNUwsbQaRbd61DVmxHeH9ZHQ1KYuKXerNvSqgqBXMNaevwPqZ4qPP24p9jP1tHBAsdJ',
     explorerUrl: 'https://explorer.solana.com/tx/GPq2W9MujbkVC2cqoRpwuNUwsbQaRbd61DVmxHeH9ZHQ1KYuKXerNvSqgqBXMNaevwPqZ4qPP24p9jP1tHBAsdJ?cluster=devnet',
     issuedAt: '2026-11-14T08:49:00Z',
@@ -265,7 +265,7 @@ class TicketStore {
       eventId: ticket.eventId,
       eventTitle: ticket.eventTitle,
       attendeeWallet: this.state.walletAddress,
-      checkInLocation: 'Timișoara Cultural Hub Door Check-in',
+      checkInLocation: 'Cultural Hub Door Check-in',
     });
 
     this.state.poaps.unshift(poap);

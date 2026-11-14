@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { getCity } from './city';
 import { pinKinds } from './kinds';
 import type { Coordinate, MapFocus, MapInsets, MapPin, MapSkin, MapTheme } from './types';
 
@@ -17,6 +18,7 @@ export interface EnginePin {
 export type ToEngine =
   | { type: 'setPins'; pins: EnginePin[] }
   | { type: 'flyTo'; lat: number; lng: number; zoom?: number }
+  | { type: 'setCity'; lat: number; lng: number; zoom: number; bounds: [[number, number], [number, number]] }
   | { type: 'select'; id: string | null }
   | { type: 'setTheme'; theme: MapTheme }
   | { type: 'setSkin'; skin: MapSkin }
@@ -77,10 +79,14 @@ export function useEngineBridge(props: CityMapProps, post: (message: ToEngine) =
   const handleMessage = useCallback((msg: FromEngine) => {
     const p = latest.current;
     switch (msg.type) {
-      case 'ready':
+      case 'ready': {
+        // tell the map which city it is showing before anything else is sent
+        const city = getCity();
+        post({ type: 'setCity', lat: city.center.latitude, lng: city.center.longitude, zoom: city.zoom, bounds: city.bounds });
         setReady(true);
         p.onReady?.();
         break;
+      }
       case 'pinPress':
         p.onPinPress?.(msg.id);
         break;
@@ -97,7 +103,7 @@ export function useEngineBridge(props: CityMapProps, post: (message: ToEngine) =
         p.onError?.(msg.message);
         break;
     }
-  }, []);
+  }, [post]);
 
   const { pins, selectedId, focus, theme, skin, insets, userLocation, reducedMotion } = props;
 

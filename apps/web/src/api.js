@@ -4,6 +4,20 @@ const BASE_URL = window.location.port === '8000'
   ? ''
   : 'http://localhost:8000';
 
+// Every request to the API says it comes from the website. The API applies the access rule with it:
+// staff (admin) accounts sign in on the website only, residents in the mobile app only.
+const nativeFetch = window.fetch.bind(window);
+window.fetch = (input, init = {}) => {
+  const url = typeof input === 'string' ? input : input?.url || '';
+  if (!url.includes('/v1/')) return nativeFetch(input, init);
+  const headers = new Headers(init.headers || (typeof input === 'object' ? input.headers : undefined));
+  headers.set('X-Hub-Client', 'web');
+  // signed-in requests carry the session token unless the caller already set one
+  const saved = localStorage.getItem('hub_auth_token');
+  if (saved && !headers.has('Authorization')) headers.set('Authorization', `Bearer ${saved}`);
+  return nativeFetch(input, { ...init, headers });
+};
+
 function getHeaders(token) {
   const headers = { 'Content-Type': 'application/json' };
   if (token) {
@@ -19,7 +33,10 @@ export async function loginWithGoogle({ email, name, role } = {}) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, name, role }),
   });
-  if (!res.ok) throw new Error(`Google login failed: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error_description || `Sign-in failed (${res.status})`);
+  }
   return await res.json();
 }
 
@@ -88,6 +105,59 @@ export async function fetchAnalyticsHeatmap() {
     return await res.json();
   } catch {
     return { heatpoints: [] };
+  }
+}
+
+// --- AREA DANGER & CONSTRUCTION ALERTS (RADIUS MAPPING & NEIGHBOUR SIGNALING) ---
+export async function fetchAreaAlerts(filter = {}) {
+  try {
+    const params = new URLSearchParams();
+    if (filter.type) params.set('type', filter.type);
+    if (filter.status) params.set('status', filter.status);
+    if (filter.neighbourhood) params.set('neighbourhood', filter.neighbourhood);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${BASE_URL}/v1/core/area-alerts${qs}`);
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchAreaAlertById(id) {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/area-alerts/${id}`);
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function createAreaAlert(token, alertData) {
+  const res = await fetch(`${BASE_URL}/v1/core/area-alerts`, {
+    method: 'POST',
+    headers: getHeaders(token),
+    body: JSON.stringify(alertData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+export async function checkAreaProximity(query = {}) {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/area-alerts/check-proximity`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(query),
+    });
+    return await res.json();
+  } catch (err) {
+    return {
+      in_danger_zone: false,
+      in_construction_zone: false,
+      matching_alerts: [],
+      error: err.message
+    };
   }
 }
 
@@ -177,7 +247,8 @@ export async function submitSmellReport(data) {
 export async function fetchEvents() {
   try {
     const res = await fetch(`${BASE_URL}/v1/m/events`);
-    return await res.json();
+    const body = await res.json();
+    return Array.isArray(body) ? body : body.events || [];
   } catch {
     return [];
   }
@@ -186,7 +257,8 @@ export async function fetchEvents() {
 export async function fetchForumPosts() {
   try {
     const res = await fetch(`${BASE_URL}/v1/m/forum/posts`);
-    return await res.json();
+    const body = await res.json();
+    return Array.isArray(body) ? body : body.posts || [];
   } catch {
     return [];
   }
@@ -195,7 +267,8 @@ export async function fetchForumPosts() {
 export async function fetchBuddyRequests() {
   try {
     const res = await fetch(`${BASE_URL}/v1/m/buddy/requests`);
-    return await res.json();
+    const body = await res.json();
+    return Array.isArray(body) ? body : body.buddyRequests || [];
   } catch {
     return [];
   }

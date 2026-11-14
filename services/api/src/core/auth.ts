@@ -525,10 +525,45 @@ export function registerGoogleUser(googlePayload: {
 }
 
 /**
+ * Where a request comes from, sent by the clients in the `X-Hub-Client` header: the phone `app` or the `web` site.
+ * Access rule: regular accounts (residents, organizers) sign in on both, like any social network. Staff accounts
+ * (admins, moderators) sign in on the web dashboard only, never in the app.
+ * A request without the header (scripts, tests, the AI worker) is not restricted by this rule.
+ */
+export type HubClient = 'app' | 'web';
+const STAFF_ROLES: UserRole[] = ['admin', 'moderator'];
+
+export function hubClientOf(value: unknown): HubClient | null {
+  const v = Array.isArray(value) ? value[0] : value;
+  return v === 'app' || v === 'web' ? v : null;
+}
+
+/** Whether this role may sign in from this client. */
+export function roleAllowedOnClient(role: UserRole, client: HubClient | null): boolean {
+  if (client !== 'app') return true;
+  return !STAFF_ROLES.includes(role);
+}
+
+/** The 403 body returned when a staff account tries to sign in from the app. */
+export function wrongClientBody(role: UserRole, _client: HubClient) {
+  return { error: 'use_web_dashboard', error_description: 'Staff accounts sign in on the web dashboard, not in the app.', role };
+}
+
+/**
+ * Resolves Bearer token into an AuthUser context, then applies the client rule: a staff user on the app is treated as
+ * a guest there, so a staff token is useless in the app.
+ */
+export async function resolveAuthUser(authHeader?: string, client: HubClient | null = null): Promise<AuthUser> {
+  const user = await resolveAuthUserRaw(authHeader);
+  if (user !== GUEST_USER && !roleAllowedOnClient(user.role, client)) return GUEST_USER;
+  return user;
+}
+
+/**
  * Resolves Bearer token into an AuthUser context.
  * Supports both dev tokens and real Auth0 RS256 JWTs.
  */
-export async function resolveAuthUser(authHeader?: string): Promise<AuthUser> {
+async function resolveAuthUserRaw(authHeader?: string): Promise<AuthUser> {
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return GUEST_USER;
   }
@@ -580,7 +615,7 @@ export async function resolveAuthUser(authHeader?: string): Promise<AuthUser> {
  */
 export async function authMiddleware(c: any, next: any) {
   const authHeader = c.req.header('Authorization');
-  const user = await resolveAuthUser(authHeader);
+  const user = await resolveAuthUser(authHeader, hubClientOf(c.req.header('X-Hub-Client')));
   c.set('user', user);
   return next();
 }

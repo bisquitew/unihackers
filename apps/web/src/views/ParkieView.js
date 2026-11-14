@@ -1,84 +1,25 @@
 import { fetchLots } from '../api.js';
-import { isAdmin } from '../auth.js';
+import { esc, row } from '../ui.js';
 
-export async function renderParkieView() {
+export async function render(ctx) {
   const lots = await fetchLots();
-  const userIsAdmin = isAdmin();
-
-  const totalCapacity = lots.reduce((acc, l) => acc + l.capacity, 0);
-  const totalAvailable = lots.reduce((acc, l) => acc + l.available_spots, 0);
-
-  return `
-    <div class="view-content parkie-view">
-      
-      <!-- Parkie Header Card -->
-      <section class="parkie-hero-box">
-        <div class="parkie-hero-left">
-          <span class="brand-badge" style="width: fit-content;">PARKIE LIVE</span>
-          <h2>Sistem Inteligent de Monitorizare Video a Parcărilor</h2>
-          <p>
-            Parcările publice din Timișoara sunt procesate prin algoritmi de computer vision direct pe fluxurile camerelor de supraveghere. Locurile libere sunt actualizate automat pe harta orașului și în fluxul SSE în timp real.
-          </p>
-        </div>
-        <div class="parkie-stats-grid">
-          <div class="parkie-stat">
-            <span class="stat-number" style="color: #38bdf8;">${totalAvailable}</span>
-            <span class="stat-label">Locuri Libere</span>
-          </div>
-          <div class="parkie-stat">
-            <span class="stat-number" style="color: #a1a1aa;">${totalCapacity}</span>
-            <span class="stat-label">Capacitate Totală</span>
-          </div>
-          <div class="parkie-stat">
-            <span class="stat-number" style="color: #22c55e;">${lots.length}</span>
-            <span class="stat-label">Parcări Monitorizate</span>
-          </div>
-        </div>
-      </section>
-
-      ${userIsAdmin ? `
-        <div class="admin-callout-banner">
-          <div>
-            <strong>🛡️ Mod Administrator Activ:</strong> Aveți permisiunea de a calibra camerele video și a trasa ploturile fiecărui loc de parcare.
-          </div>
-          <button class="btn btn-primary" id="openAdminCalibrationBtn">
-            🎥 Deschide Calibrare Camere & Plots
-          </button>
-        </div>
-      ` : `
-        <div class="info-callout-banner">
-          <div>
-            ℹ️ <strong>Vedere Cetățean:</strong> Vizualizați disponibilitatea în timp real. Calibrarea camerelor și adăugarea de noi ploturi necesită autentificarea cu rol de <strong>Administrator</strong>.
-          </div>
-        </div>
-      `}
-
-      <!-- Lots Grid -->
-      <div class="cards-grid" style="margin-top: 20px;">
-        ${lots.map(lot => {
-          const isGreen = lot.status_color === 'green';
-          const isYellow = lot.status_color === 'yellow';
-          const colorClass = isGreen ? 'status-green' : (isYellow ? 'status-yellow' : 'status-red');
-
-          return `
-            <div class="detail-card">
-              <div class="detail-card-top">
-                <span class="notice-provider">${lot.id}</span>
-                <span class="status-badge ${colorClass}">${(lot.status_color || 'green').toUpperCase()}</span>
-              </div>
-              <div class="detail-card-title">${lot.name}</div>
-              <div class="lot-progress-bar">
-                <div class="lot-progress-fill ${lot.status_color}" style="width: ${Math.round((lot.available_spots / lot.capacity) * 100)}%;"></div>
-              </div>
-              <div class="detail-card-footer">
-                <span>Libere: <strong>${lot.available_spots}</strong> / ${lot.capacity}</span>
-                <span>Coordonate: <strong>${lot.latitude.toFixed(3)}, ${lot.longitude.toFixed(3)}</strong></span>
-              </div>
-            </div>
-          `;
-        }).join('')}
-      </div>
-
+  const cap = lots.reduce((a, l) => a + l.capacity, 0);
+  const free = lots.reduce((a, l) => a + l.available_spots, 0);
+  return `<div class="page">
+    <div style="display:flex;justify-content:space-between;gap:24px;align-items:flex-end;flex-wrap:wrap">
+      <div><h1 class="page-title">Parking</h1><p class="page-sub">Live free spots in ${lots.length} lots, counted from camera feeds.</p></div>
+      ${ctx.staff ? `<button class="btn btn-secondary" data-goto="admin">Calibrate cameras</button>` : ''}
     </div>
-  `;
+    <div class="stats" style="grid-template-columns:repeat(3,minmax(0,1fr))">
+      <div class="stat"><b style="color:var(--mint)">${free}</b><span>Free spots</span></div>
+      <div class="stat"><b>${cap}</b><span>Total capacity</span></div>
+      <div class="stat"><b style="color:var(--blue)">${lots.length}</b><span>Lots monitored</span></div>
+    </div>
+    <div class="list section" style="margin-top:32px">${lots.map((l) => row({
+      num: l.available_spots, numTone: l.status_color === 'red' ? 'apricot' : 'mint', title: esc(l.name),
+      detail: `of ${l.capacity} spots free · ${l.latitude.toFixed(3)}, ${l.longitude.toFixed(3)}`,
+      meter: { pct: (l.available_spots / l.capacity) * 100, color: l.status_color === 'red' ? 'red' : l.status_color === 'yellow' ? 'yellow' : '' },
+    })).join('')}</div>
+  </div>`;
 }
+export const mount = () => () => {};

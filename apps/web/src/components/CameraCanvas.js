@@ -20,13 +20,13 @@ export class CameraCanvas {
     this.onPlotSelected = options.onPlotSelected || (() => {});
     this.onPlotsChanged = options.onPlotsChanged || (() => {});
     
-    this.lotName = 'Timișoara Parking';
+    this.lotName = 'Parking';
     this.setupEvents();
     this.startRenderLoop();
   }
 
   setLot(lot) {
-    this.lotName = lot.name || 'Timișoara Parking';
+    this.lotName = lot.name || 'Parking';
     // Ensure plots is an array of objects
     this.plots = (lot.slots_data || []).map((s, idx) => {
       if (Array.isArray(s)) {
