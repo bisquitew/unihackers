@@ -78,8 +78,8 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
-function serveWebAdmin(req: http.IncomingMessage, res: http.ServerResponse, pathname: string) {
-  let subPath = pathname.replace(/^\/admin\/?/, '');
+function serveWebApp(req: http.IncomingMessage, res: http.ServerResponse, pathname: string) {
+  let subPath = pathname.replace(/^(\/admin|\/web|\/app)\/?/, '');
   if (!subPath || subPath === '') subPath = 'index.html';
 
   const webRoot = path.resolve(process.cwd(), 'apps/web');
@@ -119,7 +119,7 @@ function serveWebAdmin(req: http.IncomingMessage, res: http.ServerResponse, path
     return fs.createReadStream(fallback).pipe(res);
   }
 
-  return sendJson(res, 404, { error: 'Web admin not found' });
+  return sendJson(res, 404, { error: 'Web app not found' });
 }
 
 // P4 modules run on their Hono routers here too, mounted like index.ts does (short id and full id).
@@ -800,9 +800,14 @@ const server = http.createServer(async (req, res) => {
     // and the survey ingest token check are identical on both servers.
     if (isP4Path(pathname)) return forwardToP4(req, res, url, method);
 
-    // --- [PARKIE WEB ADMIN PORTAL] ---
-    if (pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/')) {
-      return serveWebAdmin(req, res, pathname);
+    // --- [TIMIȘOARA CITY HUB WEB APP & ADMIN PORTAL] ---
+    if (
+      pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/') ||
+      pathname === '/web' || pathname === '/web/' || pathname.startsWith('/web/') ||
+      pathname === '/app' || pathname === '/app/' || pathname.startsWith('/app/') ||
+      pathname.startsWith('/src/') || pathname === '/styles.css'
+    ) {
+      return serveWebApp(req, res, pathname);
     }
 
     // 404
@@ -833,7 +838,8 @@ function startServer(port: number) {
     console.log(`   Utilities: http://localhost:${port}/v1/m/utilities/outages`);
     console.log(`   Transit: http://localhost:${port}/v1/m/transit/lines`);
     console.log(`   Parkie: http://localhost:${port}/v1/m/parkie/lots`);
-    console.log(`   Parkie Web Admin: http://localhost:${port}/admin`);
+    console.log(`   Web App: http://localhost:${port}/web`);
+    console.log(`   Admin Portal: http://localhost:${port}/admin`);
     console.log(`   Tiger Status: http://localhost:${port}/v1/core/tiger/status`);
     console.log(`   Tiger Aggregates: http://localhost:${port}/v1/m/parkie/analytics/hourly`);
     console.log(`   Open Data: http://localhost:${port}/v1/core/open-data/export`);

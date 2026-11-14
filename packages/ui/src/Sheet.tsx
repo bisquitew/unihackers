@@ -145,7 +145,7 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
 }
 
 const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(26, 16, 51, 0.34)' },
+  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26, 16, 51, 0.34)' },
   sheet: {
     position: 'absolute',
     left: 0,
