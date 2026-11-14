@@ -34,6 +34,10 @@ interface CityOverview {
       air_quality_status: string;
       avg_noise_db: number;
       monitored_neighbourhoods: number;
+      /** 'tiger' = averaged from the city_metrics_hourly_stats continuous aggregate; missing on older APIs. */
+      source?: 'tiger' | 'simulated';
+      latest_bucket?: string | null;
+      sensor_areas?: number;
     };
     infrastructure_alerts: {
       active_utility_outages: number;
@@ -44,9 +48,33 @@ interface CityOverview {
       continuous_aggregates_active: number;
       compression_ratio: string;
       real_time_aggregates_enabled: boolean;
+      status?: 'connected' | 'offline' | 'mock';
+      simulated?: boolean;
+      timescale_version?: string;
+      hypertables?: number;
+    };
+    community_reports?: {
+      smell: CommunityCount;
+      safety: CommunityCount;
     };
   };
 }
+
+interface CommunityCount {
+  last_7_days: number;
+  real: number;
+  demo: number;
+  /** 'postgres' = real reports are stored in a Tiger Cloud hypertable. */
+  storage: string;
+}
+
+const envSourceLabel = (env: CityOverview['kpis']['environment']) =>
+  env.source === 'tiger'
+    ? `Tiger Cloud · agregat orar${env.latest_bucket ? ` · ultima oră ${formatBucket(env.latest_bucket)}` : ''}`
+    : 'Valoare simulată (fără bază de date)';
+
+const formatBucket = (iso: string) =>
+  new Date(iso).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
 export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiBaseUrl?: string }) {
   const [overview, setOverview] = useState<CityOverview | null>(null);
@@ -93,9 +121,11 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
             tram_line_5_status: 'suspended_replacement_active',
           },
           timescale_tiger_cloud: {
-            continuous_aggregates_active: 2,
-            compression_ratio: '94.8%',
-            real_time_aggregates_enabled: true,
+            continuous_aggregates_active: 0,
+            compression_ratio: '—',
+            real_time_aggregates_enabled: false,
+            status: 'offline',
+            simulated: true,
           },
         },
       });
@@ -129,7 +159,13 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
           <View style={styles.tigerCard}>
             <View style={styles.tigerHeader}>
               <Text style={styles.tigerBadge}>🐅 TIGER DATA (TIMESCALE)</Text>
-              <Text style={styles.tigerRealtime}>LIVE AGGREGATES</Text>
+              {overview.kpis.timescale_tiger_cloud.simulated === false ? (
+                <Text style={styles.tigerRealtime} accessibilityLabel="Conectat live la Tiger Cloud">
+                  ● LIVE{overview.kpis.timescale_tiger_cloud.timescale_version ? ` · v${overview.kpis.timescale_tiger_cloud.timescale_version}` : ''}
+                </Text>
+              ) : (
+                <Text style={styles.tigerSimulated}>SIMULAT · fără conexiune</Text>
+              )}
             </View>
             <View style={styles.tigerStatsRow}>
               <View style={styles.tigerStat}>
@@ -137,14 +173,19 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
                 <Text style={styles.tigerStatLabel}>Compresie Chunks</Text>
               </View>
               <View style={styles.tigerStat}>
-                <Text style={styles.tigerStatVal}>{overview.kpis.timescale_tiger_cloud.continuous_aggregates_active}</Text>
-                <Text style={styles.tigerStatLabel}>Materialized Views</Text>
+                <Text style={styles.tigerStatVal}>{overview.kpis.timescale_tiger_cloud.hypertables ?? '—'}</Text>
+                <Text style={styles.tigerStatLabel}>Hypertables</Text>
               </View>
               <View style={styles.tigerStat}>
-                <Text style={styles.tigerStatVal}>{overview.kpis.environment.monitored_neighbourhoods}</Text>
-                <Text style={styles.tigerStatLabel}>Cartiere Monitorizate</Text>
+                <Text style={styles.tigerStatVal}>{overview.kpis.timescale_tiger_cloud.continuous_aggregates_active}</Text>
+                <Text style={styles.tigerStatLabel}>Agregate continue</Text>
               </View>
             </View>
+            <Text style={styles.tigerNote}>
+              {overview.kpis.timescale_tiger_cloud.simulated === false
+                ? 'Cifre citite acum din catalogul Tiger Cloud (timescaledb_information).'
+                : 'Baza de date nu este conectată: cifrele de mai jos sunt simulate.'}
+            </Text>
           </View>
 
           {/* Quick Stats Grid */}
@@ -167,6 +208,7 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
               <Text style={[styles.kpiDetail, { color: '#4ade80' }]}>
                 Stare: {overview.kpis.environment.air_quality_status.toUpperCase()}
               </Text>
+              <Text style={styles.kpiSource}>{envSourceLabel(overview.kpis.environment)}</Text>
             </View>
 
             {/* Noise KPI */}
@@ -174,7 +216,8 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
               <Text style={styles.kpiIcon}>📢</Text>
               <Text style={styles.kpiValue}>{overview.kpis.environment.avg_noise_db} dB</Text>
               <Text style={styles.kpiTitle}>Zgomot Mediu Urban</Text>
-              <Text style={styles.kpiDetail}>Senzori acustici activi</Text>
+              <Text style={styles.kpiDetail}>Medie pe ultimele 24 de ore</Text>
+              <Text style={styles.kpiSource}>{envSourceLabel(overview.kpis.environment)}</Text>
             </View>
 
             {/* Disruptions KPI */}
@@ -188,6 +231,30 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
               <Text style={styles.kpiDetail}>Colterm, Aquatim & STPT</Text>
             </View>
           </View>
+
+          {/* Residents' reports (m06 smell, m03 safety) */}
+          {overview.kpis.community_reports ? (
+            <View style={styles.sectionCard}>
+              <Text style={styles.sectionTitle}>🗣️ Sesizări de la locuitori (7 zile)</Text>
+              {(
+                [
+                  ['👃', 'Mirosuri', overview.kpis.community_reports.smell],
+                  ['🌙', 'Siguranță (locuri)', overview.kpis.community_reports.safety],
+                ] as const
+              ).map(([icon, label, c]) => (
+                <View key={label} style={styles.lotRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.lotName}>
+                      {icon} {label}: {c.last_7_days}
+                    </Text>
+                    <Text style={styles.lotCapacity}>
+                      {c.real} reale · {c.demo} demo · {c.storage === 'postgres' ? 'salvate în Tiger Cloud (hypertable)' : 'în memorie (fără bază de date)'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
           {/* Congested Lots */}
           <View style={styles.sectionCard}>
@@ -271,6 +338,21 @@ const styles = StyleSheet.create({
     color: '#34d399',
     fontSize: 11,
     fontWeight: '700',
+  },
+  tigerSimulated: {
+    color: '#fbbf24',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  tigerNote: {
+    color: '#a5b4fc',
+    fontSize: 11,
+    marginTop: 10,
+  },
+  kpiSource: {
+    fontSize: 10,
+    color: '#a1a1aa',
+    marginTop: 4,
   },
   tigerStatsRow: {
     flexDirection: 'row',
