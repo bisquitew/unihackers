@@ -1,4 +1,4 @@
-import { BuddyRequest, BuddyGroupChat } from './types';
+import type { BuddyRequest, BuddyGroupChat } from './types.ts';
 
 export const seedBuddyRequests: BuddyRequest[] = [
   {

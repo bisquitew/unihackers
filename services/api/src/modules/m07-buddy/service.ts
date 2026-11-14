@@ -1,5 +1,5 @@
-import { BuddyRequest, CreateBuddyRequestInput, BuddyGroupChat, BuddyChatMessage } from './types';
-import { seedBuddyRequests, seedGroupChats } from './seed';
+import type { BuddyRequest, CreateBuddyRequestInput, BuddyGroupChat, BuddyChatMessage } from './types.ts';
+import { seedBuddyRequests, seedGroupChats } from './seed.ts';
 
 export class BuddyService {
   private requests: BuddyRequest[] = [...seedBuddyRequests];
