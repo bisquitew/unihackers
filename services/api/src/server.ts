@@ -727,6 +727,8 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
 
     // 7. [PARKIE] Real-time Parking Lots & CV Detections
     if ((pathname === '/v1/m/parkie/capture-frame' || pathname === '/vision/capture_frame') && method === 'POST') {
+      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.capture', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       const cameraUrl = body.camera_url || body.cameraUrl || '';
       const result = await parkieService.captureFrame(cameraUrl);
@@ -806,6 +808,8 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         });
       }
       if (method === 'PUT' || method === 'POST') {
+        const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.plots', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+        if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
         const body = await parseBody(req);
         const updated = await parkieService.updateLotPlots(id, body);
         if (!updated) return sendJson(res, 404, { error: 'Parking lot not found for plot update', id });
@@ -821,10 +825,9 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
     }
 
     if ((pathname === '/v1/m/parkie/detections' || pathname === '/vision/update_lot') && method === 'POST') {
-      if (pathname === '/v1/m/parkie/detections') {
-        const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.detections', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
-        if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
-      }
+      // the old /vision/update_lot path is guarded the same way: anyone could otherwise set a lot's occupancy
+      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.detections', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       const lotId = body.lot_id || body.lotId;
       const detectedCars = parseInt(body.detected_cars ?? body.detectedCars ?? '0', 10);
