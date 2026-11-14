@@ -90,7 +90,7 @@ export class SmellService {
 
   async pins(opts: ReadOptions): Promise<{ pins: SmellPin[]; demoCount: number }> {
     const { reports, demoCount } = await this.window(opts);
-    const pins = reports.map(({ id, lat, lng, type, intensity, createdAt, areaId }) => ({ id, lat, lng, type, intensity, createdAt, areaId }));
+    const pins = reports.map(({ id, lat, lng, type, intensity, createdAt, areaId, isDemo }) => ({ id, lat, lng, type, intensity, createdAt, areaId, isDemo }));
     return { pins, demoCount };
   }
 
