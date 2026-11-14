@@ -24,7 +24,8 @@ if (fs.existsSync(rootEnvPath)) {
 
 const dbUrl = process.env.DATABASE_URL;
 
-let pool: any = null;
+// Type-only import: erased at runtime, so a missing pg package still falls back to the mock.
+let pool: import('pg').Pool | null = null;
 let isConnected = false;
 let connectionError: string | null = null;
 let initPromise: Promise<boolean> | null = null;
