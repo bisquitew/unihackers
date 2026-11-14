@@ -6,7 +6,8 @@
 // the layers in this folder (built from the mock data) stand in, so the map is never empty.
 import { pinRef, type MapLayer, type MapPin, type PinKind } from '@hub/map';
 import { registeredModuleManifests } from '../../modules';
-import { alerts, type AlertItem } from '../mock/alerts';
+import { getAlerts } from '../alerts';
+import type { AlertItem } from '../mock/alerts';
 
 const moduleToKind: Record<AlertItem['module'], PinKind> = {
   utilities: 'alert',
@@ -18,7 +19,7 @@ const moduleToKind: Record<AlertItem['module'], PinKind> = {
 
 /** City alerts as a layer. Replace with P2's outage/detour endpoints (each alert has coordinates and a detail route). */
 export function alertsLayer(): MapLayer {
-  const pins: MapPin[] = alerts.map((a) => ({
+  const pins: MapPin[] = getAlerts().map((a) => ({
     id: a.id,
     kind: moduleToKind[a.module] ?? 'alert',
     layerId: 'alerts',

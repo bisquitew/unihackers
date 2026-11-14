@@ -18,7 +18,9 @@ import {
   palette,
   type ModuleArtId,
 } from '@hub/ui';
-import { alertById, unreadAlerts } from '../../src/core/mock/alerts';
+import { useAlerts } from '../../src/core/alerts';
+import { useTopParking } from '../../src/core/liveData';
+import { eventsStore, type EventItem } from '../../src/modules/m01-events/eventsStore';
 import { useAuth } from '../../src/core/auth';
 import { getCity } from '@hub/map';
 
@@ -37,18 +39,29 @@ const explore: { id: ModuleArtId; label: string; route?: string }[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { user, isLoggedIn, loginAsResident } = useAuth();
-  const isGuestWeb = Platform.OS === 'web' && !isLoggedIn;
-  const displayName = user ? user.name.split(' ')[0] : 'Vizitator';
+  const { user } = useAuth();
+  const displayName = user ? user.name.split(' ')[0] : 'there';
+  const hour = new Date().getHours();
+  const greeting = hour < 5 ? 'Good night,' : hour < 12 ? 'Good morning,' : hour < 18 ? 'Good afternoon,' : 'Good evening,';
+
+  // live data: alerts, the best parking lot, and the next events (the sample values show until the server answers)
+  const alerts = useAlerts();
+  const unreadAlerts = alerts.length;
+  const outage = alerts.find((a) => a.module === 'utilities');
+  const transit = alerts.find((a) => a.module === 'transit');
+  const parking = useTopParking();
+  const [events, setEvents] = React.useState<EventItem[]>(eventsStore.getEvents());
+  React.useEffect(() => eventsStore.subscribe(() => setEvents(eventsStore.getEvents())), []);
+  const next = events[0];
+  const later = events.slice(1, 3);
 
   const go = (path: string) => router.push(path as any);
   const openAlert = (id: string) => router.push({ pathname: '/alerts/[id]', params: { id } } as any);
 
-  const hotWater = alertById('hot-water-garii-2')!;
-  const tram = alertById('tram-5')!;
-  const UtilitiesArt = moduleArt[hotWater.module];
-  const TransitArt = moduleArt[tram.module];
+  const UtilitiesArt = moduleArt.utilities;
+  const TransitArt = moduleArt.transit;
   const ParkieArt = moduleArt.parkie;
+  const EventsArt = moduleArt.events;
 
   return (
     <Screen>
@@ -56,7 +69,7 @@ export default function HomeScreen() {
       <View style={styles.topbar}>
         <View style={{ paddingHorizontal: 4 }}>
           <Text variant="body" color="mutedForeground" style={{ fontSize: 15, lineHeight: 20 }}>
-            {user ? (user.role === 'admin' ? 'Panou Administrație' : 'Bună ziua,') : 'Bine ai venit,'}
+            {greeting}
           </Text>
           <Text variant="title" accessibilityRole="header" style={{ fontSize: 30, lineHeight: 34 }}>
             {displayName}
@@ -73,20 +86,6 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      {isGuestWeb && (
-        <View style={styles.webGuestBanner}>
-          <View style={{ flex: 1, paddingRight: 8 }}>
-            <Text style={styles.webGuestBannerTitle}>Mod Vizitator Web (Acces Limitat)</Text>
-            <Text style={styles.webGuestBannerDesc}>
-              Harta și câteva evenimente sunt deschise. Conectează-te pentru acces complet.
-            </Text>
-          </View>
-          <TouchableOpacity style={styles.webGuestLoginBtn} onPress={() => loginAsResident()}>
-            <Text style={styles.webGuestLoginBtnText}>Conectare →</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
       <AskBar label={`Ask hop about ${getCity().name}`} onPress={() => go('/m/assistant')} />
 
       <Section title="Tonight">
@@ -94,20 +93,20 @@ export default function HomeScreen() {
           <CinemaScene width={92} />
           <View style={{ flex: 1 }}>
             <Text variant="subheading" accessibilityRole="header">
-              Cinema under the stars
+              {next?.title ?? 'Cinema under the stars'}
             </Text>
             <Text variant="rowDetail" color="mutedForeground">
-              Tonight at 19:30, Faber. Free. Bring a blanket.
+              {next ? `${next.dateTime}, ${next.locationName}. ${next.isFree ? 'Free.' : `${next.priceAmount ?? ''} RON.`}` : 'Tonight at 19:30, Faber. Free. Bring a blanket.'}
             </Text>
           </View>
         </View>
         <View style={styles.featureFoot}>
           <View style={styles.going}>
             <AvatarStack
-              label="12 people are going"
+              label={`${next?.attendeeCount ?? 12} people are going`}
               people={[{ initials: 'MA', tone: 'apricot' }, { initials: 'DR', tone: 'blue' }, { initials: 'IO', tone: 'mint' }]}
             />
-            <Text variant="label">12 going</Text>
+            <Text variant="label">{next?.attendeeCount ?? 12} going</Text>
           </View>
           <PrimaryButton label="Find a buddy" size="md" onPress={() => go('/m/buddy')} />
         </View>
@@ -115,42 +114,52 @@ export default function HomeScreen() {
 
       <Section title="Right now" onSeeAll={() => go('/alerts')}>
         <RowGroup>
-          <Row onPress={() => openAlert(hotWater.id)} accessibilityLabel={`${hotWater.title}. ${hotWater.detail}`}>
-            <Row.Illustration>
-              <UtilitiesArt size={44} />
-            </Row.Illustration>
-            <Row.Body>
-              <Row.Title>{hotWater.title}</Row.Title>
-              <Row.Detail>{hotWater.detail}</Row.Detail>
-            </Row.Body>
-            <Row.Trailing>
-              <Row.NewDot />
-            </Row.Trailing>
-          </Row>
-          <Row onPress={() => openAlert(tram.id)} accessibilityLabel={`${tram.title}. ${tram.detail}`}>
-            <Row.Illustration>
-              <TransitArt size={44} />
-            </Row.Illustration>
-            <Row.Body>
-              <Row.Title>{tram.title}</Row.Title>
-              <Row.Detail>{tram.detail}</Row.Detail>
-            </Row.Body>
-            <Row.Trailing>
-              <Row.Time>Until Dec</Row.Time>
-            </Row.Trailing>
-          </Row>
-          <Row onPress={() => go('/m/parkie')} accessibilityLabel="42 free spots, Iulius Town parking">
-            <Row.Illustration>
-              <ParkieArt size={44} />
-            </Row.Illustration>
-            <Row.Body>
-              <Row.Title>42 free spots</Row.Title>
-              <Row.Detail>Iulius Town parking.</Row.Detail>
-            </Row.Body>
-            <Row.Trailing>
-              <Row.Meter value={0.34} label="34 percent free" />
-            </Row.Trailing>
-          </Row>
+          {outage ? (
+            <Row onPress={() => openAlert(outage.id)} accessibilityLabel={`${outage.title}. ${outage.detail}`}>
+              <Row.Illustration>
+                <UtilitiesArt size={44} />
+              </Row.Illustration>
+              <Row.Body>
+                <Row.Title>{outage.title}</Row.Title>
+                <Row.Detail>{outage.detail}</Row.Detail>
+              </Row.Body>
+              <Row.Trailing>{outage.trailing.kind === 'new' ? <Row.NewDot /> : <Row.Time>{outage.trailing.text}</Row.Time>}</Row.Trailing>
+            </Row>
+          ) : null}
+          {transit ? (
+            <Row onPress={() => openAlert(transit.id)} accessibilityLabel={`${transit.title}. ${transit.detail}`}>
+              <Row.Illustration>
+                <TransitArt size={44} />
+              </Row.Illustration>
+              <Row.Body>
+                <Row.Title>{transit.title}</Row.Title>
+                <Row.Detail>{transit.detail}</Row.Detail>
+              </Row.Body>
+              <Row.Trailing>{transit.trailing.kind === 'time' ? <Row.Time>{transit.trailing.text}</Row.Time> : null}</Row.Trailing>
+            </Row>
+          ) : null}
+          {!outage && !transit ? (
+            <Row>
+              <Row.Body>
+                <Row.Title>All quiet</Row.Title>
+                <Row.Detail>No outages or transit changes right now.</Row.Detail>
+              </Row.Body>
+            </Row>
+          ) : null}
+          {parking ? (
+            <Row onPress={() => go('/m/parkie')} accessibilityLabel={`${parking.free} free spots, ${parking.name}`}>
+              <Row.Illustration>
+                <ParkieArt size={44} />
+              </Row.Illustration>
+              <Row.Body>
+                <Row.Title>{parking.free} free spots</Row.Title>
+                <Row.Detail>{parking.name}.</Row.Detail>
+              </Row.Body>
+              <Row.Trailing>
+                <Row.Meter value={parking.capacity ? parking.free / parking.capacity : 0} label={`${Math.round((parking.free / Math.max(1, parking.capacity)) * 100)} percent free`} />
+              </Row.Trailing>
+            </Row>
+          ) : null}
         </RowGroup>
       </Section>
 
@@ -178,24 +187,25 @@ export default function HomeScreen() {
 
       <Section title="This week" onSeeAll={() => go('/m/events')}>
         <RowGroup>
-          <Row onPress={() => go('/m/events')} accessibilityLabel="Jazz in Parcul Rozelor, Saturday 18:00, free">
-            <Row.Illustration>
-              <Row.Date day="Sat" date="18" />
-            </Row.Illustration>
-            <Row.Body>
-              <Row.Title>Jazz in Parcul Rozelor</Row.Title>
-              <Row.Detail>Saturday 18:00, free.</Row.Detail>
-            </Row.Body>
-          </Row>
-          <Row onPress={() => go('/m/events')} accessibilityLabel="Pottery night, Sunday 17:00, 8 spots left">
-            <Row.Illustration>
-              <Row.Date day="Sun" date="19" />
-            </Row.Illustration>
-            <Row.Body>
-              <Row.Title>Pottery night</Row.Title>
-              <Row.Detail>Sunday 17:00, 8 spots left.</Row.Detail>
-            </Row.Body>
-          </Row>
+          {later.map((e) => (
+            <Row key={e.id} onPress={() => go('/m/events')} accessibilityLabel={`${e.title}, ${e.dateTime}`}>
+              <Row.Illustration>
+                <EventsArt size={44} />
+              </Row.Illustration>
+              <Row.Body>
+                <Row.Title>{e.title}</Row.Title>
+                <Row.Detail>{`${e.dateTime}${e.isFree ? ', free' : ''}.`}</Row.Detail>
+              </Row.Body>
+            </Row>
+          ))}
+          {later.length === 0 ? (
+            <Row>
+              <Row.Body>
+                <Row.Title>Nothing else planned yet</Row.Title>
+                <Row.Detail>Host an event in the Community tab.</Row.Detail>
+              </Row.Body>
+            </Row>
+          ) : null}
         </RowGroup>
       </Section>
     </Screen>

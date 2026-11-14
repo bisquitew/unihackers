@@ -30,7 +30,16 @@
   .pin:focus-visible .disc { outline: 3px solid var(--ink); outline-offset: 2px; }
   html[data-theme="night"] .pin .disc { box-shadow: 0 0 0 1px rgba(255,255,255,.18), 0 0 16px rgba(255,185,102,.35), 0 8px 16px -6px rgba(0,0,0,.6); }
   html[data-theme="night"] .pin.selected .disc { box-shadow: 0 0 0 3px #FFD9A8, 0 0 22px rgba(255,185,102,.5); }
-  .me { width: 18px; height: 18px; border-radius: 50%; background: #3D5BFF; box-shadow: 0 0 0 4px rgba(61,91,255,.25), 0 0 0 7px #fff; }
+  /* you are here: a blue dot with a soft pulse; when the phone knows which way you face it becomes a navigation arrow */
+  .me { width: 44px; height: 44px; position: relative; pointer-events: none; }
+  .me .halo { position: absolute; inset: 0; border-radius: 50%; background: rgba(61,91,255,.2); animation: me-pulse 2.4s ease-out infinite; }
+  .me .dot { position: absolute; left: 13px; top: 13px; width: 18px; height: 18px; border-radius: 50%; background: #3D5BFF; box-shadow: 0 0 0 3px #fff, 0 2px 8px rgba(26,16,51,.35); }
+  .me .arrow { position: absolute; inset: 0; display: none; }
+  .me .arrow svg { width: 44px; height: 44px; display: block; filter: drop-shadow(0 2px 4px rgba(26,16,51,.35)); }
+  .me.has-heading .arrow { display: block; }
+  .me.has-heading .dot { display: none; }
+  @keyframes me-pulse { 0% { transform: scale(.5); opacity: .9; } 100% { transform: scale(1.15); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { .me .halo { animation: none; opacity: .5; } }
 
   /* offline notice */
   #offline { position: absolute; left: 16px; right: 16px; top: 96px; margin: 0 auto; max-width: 360px; padding: 12px 14px; border-radius: 18px;
@@ -642,14 +651,26 @@
   }
 
   /* ---------- user location dot ---------- */
+  var meEl = null;
+  var meHeading = null; // degrees clockwise from north, or null when unknown
+  // the arrow points where you face on the real world, so it is turned against the map's own rotation
+  function paintMe() {
+    if (!meEl) return;
+    var known = typeof meHeading === 'number';
+    meEl.classList.toggle('has-heading', known);
+    if (known) meEl.querySelector('.arrow').style.transform = 'rotate(' + (meHeading - map.getBearing()) + 'deg)';
+  }
   function setUserLocation(p) {
-    if (!p) { if (userMarker) { userMarker.remove(); userMarker = null; } return; }
+    if (!p) { if (userMarker) { userMarker.remove(); userMarker = null; meEl = null; } return; }
+    meHeading = typeof p.heading === 'number' ? p.heading : null;
     if (!userMarker) {
-      var el = document.createElement('div');
-      el.className = 'me';
-      el.setAttribute('aria-label', 'Your location');
-      userMarker = new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map);
+      meEl = document.createElement('div');
+      meEl.className = 'me';
+      meEl.setAttribute('aria-label', 'Your location');
+      meEl.innerHTML = '<div class="halo"></div><div class="dot"></div><div class="arrow"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M22 6 L34.5 34 Q35.4 36.4 33 35.4 L22 30.4 L11 35.4 Q8.6 36.4 9.5 34 Z" fill="#3D5BFF" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>';
+      userMarker = new maplibregl.Marker({ element: meEl }).setLngLat([p.lng, p.lat]).addTo(map);
     } else userMarker.setLngLat([p.lng, p.lat]);
+    paintMe();
   }
 
   /* ---------- long press ---------- */
@@ -733,6 +754,7 @@
       if (p && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.poiImage(p[1]), { pixelRatio: 2 });
     });
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+    map.on('rotate', paintMe);
     map.touchZoomRotate.enableRotation();
 
     map.on('load', function () {

@@ -1,8 +1,23 @@
 import type { ForumPost, CreatePostInput, ReportPostInput, ForumComment } from './types.ts';
 import { seedForumPosts } from './seed.ts';
 
+/** A post as one viewer sees it: the post plus whether they upvoted or reported it. */
+export type PostView = ForumPost & { viewerUpvoted: boolean; viewerReported: boolean };
+
 export class ForumService {
   private posts: ForumPost[] = [...seedForumPosts];
+  // who upvoted / reported which post (one each), so a person cannot upvote twice and can take it back
+  private upvoters = new Map<string, Set<string>>();
+  private reporters = new Map<string, Set<string>>();
+
+  /** The post with the viewer's own upvote/report state attached. */
+  view(post: ForumPost, viewerSub?: string): PostView {
+    return {
+      ...post,
+      viewerUpvoted: !!viewerSub && !!this.upvoters.get(post.id)?.has(viewerSub),
+      viewerReported: !!viewerSub && !!this.reporters.get(post.id)?.has(viewerSub),
+    };
+  }
 
   async listPosts(category?: string, neighbourhood?: string): Promise<ForumPost[]> {
     let result = [...this.posts];
@@ -61,16 +76,32 @@ export class ForumService {
     return comment;
   }
 
-  async upvotePost(postId: string): Promise<{ success: boolean; upvotes: number }> {
+  /** Upvote, or take the upvote back if this person already gave one. */
+  async upvotePost(postId: string, userSub = 'anonymous'): Promise<{ success: boolean; upvotes: number; upvoted: boolean }> {
     const post = this.posts.find((p) => p.id === postId);
-    if (!post) return { success: false, upvotes: 0 };
-    post.upvotes += 1;
-    return { success: true, upvotes: post.upvotes };
+    if (!post) return { success: false, upvotes: 0, upvoted: false };
+    const set = this.upvoters.get(postId) ?? new Set<string>();
+    if (set.has(userSub)) {
+      set.delete(userSub);
+      post.upvotes = Math.max(0, post.upvotes - 1);
+    } else {
+      set.add(userSub);
+      post.upvotes += 1;
+    }
+    this.upvoters.set(postId, set);
+    return { success: true, upvotes: post.upvotes, upvoted: set.has(userSub) };
   }
 
   async reportPost(input: ReportPostInput): Promise<{ success: boolean; isReported: boolean }> {
     const post = this.posts.find((p) => p.id === input.postId);
     if (!post) return { success: false, isReported: false };
+
+    // one report per person
+    const by = input.reportedBy || 'anonymous';
+    const set = this.reporters.get(post.id) ?? new Set<string>();
+    if (set.has(by)) return { success: true, isReported: true };
+    set.add(by);
+    this.reporters.set(post.id, set);
 
     post.isReported = true;
     post.reportCount += 1;

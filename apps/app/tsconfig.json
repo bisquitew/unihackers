@@ -22,6 +22,12 @@
       "@hub/ui/*": [
         "../../packages/ui/src/*"
       ],
+      "@hub/api-client": [
+        "../../packages/api-client/src"
+      ],
+      "@hub/api-client/*": [
+        "../../packages/api-client/src/*"
+      ],
       "@hub/map": [
         "../../packages/map/src"
       ],

@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ApiError } from '@hub/api-client';
+import { api, setSessionToken } from './api';
 import type { UserRole, AuthUser as ContractAuthUser, SecurityTier } from '@hub/contracts';
 
 export interface AuthUser {
@@ -26,6 +28,8 @@ interface AuthContextType {
   isResident: boolean;
   login: (tokenOrRole?: string) => Promise<void>;
   loginAsResident: () => Promise<void>;
+  /** Signs in through the API (the demo sign-in). Resolves with an error message when it is refused. */
+  signIn: (method: 'google' | 'email', email?: string) => Promise<{ ok: boolean; error?: string }>;
   loginAsAdmin: () => Promise<void>;
   simulateMfaStepUp: (factor?: string) => Promise<boolean>;
   logout: () => void;
@@ -141,6 +145,7 @@ const AuthContext = createContext<AuthContextType>({
   isResident: false,
   login: async () => {},
   loginAsResident: async () => {},
+  signIn: async () => ({ ok: false }),
   loginAsAdmin: async () => {},
   simulateMfaStepUp: async () => false,
   logout: () => {},
@@ -162,11 +167,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const savedToken = await AsyncStorage.getItem(STORAGE_KEY);
         if (mounted && savedToken) {
-          const profile = TOKEN_PROFILES[savedToken];
-          // a saved staff session from an older build is not allowed in the app
-          if (profile && !STAFF_ROLES.includes(profile.user.role)) {
-            setUser(profile.user);
-            setToken(profile.token);
+          setSessionToken(savedToken);
+          try {
+            // ask the API who this token is; a token it no longer knows comes back as a guest
+            const me = await api.get<any>('/v1/core/auth/me');
+            if (me?.sub && me.sub !== 'guest|unauthenticated' && !STAFF_ROLES.includes(me.role)) {
+              setUser({ ...me, id: me.id ?? me.sub });
+              setToken(savedToken);
+            } else {
+              setSessionToken(null);
+            }
+          } catch (err) {
+            // the API is not reachable: keep a saved demo session so the app still opens
+            const profile = TOKEN_PROFILES[savedToken];
+            if (err instanceof ApiError && err.offline && profile && !STAFF_ROLES.includes(profile.user.role)) {
+              setUser(profile.user);
+              setToken(profile.token);
+            } else {
+              setSessionToken(null);
+            }
           }
         }
       } catch (err) {
@@ -196,12 +215,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return;
     }
     setAuthError(null);
+    setSessionToken(selected.token);
     setUser(selected.user);
     setToken(selected.token);
     try {
       await AsyncStorage.setItem(STORAGE_KEY, selected.token);
     } catch {}
     setIsLoading(false);
+  };
+
+  const signIn = async (method: 'google' | 'email', email?: string): Promise<{ ok: boolean; error?: string }> => {
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      const path = method === 'google' ? '/v1/core/auth/google-login' : '/v1/core/auth/login';
+      const result = await api.post<{ token: string; user: any }>(path, method === 'google' ? { email: email || 'alex.popescu@gmail.com', name: 'Alex Popescu' } : { email });
+      if (STAFF_ROLES.includes(result.user?.role)) {
+        setAuthError(STAFF_MESSAGE);
+        return { ok: false, error: STAFF_MESSAGE };
+      }
+      setSessionToken(result.token);
+      setUser({ ...result.user, id: result.user.id ?? result.user.sub });
+      setToken(result.token);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, result.token);
+      } catch {}
+      return { ok: true };
+    } catch (err) {
+      if (err instanceof ApiError && err.offline) {
+        // the demo still opens without the server: a local resident profile, whose token the API accepts once it is back
+        await login('dev_resident');
+        return { ok: true };
+      }
+      const message = err instanceof ApiError && err.code === 'use_web_dashboard' ? STAFF_MESSAGE : err instanceof Error ? err.message : 'Could not sign in.';
+      setAuthError(message);
+      return { ok: false, error: message };
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const loginAsResident = async () => {
@@ -220,6 +271,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = () => {
+    setSessionToken(null);
     setUser(null);
     setToken(null);
     AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
@@ -239,6 +291,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isResident,
         login,
         loginAsResident,
+        signIn,
         loginAsAdmin,
         simulateMfaStepUp,
         logout,

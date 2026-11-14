@@ -13,7 +13,8 @@ export function createMap(container, { onPinPress, interactive = true } = {}) {
   let ready = false;
   const queue = [];
   const send = (cmd) => (ready ? frame.contentWindow?.postMessage({ hubMapCmd: cmd }, '*') : queue.push(cmd));
-  const themeCmd = () => ({ type: 'setTheme', theme: isDark() ? 'night' : 'auto' });
+  // the map follows the site's theme: day colours in light mode, night colours in dark mode (not the clock)
+  const themeCmd = () => ({ type: 'setTheme', theme: isDark() ? 'night' : 'day' });
 
   const onMessage = (ev) => {
     if (ev.source !== frame.contentWindow || !ev.data?.hubMap) return;
@@ -35,6 +36,8 @@ export function createMap(container, { onPinPress, interactive = true } = {}) {
     /** the whole city in view */
     overview: () => send({ type: 'flyTo', lat: CITY.center.latitude, lng: CITY.center.longitude, zoom: CITY.overviewZoom }),
     select: (id) => send({ type: 'select', id }),
+    /** the "you are here" marker; `heading` (degrees from north) turns it into a navigation arrow. null removes it. */
+    setUserLocation: (loc) => send({ type: 'setUserLocation', location: loc ? { lat: loc.lat, lng: loc.lng, heading: loc.heading } : null }),
     flyTo: (lat, lng, zoom = 16) => send({ type: 'flyTo', lat, lng, zoom }),
     destroy() {
       window.removeEventListener('message', onMessage);

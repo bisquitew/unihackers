@@ -24,6 +24,9 @@ export function BuddyScreen({ embedded, initialView }: { embedded?: boolean; ini
 
   const [buddies, setBuddies] = useState<BuddyListing[]>(buddyStore.list());
   useEffect(() => buddyStore.subscribe(() => setBuddies(buddyStore.list())), []);
+  useEffect(() => {
+    void buddyStore.refresh();
+  }, []);
   const events = eventsStore.getEvents();
   useSyncExternalStore(
     (cb) => chatStore.subscribe(cb),

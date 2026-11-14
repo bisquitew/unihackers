@@ -1,3 +1,4 @@
+import { apiBaseUrl as defaultApiBase } from '../../core/api';
 import React, { useState, useEffect } from 'react';
 import { getCity } from '@hub/map';
 import {
@@ -76,7 +77,7 @@ const envSourceLabel = (env: CityOverview['kpis']['environment']) =>
 const formatBucket = (iso: string) =>
   new Date(iso).toLocaleString('ro-RO', { timeZone: 'Europe/Bucharest', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiBaseUrl?: string }) {
+export function DashboardScreen({ apiBaseUrl = defaultApiBase() }: { apiBaseUrl?: string }) {
   const [overview, setOverview] = useState<CityOverview | null>(null);
   const [loading, setLoading] = useState(true);
 

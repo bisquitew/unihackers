@@ -1,5 +1,5 @@
 import { fetchEvents, fetchLots, fetchOutages, fetchSmellPins, fetchAreaAlerts } from '../api.js';
-import { art, esc } from '../ui.js';
+import { art, esc, icons } from '../ui.js';
 import { buildLayers, createMap } from '../mapEngine.js';
 
 export async function render() {
@@ -9,10 +9,11 @@ export async function render() {
       <p class="muted" style="font-size:14px;margin-top:2px">Choose what to show, or pick a place.</p>
       <div class="scroll" id="mapScroll"><div class="empty">Loading the city…</div></div>
     </aside>
+    <button class="locate-btn" id="locateBtn" aria-label="Show where I am">${icons.locate}</button>
   </div>`;
 }
 
-export function mount() {
+export function mount(ctx, { showToast } = {}) {
   const page = document.getElementById('mapPage');
   const scroll = document.getElementById('mapScroll');
   let layers = {};
@@ -55,11 +56,41 @@ export function mount() {
     scroll.querySelectorAll('[data-pin]').forEach((el) => el.addEventListener('click', () => pick(el.dataset.pin)));
   }
 
+  // "you are here": the first press asks the browser for the position, then follows it; every press centres the map on you
+  let watchId = null;
+  let mine = null;
+  const locateBtn = document.getElementById('locateBtn');
+  const update = (pos) => {
+    const h = pos.coords.heading;
+    mine = { lat: pos.coords.latitude, lng: pos.coords.longitude, heading: typeof h === 'number' && !Number.isNaN(h) ? h : undefined };
+    map.setUserLocation(mine);
+  };
+  locateBtn.addEventListener('click', () => {
+    if (!navigator.geolocation) return showToast?.('Your browser cannot share your location.');
+    if (mine) return map.flyTo(mine.lat, mine.lng, 16.5);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        update(pos);
+        locateBtn.classList.add('on');
+        map.flyTo(mine.lat, mine.lng, 16.5);
+        watchId = navigator.geolocation.watchPosition(update, () => {}, { enableHighAccuracy: true });
+      },
+      (err) => showToast?.(err.code === 1 ? 'Location is blocked. Allow it for this site in your browser.' : 'Could not find your location.'),
+      { enableHighAccuracy: true, timeout: 15000 },
+    );
+  });
+
   Promise.all([fetchLots(), fetchOutages(), fetchEvents(), fetchSmellPins(), fetchAreaAlerts()]).then(([lots, outages, events, smell, areaAlerts]) => {
     layers = buildLayers({ lots, outages, events, smell: smell.pins || [], areaAlerts: areaAlerts || [] });
     pushPins();
-    map.overview();
     draw();
+    // "#/map/evt-001": come here from an event and land on the place that holds it
+    const wanted = location.hash.split('/')[2];
+    if (wanted && visiblePins().some((p) => p.id === wanted)) pick(wanted);
+    else map.overview();
   });
-  return () => map.destroy();
+  return () => {
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    map.destroy();
+  };
 }

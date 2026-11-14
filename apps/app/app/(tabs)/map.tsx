@@ -29,6 +29,7 @@ const LAYER_ART: Record<string, PinArtKey> = { mine: 'home', alerts: 'utilities'
 const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500, events: palette.mint500 };
 import { allMapLayers } from '../../src/core/map-layers';
 import { usePrefs } from '../../src/core/prefs';
+import { useMyLocation } from '../../src/core/location';
 import { getMapLayersVersion, onMapLayersChanged } from '../../src/core/map-layers/changes';
 
 const TAB_BAR_BODY = 68; // height of the floating tab bar (see packages/ui/src/TabBar.tsx); it sits above the bottom safe area
@@ -42,6 +43,7 @@ export default function MapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const prefs = usePrefs();
+  const me = useMyLocation();
   const params = useLocalSearchParams();
 
   /* ---------- data: the user's pins, the community's, and layers contributed by modules ---------- */
@@ -173,6 +175,7 @@ export default function MapScreen() {
         pins={mapPins}
         selectedId={selectedId}
         focus={focus}
+        userLocation={me.location}
         reducedMotion={reducedMotion}
         theme={prefs.mapTheme === 'auto' && isDark ? 'night' : prefs.mapTheme}
         insets={{ bottom: bottomInset }}
@@ -200,6 +203,18 @@ export default function MapScreen() {
           </View>
           <IconButton label="List pins on the map" tone="glass" size={44} onPress={() => { setSelectedId(null); setDraft(null); setListOpen(true); }}>
             <icons.ListBullets size={22} weight="bold" color={colors.foreground} />
+          </IconButton>
+          <IconButton
+            label={me.status === 'denied' ? 'Location is off. Turn it on in Settings' : me.status === 'on' ? 'Centre the map on you' : 'Show where I am'}
+            tone={me.status === 'on' ? 'ink' : 'glass'}
+            size={44}
+            onPress={async () => {
+              setSelectedId(null);
+              const fix = me.location ?? (await me.start());
+              if (fix) goTo(fix, 16.5);
+            }}
+          >
+            <icons.NavigationArrow size={22} weight={me.status === 'on' ? 'fill' : 'bold'} color={me.status === 'on' ? colors.inverseForeground : colors.foreground} />
           </IconButton>
           <IconButton label="Add a pin" tone="primary" size={44} onPress={startPlacing}>
             <icons.Plus size={22} weight="bold" color={colors.primaryForeground} />

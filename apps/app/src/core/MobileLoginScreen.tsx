@@ -16,17 +16,18 @@ const looksLikeStaff = (email: string) => {
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
-  const { loginAsResident, authError, clearAuthError } = useAuth();
+  const { signIn, authError, clearAuthError } = useAuth();
   const [emailOpen, setEmailOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const signIn = async () => {
+  const go = async (method: 'google' | 'email', address?: string) => {
     setBusy(true);
     clearAuthError();
     setNote('');
-    await loginAsResident();
+    const result = await signIn(method, address);
+    if (!result.ok && result.error) setNote(result.error);
     setBusy(false);
   };
 
@@ -36,7 +37,7 @@ export function MobileLoginScreen() {
       setNote(STAFF_MESSAGE);
       return;
     }
-    await signIn();
+    await go('email', email.trim());
   };
 
   const Events = moduleArt.events;
@@ -80,7 +81,7 @@ export function MobileLoginScreen() {
                 {message}
               </Text>
             ) : null}
-            <PrimaryButton label="Continue with Google" size="lg" loading={busy} onPress={signIn} />
+            <PrimaryButton label="Continue with Google" size="lg" loading={busy} onPress={() => go('google')} />
             <SecondaryButton label="Continue with email" size="lg" onPress={() => setEmailOpen(true)} />
           </View>
         )}

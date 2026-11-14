@@ -2,7 +2,8 @@ import * as React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { BackLink, Row, RowGroup, Screen, Section, Text, colors, icons, minTarget, moduleArt } from '@hub/ui';
-import { alertsFor, type AlertItem } from '../../src/core/mock/alerts';
+import { useAlerts } from '../../src/core/alerts';
+import type { AlertItem } from '../../src/core/mock/alerts';
 
 function AlertRow({ alert, onPress }: { alert: AlertItem; onPress: () => void }) {
   const Art = moduleArt[alert.module];
@@ -22,6 +23,8 @@ function AlertRow({ alert, onPress }: { alert: AlertItem; onPress: () => void })
 
 export default function AlertsScreen() {
   const router = useRouter();
+  const all = useAlerts();
+  const alertsFor = (group: AlertItem['group']) => all.filter((a) => a.group === group);
   const open = (id: string) => router.push({ pathname: '/alerts/[id]', params: { id } } as any);
   return (
     <Screen tabBar={false}>

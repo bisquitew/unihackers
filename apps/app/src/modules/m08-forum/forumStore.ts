@@ -1,5 +1,38 @@
-// Shared Persistent Forum Store for [M08_FORUM]
-// Supports browser localStorage persistence and background sync with backend API
+// Forum for [M08_FORUM]. The API is the source of truth (/v1/m/forum: posts, comments, upvotes, reports). Changes show on
+// screen at once and are sent in the background; the list is then reloaded from the server. The list is also kept in local
+// storage as a cache, so the forum still opens with something to read when the server cannot be reached.
+import { api } from '../../core/api';
+
+/** "2026-11-14T10:20:00Z" -> "now", "5m ago", "3h ago", "Yesterday", "12 Nov". Anything else stays as it is. */
+export function friendlyAgo(value: string, now = new Date()): string {
+  const d = new Date(value);
+  if (!/^\d{4}-\d{2}-\d{2}/.test(value) || Number.isNaN(d.getTime())) return value;
+  const mins = Math.round((now.getTime() - d.getTime()) / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m ago`;
+  if (mins < 24 * 60) return `${Math.round(mins / 60)}h ago`;
+  if (mins < 48 * 60) return 'Yesterday';
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+function fromApi(p: any): Post {
+  return {
+    id: p.id,
+    category: p.category,
+    title: p.title,
+    content: p.content,
+    authorName: p.authorName,
+    neighbourhood: p.neighbourhood,
+    photos: p.photos ?? [],
+    upvotes: p.upvotes ?? 0,
+    commentsCount: p.commentsCount ?? (p.comments?.length ?? 0),
+    comments: (p.comments ?? []).map((c: any) => ({ id: c.id, authorName: c.authorName, content: c.content, createdAt: friendlyAgo(c.createdAt) })),
+    isReported: !!p.isReported,
+    reportCount: p.reportCount ?? 0,
+    reportReason: p.reportReasons?.[0],
+    createdAt: friendlyAgo(p.createdAt),
+  };
+}
 
 export interface Comment {
   id: string;
@@ -109,6 +142,29 @@ class ForumStore {
 
   constructor() {
     this.loadFromStorage();
+    void this.refresh();
+  }
+
+  /** Loads the posts from the API, including which ones this person upvoted or reported. Keeps the cache when offline. */
+  async refresh(): Promise<void> {
+    try {
+      const { posts } = await api.get<{ posts: any[] }>('/v1/m/forum');
+      if (Array.isArray(posts)) {
+        this.posts = posts.map(fromApi);
+        this.userUpvoted = new Set(posts.filter((p) => p.viewerUpvoted).map((p) => p.id));
+        this.userReported = new Set(posts.filter((p) => p.viewerReported).map((p) => p.id));
+        this.saveToStorage();
+      }
+    } catch {
+      /* offline: the cached list stays */
+    }
+  }
+
+  /** Sends one change to the API, then reloads. Failures (offline, not signed in) leave the local change in place. */
+  private send(run: () => Promise<unknown>) {
+    run()
+      .then(() => this.refresh())
+      .catch(() => {});
   }
 
   private loadFromStorage() {
@@ -212,8 +268,7 @@ class ForumStore {
     this.posts = [newPost, ...this.posts];
     this.saveToStorage();
 
-    // Fire-and-forget sync to backend API if available
-    this.syncCreateToBackend(newPost).catch(() => {});
+    this.send(() => api.post('/v1/m/forum', { title: newPost.title, content: newPost.content, category: newPost.category, neighbourhood: newPost.neighbourhood, photos: newPost.photos }));
 
     return newPost;
   }
@@ -240,6 +295,7 @@ class ForumStore {
     });
 
     this.saveToStorage();
+    this.send(() => api.post(`/v1/m/forum/${encodeURIComponent(postId)}/comments`, { content: newComment.content }));
     return true;
   }
 
@@ -270,6 +326,7 @@ class ForumStore {
     });
 
     this.saveToStorage();
+    this.send(() => api.post(`/v1/m/forum/${encodeURIComponent(postId)}/upvote`));
     return { upvoted: isNowUpvoted, count: newCount };
   }
 
@@ -297,6 +354,7 @@ class ForumStore {
     });
 
     this.saveToStorage();
+    this.send(() => api.post(`/v1/m/forum/${encodeURIComponent(postId)}/report`, { reason: 'inappropriate', note: reason }));
     return { success: true };
   }
 
@@ -320,25 +378,6 @@ class ForumStore {
     this.userUpvoted.delete(postId);
     this.userReported.delete(postId);
     this.saveToStorage();
-  }
-
-  private async syncCreateToBackend(post: Post) {
-    try {
-      await fetch('http://localhost:8000/v1/m/forum/posts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: post.title,
-          content: post.content,
-          authorName: post.authorName,
-          category: post.category,
-          neighbourhood: post.neighbourhood,
-          photos: post.photos,
-        }),
-      });
-    } catch {
-      // Backend offline: post is safely saved in local storage
-    }
   }
 }
 

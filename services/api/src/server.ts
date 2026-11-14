@@ -13,14 +13,10 @@ import { dashboardService } from './modules/m12-dashboard/index.ts';
 import { eventsService } from './modules/m01-events/service.ts';
 import { buddyService } from './modules/m07-buddy/service.ts';
 import { forumService } from './modules/m08-forum/service.ts';
-import { Hono } from 'hono';
-import { visitorInfoRoutes } from './modules/m02-visitor-info/routes.ts';
-import { smellRoutes } from './modules/m06-smell/routes.ts';
-import { safetyRoutes } from './modules/m03-safety/routes.ts';
-import { assistantRoutes } from './modules/m10-assistant/routes.ts';
-import { feedbackRoutes } from './modules/m11-feedback/routes.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
+import honoApp from './index.ts';
+import { DEMO_AUTH, HttpError, isStaffEmail } from './core/config.ts';
 import { areaAlertsService } from './core/area-alerts.ts';
 import { 
   resolveAuthUser, 
@@ -51,27 +47,64 @@ import {
 const PORT = parseInt(process.env.PORT || '8000', 10);
 
 // Raw buffer parser for uploads
+const MAX_UPLOAD_BYTES = 10_000_000;
 async function parseRawBuffer(req: http.IncomingMessage): Promise<Buffer> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (chunk) => chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)));
+    let size = 0;
+    req.on('data', (chunk) => {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      size += buf.length;
+      if (size > MAX_UPLOAD_BYTES) {
+        reject(new HttpError(413, 'payload_too_large', 'Uploads can be at most 10 MB.'));
+        req.destroy();
+        return;
+      }
+      chunks.push(buf);
+    });
     req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', () => reject(new HttpError(400, 'bad_request')));
   });
 }
 
-// Simple body parser
+// JSON body parser: at most 1 MB, and a body that is not valid JSON is a 400 (it used to silently become {}).
+const MAX_JSON_BYTES = 1_000_000;
 async function parseBody(req: http.IncomingMessage): Promise<any> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     let data = '';
-    req.on('data', (chunk) => { data += chunk; });
+    let size = 0;
+    req.on('data', (chunk) => {
+      size += chunk.length;
+      if (size > MAX_JSON_BYTES) {
+        reject(new HttpError(413, 'payload_too_large', 'The request body is too large.'));
+        req.destroy();
+        return;
+      }
+      data += chunk;
+    });
     req.on('end', () => {
       try {
         resolve(data ? JSON.parse(data) : {});
       } catch {
-        resolve({});
+        reject(new HttpError(400, 'invalid_json', 'The request body is not valid JSON.'));
       }
     });
+    req.on('error', () => reject(new HttpError(400, 'bad_request')));
   });
+}
+
+const GUEST_SUB = 'guest|unauthenticated';
+/** 401 unless someone is signed in. Returns true when the request may go on. */
+function requireLogin(res: http.ServerResponse, user: { sub: string }): boolean {
+  if (user.sub !== GUEST_SUB) return true;
+  sendJson(res, 401, { error: 'login_required', error_description: 'Sign in to do this.' });
+  return false;
+}
+/** The demo sign-in endpoints only exist while DEMO_AUTH is on. */
+function demoOnly(res: http.ServerResponse): boolean {
+  if (DEMO_AUTH) return true;
+  sendJson(res, 404, { error: 'Route not found' });
+  return false;
 }
 
 function sendJson(res: http.ServerResponse, status: number, data: any) {
@@ -128,28 +161,12 @@ function serveWebApp(req: http.IncomingMessage, res: http.ServerResponse, pathna
   return sendJson(res, 404, { error: 'Web app not found' });
 }
 
-// P4 modules run on their Hono routers here too, mounted like index.ts does (short id and full id).
-const p4App = new Hono();
-const P4_ROUTERS: [Hono, string[]][] = [
-  [visitorInfoRoutes, ['visitor-info', 'm02-visitor-info']],
-  [safetyRoutes, ['safety', 'm03-safety']],
-  [smellRoutes, ['smell', 'm06-smell']],
-  [assistantRoutes, ['assistant', 'm10-assistant']],
-  [feedbackRoutes, ['feedback', 'm11-feedback']],
-];
-const P4_PREFIXES: string[] = [];
-for (const [routes, ids] of P4_ROUTERS) {
-  for (const id of ids) {
-    p4App.route(`/v1/m/${id}`, routes);
-    P4_PREFIXES.push(`/v1/m/${id}`);
-  }
+// Every /v1/m/* module route is answered by the Hono app in index.ts (same rules, same validation as on port 3001).
+function isModulePath(pathname: string): boolean {
+  return pathname.startsWith('/v1/m/') || pathname.startsWith('/v1/core/notifications') || pathname === '/v1/core/geocode';
 }
 
-function isP4Path(pathname: string): boolean {
-  return P4_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(prefix + '/'));
-}
-
-async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, url: URL, method: string): Promise<void> {
+async function forwardToModules(req: http.IncomingMessage, res: http.ServerResponse, url: URL, method: string): Promise<void> {
   const headers = new Headers();
   for (const [key, value] of Object.entries(req.headers)) {
     if (typeof value === 'string') headers.set(key, value);
@@ -160,7 +177,9 @@ async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, 
   const body = method === 'GET' || method === 'HEAD' ? undefined : await parseRawBuffer(req);
   const init: RequestInit = { method, headers };
   if (body && body.length) init.body = new Uint8Array(body);
-  const response = await p4App.fetch(new Request(url.href, init));
+  // older clients (and test scripts) used /forum/posts and /buddy/requests; the module routers answer on the shorter paths
+  const href = url.href.replace('/v1/m/forum/posts', '/v1/m/forum').replace('/v1/m/buddy/requests', '/v1/m/buddy');
+  const response = await honoApp.fetch(new Request(href, init));
   // Pass the router's headers through (e.g. Retry-After on 429); the body is re-sent whole, so drop length/encoding.
   const passThrough: Record<string, string> = {};
   response.headers.forEach((value, key) => {
@@ -231,6 +250,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/core/area-alerts' && method === 'POST') {
+      // publishing a danger or works alert is a staff action
+      const staffCheck = enforceSecurityPolicy(currentUser, 'area_alerts.create', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       if (!body.title || !body.type || body.latitude === undefined || body.longitude === undefined || !body.radius_meters) {
         return sendJson(res, 400, {
@@ -306,9 +328,11 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/core/auth/login' && method === 'POST') {
+      if (!demoOnly(res)) return;
       const body = await parseBody(req);
       const email = (body.email || '').toLowerCase().trim();
-      const role = body.role || (email.includes('admin') ? 'admin' : 'resident');
+      // the role comes from the email, never from the request: asking for "admin" does not make you one
+      const role = isStaffEmail(email) ? 'admin' : 'resident';
       if (hubClient && !roleAllowedOnClient(role, hubClient)) return sendJson(res, 403, wrongClientBody(role, hubClient));
 
       let targetUser = null;
@@ -343,16 +367,18 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/core/auth/google-login' && method === 'POST') {
+      if (!demoOnly(res)) return;
       const body = await parseBody(req);
-      const email = body.email || 'citizen.google@gmail.com';
-      const name = body.name || 'Cetățean Conectat cu Google';
-      const role = body.role || (email.endsWith('@timisoara-hub.ro') || email.toLowerCase().includes('admin') ? 'admin' : 'resident');
+      const email = String(body.email || 'citizen.google@gmail.com').slice(0, 200);
+      const name = String(body.name || 'Resident').slice(0, 80);
+      const role = isStaffEmail(email) ? 'admin' : 'resident';
       if (hubClient && !roleAllowedOnClient(role, hubClient)) return sendJson(res, 403, wrongClientBody(role, hubClient));
-      const result = registerGoogleUser({ email, name, role, picture: body.picture });
+      const result = registerGoogleUser({ email, name, picture: body.picture });
       return sendJson(res, 200, result);
     }
 
     if (pathname === '/v1/core/auth/dev-tokens' && method === 'GET') {
+      if (!demoOnly(res)) return;
       return sendJson(res, 200, getDevTokensCatalog());
     }
 
@@ -368,6 +394,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/core/auth/simulate-mfa' && method === 'POST') {
+      if (!demoOnly(res)) return;
       const body = await parseBody(req);
       const role = body.role || currentUser.role;
       const factor = body.factor || 'totp_authenticator';
@@ -385,6 +412,7 @@ const server = http.createServer(async (req, res) => {
 
     // Simulate login attempt & test new location anomaly detection
     if (pathname === '/v1/core/auth/simulate-login' && method === 'POST') {
+      if (!demoOnly(res)) return;
       const body = await parseBody(req);
       const targetUser = body.token ? await resolveAuthUser(`Bearer ${body.token}`) : currentUser;
       
@@ -432,6 +460,7 @@ const server = http.createServer(async (req, res) => {
 
     // Trust new location (confirm "Yes, it was me")
     if (pathname === '/v1/core/auth/trust-location' && (method === 'POST' || method === 'GET')) {
+      if (!requireLogin(res, currentUser)) return;
       let sub = url.searchParams.get('sub') || currentUser.sub;
       let city = url.searchParams.get('city') || 'București';
       let country = url.searchParams.get('country') || 'România';
@@ -445,6 +474,8 @@ const server = http.createServer(async (req, res) => {
         if (body.ip) ip = body.ip;
       }
 
+      // you can only vouch for your own sign-ins (staff may do it for anyone)
+      if (sub !== currentUser.sub && currentUser.role !== 'admin') return sendJson(res, 403, { error: 'not_your_account' });
       trustLocation(sub, { city, country, ip, is_trusted: true });
       return sendJson(res, 200, {
         ok: true,
@@ -455,7 +486,9 @@ const server = http.createServer(async (req, res) => {
 
     // Block session and enforce step-up MFA (confirm "No, it wasn't me")
     if (pathname === '/v1/core/auth/block-session' && (method === 'POST' || method === 'GET')) {
+      if (!requireLogin(res, currentUser)) return;
       const sub = url.searchParams.get('sub') || currentUser.sub;
+      if (sub !== currentUser.sub && currentUser.role !== 'admin') return sendJson(res, 403, { error: 'not_your_account' });
       const alertId = url.searchParams.get('alert_id') || 'manual_block';
 
       await eventBus.emit('auth.session_blocked', {
@@ -474,6 +507,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/core/auth/webhook' && method === 'POST') {
+      // when AUTH0_WEBHOOK_SECRET is set, only Auth0 (which knows it) may call this
+      const secret = process.env.AUTH0_WEBHOOK_SECRET;
+      if (secret && req.headers['x-webhook-secret'] !== secret) return sendJson(res, 401, { error: 'invalid_webhook_secret' });
       const body = await parseBody(req);
       const eventType = body.event_type || body.type || 'post_login';
       const userSub = body.user_id || body.sub || 'auth0|webhook-user';
@@ -525,13 +561,15 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/core/user/places' && method === 'GET') {
-      const places = userService.getSavedPlaces('11111111-2222-3333-4444-555555555555');
+      if (!requireLogin(res, currentUser)) return;
+      const places = userService.getSavedPlaces(currentUser.sub);
       return sendJson(res, 200, places);
     }
 
     if (pathname === '/v1/core/user/places' && method === 'POST') {
+      if (!requireLogin(res, currentUser)) return;
       const body = await parseBody(req);
-      const saved = userService.addSavedPlace('11111111-2222-3333-4444-555555555555', body);
+      const saved = userService.addSavedPlace(currentUser.sub, body);
       return sendJson(res, 201, saved);
     }
 
@@ -542,16 +580,22 @@ const server = http.createServer(async (req, res) => {
 
     // 4b. Photo Upload Service (Vultr Object Storage / signed URLs)
     if (pathname === '/v1/core/upload/signed-url' && method === 'POST') {
+      if (!requireLogin(res, currentUser)) return;
       const body = await parseBody(req);
       if (!body.filename || !body.content_type) {
         return sendJson(res, 400, { error: 'Missing filename or content_type in upload request' });
+      }
+      if (!/^image\/(jpeg|png|webp|heic|gif)$/.test(String(body.content_type))) {
+        return sendJson(res, 400, { error: 'unsupported_type', error_description: 'Only JPEG, PNG, WebP, HEIC and GIF images can be uploaded.' });
       }
       const signed = storageService.createSignedUploadUrl(body, req.headers.host || `localhost:${PORT}`);
       return sendJson(res, 200, signed);
     }
 
     if (pathname.startsWith('/v1/core/upload/raw/') && method === 'PUT') {
+      if (!requireLogin(res, currentUser)) return;
       const key = decodeURIComponent(pathname.replace('/v1/core/upload/raw/', ''));
+      if (!storageService.resolveLocalKey(key)) return sendJson(res, 400, { error: 'invalid_key' });
       const buffer = await parseRawBuffer(req);
       await storageService.saveLocalFile(key, buffer);
       return sendJson(res, 200, { ok: true, key, size: buffer.length });
@@ -723,6 +767,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/m/parkie/detections' && method === 'POST') {
+      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.detections', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       const lotId = body.lot_id;
       const detectedCars = parseInt(body.detected_cars ?? '0', 10);
@@ -740,6 +786,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/m/parkie/lots' && method === 'POST') {
+      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.lots_create', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       if (!body.name || body.latitude === undefined || body.longitude === undefined || body.capacity === undefined) {
         return sendJson(res, 400, { error: 'Missing required lot fields: name, latitude, longitude, capacity' });
@@ -775,6 +823,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/core/metrics/ingest' && method === 'POST') {
+      const staffCheck = enforceSecurityPolicy(currentUser, 'metrics.ingest', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
       const body = await parseBody(req);
       if (!body.metric_type || !body.area_id || body.value === undefined) {
         return sendJson(res, 400, { error: 'Missing required metric fields: metric_type, area_id, value' });
@@ -809,54 +859,7 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, heatmap);
     }
 
-    // --- [M01_EVENTS] Cultural Micro-Events Endpoints ---
-    if (pathname === '/v1/m/events' && method === 'GET') {
-      const category = url.searchParams.get('category') || undefined;
-      const neighbourhood = url.searchParams.get('neighbourhood') || undefined;
-      const ageGroup = url.searchParams.get('ageGroup') || undefined;
-      const search = url.searchParams.get('search') || undefined;
-      const events = await eventsService.listEvents({ category, neighbourhood, ageGroup, search });
-      return sendJson(res, 200, { events });
-    }
-
-    if (pathname === '/v1/m/events' && method === 'POST') {
-      const body = await parseBody(req);
-      const created = await eventsService.createEvent(body);
-      return sendJson(res, 201, { event: created });
-    }
-
-    // --- [M08_FORUM] Community Posts & Moderation Endpoints ---
-    if (pathname === '/v1/m/forum/posts' && method === 'GET') {
-      const category = url.searchParams.get('category') || undefined;
-      const neighbourhood = url.searchParams.get('neighbourhood') || undefined;
-      const posts = await forumService.listPosts(category, neighbourhood);
-      return sendJson(res, 200, { posts });
-    }
-
-    if (pathname === '/v1/m/forum/posts' && method === 'POST') {
-      const body = await parseBody(req);
-      const post = await forumService.createPost(body);
-      return sendJson(res, 201, { post });
-    }
-
-    // --- [M07_BUDDY] Event Buddies & Matchmaking Endpoints ---
-    if (pathname === '/v1/m/buddy/requests' && method === 'GET') {
-      const eventId = url.searchParams.get('eventId') || undefined;
-      const requests = await buddyService.listRequests(eventId);
-      return sendJson(res, 200, { buddyRequests: requests });
-    }
-
-    if (pathname === '/v1/m/buddy/requests' && method === 'POST') {
-      const body = await parseBody(req);
-      const created = await buddyService.createRequest(body);
-      return sendJson(res, 201, { buddyRequest: created });
-    }
-
-    if (pathname === '/v1/m/buddy/match' && method === 'POST') {
-      const body = await parseBody(req);
-      const matches = await buddyService.findMatches(body.eventId, body.interests || []);
-      return sendJson(res, 200, { matches });
-    }
+    // events, forum, buddy, wallet and the P4 modules are answered by the module routers (index.ts), see the forward below
 
     // --- Solana Devnet Endpoints [M09_WALLET & M01_EVENTS] ---
     if (pathname === '/v1/m/solana/status' && method === 'GET') {
@@ -869,6 +872,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/m/solana/tickets/mint' && method === 'POST') {
+      if (!requireLogin(res, currentUser)) return;
       const body = await parseBody(req);
       const { eventId, eventTitle, attendeeName, attendeeWallet } = body;
       if (!eventId || !eventTitle) {
@@ -907,6 +911,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (pathname === '/v1/m/solana/poap/mint' && method === 'POST') {
+      if (!requireLogin(res, currentUser)) return;
       const body = await parseBody(req);
       const { eventId, eventTitle, attendeeWallet, ticketId } = body;
       if (!eventId) {
@@ -938,7 +943,7 @@ const server = http.createServer(async (req, res) => {
     // --- [M02_VISITOR_INFO] [M06_SMELL] [M10_ASSISTANT] [M11_FEEDBACK] (P4) ---
     // Served by the same Hono routers as the modular API (index.ts, port 3001), so validation, defaults
     // and the survey ingest token check are identical on both servers.
-    if (isP4Path(pathname)) return forwardToP4(req, res, url, method);
+    if (isModulePath(pathname)) return forwardToModules(req, res, url, method);
 
     // --- [TIMIȘOARA CITY HUB WEB APP & ADMIN PORTAL] ---
     if (
@@ -953,7 +958,10 @@ const server = http.createServer(async (req, res) => {
     // 404
     return sendJson(res, 404, { error: 'Route not found', path: pathname });
   } catch (err: any) {
-    return sendJson(res, 500, { error: 'Internal Server Error', message: err.message });
+    if (err instanceof HttpError) return sendJson(res, err.status, { error: err.code, error_description: err.message });
+    console.error('[API] unhandled error:', err);
+    // the raw message can leak internals, so it is only sent while the demo mode is on
+    return sendJson(res, 500, { error: 'Internal Server Error', ...(DEMO_AUTH ? { message: err.message } : {}) });
   }
 });
 

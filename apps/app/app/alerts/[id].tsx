@@ -3,12 +3,12 @@ import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { mapHref, pinRef } from '@hub/map';
 import { AvatarStack, BackLink, PrimaryButton, Screen, Text, TextButton, Timeline } from '@hub/ui';
-import { alertById } from '../../src/core/mock/alerts';
+import { useAlerts } from '../../src/core/alerts';
 
 export default function AlertDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const alert = alertById(String(id));
+  const alert = useAlerts().find((a) => a.id === String(id));
 
   if (!alert) {
     return (

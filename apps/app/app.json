@@ -19,7 +19,13 @@
       "output": "static"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "hop uses your location to show where you are on the map."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

@@ -256,7 +256,7 @@ export async function fetchEvents() {
 
 export async function fetchForumPosts() {
   try {
-    const res = await fetch(`${BASE_URL}/v1/m/forum/posts`);
+    const res = await fetch(`${BASE_URL}/v1/m/forum`);
     const body = await res.json();
     return Array.isArray(body) ? body : body.posts || [];
   } catch {
@@ -266,7 +266,7 @@ export async function fetchForumPosts() {
 
 export async function fetchBuddyRequests() {
   try {
-    const res = await fetch(`${BASE_URL}/v1/m/buddy/requests`);
+    const res = await fetch(`${BASE_URL}/v1/m/buddy`);
     const body = await res.json();
     return Array.isArray(body) ? body : body.buddyRequests || [];
   } catch {
@@ -363,3 +363,36 @@ export async function sendDetection(lotId, detectedCars) {
   });
   return await res.json();
 }
+
+// --- FORUM MODERATION (staff) ---
+export async function fetchReportedPosts() {
+  const res = await fetch(`${BASE_URL}/v1/m/forum/moderation/reported`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error_description || `Could not load the queue (${res.status})`);
+  return (await res.json()).reportedPosts || [];
+}
+export async function approveReportedPost(id) {
+  const res = await fetch(`${BASE_URL}/v1/m/forum/moderation/${encodeURIComponent(id)}/approve`, { method: 'POST' });
+  if (!res.ok) throw new Error(`Could not keep the post (${res.status})`);
+}
+export async function removeReportedPost(id) {
+  const res = await fetch(`${BASE_URL}/v1/m/forum/moderation/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res.ok) throw new Error(`Could not remove the post (${res.status})`);
+}
+
+// --- generic calls for the community actions (headers and the session token are added by the fetch wrapper above) ---
+async function send(method, path, body) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method,
+    headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error_description || data.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+export const hubPost = (path, body = {}) => send('POST', path, body);
+export const hubGet = (path) => send('GET', path);

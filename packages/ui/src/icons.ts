@@ -16,6 +16,7 @@ export {
   ClockIcon as Clock,
   PlusIcon as Plus,
   CrosshairIcon as Crosshair,
+  NavigationArrowIcon as NavigationArrow,
   ListBulletsIcon as ListBullets,
   TrashIcon as Trash,
   LockSimpleIcon as Lock,

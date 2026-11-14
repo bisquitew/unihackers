@@ -1,3 +1,5 @@
+import { DEMO_AUTH, isStaffEmail } from './config.ts';
+import crypto from 'node:crypto';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { db } from './db.ts';
 import { notify } from './notifications.ts';
@@ -493,17 +495,19 @@ export const GUEST_USER: AuthUser = {
   security_tier: 'tier_1_standard'
 };
 
+/**
+ * Demo sign-in (DEMO_AUTH only). The role is decided here from the email, never from what the caller asks for:
+ * staff mail addresses become admins, everyone else a resident. Real accounts come from Auth0 tokens.
+ */
 export function registerGoogleUser(googlePayload: {
   email: string;
   name: string;
-  sub?: string;
   picture?: string;
-  role?: UserRole;
 }): { token: string; user: AuthUser } {
-  const isAdminEmail = googlePayload.email.endsWith('@timisoara-hub.ro') || googlePayload.email.toLowerCase().includes('admin');
-  const role: UserRole = googlePayload.role || (isAdminEmail ? 'admin' : 'resident');
-  const sub = googlePayload.sub || `google-oauth2|${Date.now()}`;
-  const token = `google_${sub.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  const role: UserRole = isStaffEmail(googlePayload.email) ? 'admin' : 'resident';
+  const id = crypto.randomUUID();
+  const sub = `google-oauth2|${id}`;
+  const token = `google_${id.replace(/-/g, '')}`; // unguessable, unlike a timestamp
 
   const user: AuthUser = {
     sub,
@@ -570,8 +574,8 @@ async function resolveAuthUserRaw(authHeader?: string): Promise<AuthUser> {
 
   const token = authHeader.replace(/^Bearer\s+/, '').trim();
 
-  // 1. Dev token check (instant zero-network mock for testing & demos)
-  if (DEV_USERS[token]) {
+  // 1. Dev token check (instant zero-network mock for testing & demos), only while the demo sign-in is enabled
+  if (DEMO_AUTH && DEV_USERS[token]) {
     return DEV_USERS[token];
   }
 

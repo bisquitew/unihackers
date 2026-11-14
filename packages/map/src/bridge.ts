@@ -24,7 +24,7 @@ export type ToEngine =
   | { type: 'setSkin'; skin: MapSkin }
   | { type: 'setReducedMotion'; value: boolean }
   | { type: 'setInsets'; top: number; right: number; bottom: number; left: number }
-  | { type: 'setUserLocation'; location: { lat: number; lng: number } | null };
+  | { type: 'setUserLocation'; location: { lat: number; lng: number; heading?: number } | null };
 
 export type FromEngine =
   | { type: 'ready'; theme: string }
@@ -57,7 +57,8 @@ export interface CityMapProps {
   skin?: MapSkin;
   /** space covered by overlays (sheet, tab bar); the camera keeps the selected pin clear of it */
   insets?: MapInsets;
-  userLocation?: Coordinate | null;
+  /** where the person is; `heading` (degrees clockwise from north) turns the dot into a navigation arrow */
+  userLocation?: (Coordinate & { heading?: number }) | null;
   reducedMotion?: boolean;
   onPinPress?: (id: string) => void;
   onLongPress?: (coordinate: Coordinate) => void;
@@ -136,8 +137,8 @@ export function useEngineBridge(props: CityMapProps, post: (message: ToEngine) =
   }, [ready, focus?.latitude, focus?.longitude, focus?.zoom, focus?.nonce, post]);
 
   useEffect(() => {
-    if (ready) post({ type: 'setUserLocation', location: userLocation ? { lat: userLocation.latitude, lng: userLocation.longitude } : null });
-  }, [ready, userLocation?.latitude, userLocation?.longitude, post]);
+    if (ready) post({ type: 'setUserLocation', location: userLocation ? { lat: userLocation.latitude, lng: userLocation.longitude, heading: userLocation.heading } : null });
+  }, [ready, userLocation?.latitude, userLocation?.longitude, userLocation?.heading, post]);
 
   return { ready, handleMessage };
 }
