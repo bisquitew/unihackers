@@ -1,7 +1,7 @@
 import * as React from 'react';
-import { AccessibilityInfo, Animated, Dimensions, Easing, Keyboard, Modal, PanResponder, Platform, Pressable, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, Animated, Dimensions, Easing, Keyboard, Modal, PanResponder, Platform, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, durations, radii } from './tokens';
+import { colors, radii } from './tokens';
 
 type SheetProps = {
   visible: boolean;
@@ -60,13 +60,18 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
   }, []);
 
   const keyboard = useKeyboardHeight();
+  const { height: windowHeight } = useWindowDimensions();
+  // The sheet never grows past the visible screen: with the keyboard up, a tall form shrinks (its scroll area scrolls) instead of running off the top.
+  const bottomEdge = keyboard > 0 ? keyboard + (bottomOffset > 0 ? 8 : 0) : bottomOffset;
+  const maxHeight = Math.max(240, windowHeight - bottomEdge - insets.top - 12);
 
   React.useEffect(() => {
-    const duration = reduced ? 0 : durations.sheet;
     if (visible) {
       drag.setValue(0);
       setMounted(true);
-      Animated.timing(y, { toValue: 0, duration, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
+      // a springy settle, so the sheet lands with a small bounce on iOS and Android alike
+      if (reduced) Animated.timing(y, { toValue: 0, duration: 0, useNativeDriver: true }).start();
+      else Animated.spring(y, { toValue: 0, bounciness: 7, speed: 13, useNativeDriver: true }).start();
     } else if (mounted) {
       Animated.timing(y, { toValue: height.current || 600, duration: reduced ? 0 : 200, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(({ finished }) => {
         if (finished) {
@@ -113,6 +118,7 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
         onLayout={onLayout}
         style={[
           styles.sheet,
+          { maxHeight },
           bottomOffset > 0
             ? { bottom: keyboard > 0 ? keyboard + 8 : bottomOffset, left: 12, right: 12, borderRadius: radii.sheet, paddingBottom: 18 }
             : keyboard > 0
@@ -151,7 +157,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
     borderTopLeftRadius: radii.sheet,
     borderTopRightRadius: radii.sheet,
     paddingHorizontal: 18,
@@ -161,5 +167,5 @@ const styles = StyleSheet.create({
   // a wide, easy-to-grab strip across the top of the sheet; the visible notch sits in the middle of it
   handleArea: { marginHorizontal: -18, marginTop: -10 },
   handleHit: { height: 36, alignItems: 'center', justifyContent: 'center' },
-  grab: { width: 36, height: 5, borderRadius: 3, backgroundColor: 'rgba(26, 16, 51, 0.16)' },
+  grab: { width: 36, height: 5, borderRadius: 3, backgroundColor: colors.secondaryPressed },
 });

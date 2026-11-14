@@ -1,10 +1,12 @@
 import * as React from 'react';
-import { AccessibilityInfo, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, View, type LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   CityMap,
   PinArt,
+  PinArtByKey,
+  type PinArtKey,
   allowedVisibilities,
   effectiveVisibility,
   parseMapLink,
@@ -19,11 +21,14 @@ import {
   type PinKind,
   type PinVisibility,
 } from '@hub/map';
-import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, palette, radii, shadows } from '@hub/ui';
+import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, palette, radii, shadows, isDark } from '@hub/ui';
 
 // The hue dot on a switched-on layer chip. Blue = getting around and city information, mint = people and services, ink = yours.
+// the picture shown for each layer in the "Show on the map" list (the same flat artwork as the pins)
+const LAYER_ART: Record<string, PinArtKey> = { mine: 'home', alerts: 'utilities', community: 'buddy', events: 'events' };
 const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500, events: palette.mint500 };
 import { allMapLayers } from '../../src/core/map-layers';
+import { usePrefs } from '../../src/core/prefs';
 import { getMapLayersVersion, onMapLayersChanged } from '../../src/core/map-layers/changes';
 
 const TAB_BAR_BODY = 68; // height of the floating tab bar (see packages/ui/src/TabBar.tsx); it sits above the bottom safe area
@@ -36,6 +41,7 @@ type Draft = { coordinate: Coordinate; kind: PinKind; title: string; visibility:
 export default function MapScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const prefs = usePrefs();
   const params = useLocalSearchParams();
 
   /* ---------- data: the user's pins, the community's, and layers contributed by modules ---------- */
@@ -65,6 +71,8 @@ export default function MapScreen() {
   const [placing, setPlacing] = React.useState<null | 'new' | 'move'>(null);
   const [mapHeight, setMapHeight] = React.useState(0);
   const [listOpen, setListOpen] = React.useState(false);
+  const [layersOpen, setLayersOpen] = React.useState(false);
+  const hiddenCount = Object.values(hidden).filter(Boolean).length;
   const [sheetHeight, setSheetHeight] = React.useState(0);
   const [reducedMotion, setReducedMotion] = React.useState(false);
 
@@ -166,6 +174,7 @@ export default function MapScreen() {
         selectedId={selectedId}
         focus={focus}
         reducedMotion={reducedMotion}
+        theme={prefs.mapTheme === 'auto' && isDark ? 'night' : prefs.mapTheme}
         insets={{ bottom: bottomInset }}
         onPinPress={(id) => {
           if (id !== 'draft') select(visiblePins.find((p) => p.id === id) ?? null); // the pin being filled in is not selectable
@@ -180,33 +189,48 @@ export default function MapScreen() {
         }}
       />
 
-      {/* layer chips */}
-      <View pointerEvents="box-none" style={[styles.chips, { top: topSpace }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chipRow}>
-          {layers.map((l) => (
-            <Chip
-              key={l.id}
-              tone="glass"
-              dot={LAYER_DOT[l.id] ?? palette.ink900}
-              label={l.title}
-              selected={!hidden[l.id]}
-              onPress={() => setHidden((h) => ({ ...h, [l.id]: !h[l.id] }))}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* actions: the pink "+" is the one main action here, the list button is frosted like the chips */}
+      {/* map controls: one column at the top right. Layers and the list are frosted, the pink "+" is the one main action */}
       {placing ? null : (
-        <View pointerEvents="box-none" style={[styles.actions, { top: topSpace + 56 }]}>
-          <IconButton label="Add a pin" tone="primary" size={44} onPress={startPlacing}>
-            <icons.Plus size={22} weight="bold" color={colors.primaryForeground} />
-          </IconButton>
+        <View pointerEvents="box-none" style={[styles.actions, { top: topSpace }]}>
+          <View>
+            <IconButton label={hiddenCount > 0 ? `Choose what shows on the map, ${hiddenCount} hidden` : 'Choose what shows on the map'} tone="glass" size={44} onPress={() => { setSelectedId(null); setDraft(null); setLayersOpen(true); }}>
+              <icons.Stack size={22} weight="bold" color={colors.foreground} />
+            </IconButton>
+            {hiddenCount > 0 ? <View pointerEvents="none" style={styles.badge} /> : null}
+          </View>
           <IconButton label="List pins on the map" tone="glass" size={44} onPress={() => { setSelectedId(null); setDraft(null); setListOpen(true); }}>
             <icons.ListBullets size={22} weight="bold" color={colors.foreground} />
           </IconButton>
+          <IconButton label="Add a pin" tone="primary" size={44} onPress={startPlacing}>
+            <icons.Plus size={22} weight="bold" color={colors.primaryForeground} />
+          </IconButton>
         </View>
       )}
+
+      {/* what shows on the map */}
+      <Sheet visible={layersOpen} scrim bottomOffset={clearance} onHeight={setSheetHeight} onClose={() => setLayersOpen(false)} accessibilityLabel="What shows on the map">
+        <View style={styles.listHead}>
+          <Text variant="subheading" accessibilityRole="header">
+            Show on the map
+          </Text>
+        </View>
+        <RowGroup>
+          {layers.map((l) => (
+            <Row key={l.id}>
+              <Row.Illustration>
+                {LAYER_ART[l.id] ? <PinArtByKey art={LAYER_ART[l.id]} size={40} /> : <View style={[styles.layerDot, { backgroundColor: LAYER_DOT[l.id] ?? palette.ink900 }]} />}
+              </Row.Illustration>
+              <Row.Body>
+                <Row.Title>{l.title}</Row.Title>
+                <Row.Detail>{`${l.pins.length} ${l.pins.length === 1 ? 'pin' : 'pins'}`}</Row.Detail>
+              </Row.Body>
+              <Row.Trailing>
+                <Switch value={!hidden[l.id]} onValueChange={() => setHidden((h) => ({ ...h, [l.id]: !h[l.id] }))} accessibilityLabel={l.title} trackColor={{ false: colors.secondaryPressed, true: colors.success }} thumbColor="#FFFFFF" />
+              </Row.Trailing>
+            </Row>
+          ))}
+        </RowGroup>
+      </Sheet>
 
       {/* choosing the spot for a pin */}
       {placing ? (
@@ -258,10 +282,16 @@ export default function MapScreen() {
             <RowGroup>
               {visiblePins.map((p) => (
                 <Row key={p.id} onPress={() => select(p)} accessibilityLabel={`${p.title}, ${pinKinds[p.kind].label}`}>
+                  <Row.Illustration>
+                    <PinArt kind={p.kind} size={40} />
+                  </Row.Illustration>
                   <Row.Body>
                     <Row.Title>{p.title}</Row.Title>
                     <Row.Detail>{pinKinds[p.kind].label}</Row.Detail>
                   </Row.Body>
+                  <Row.Trailing>
+                    <icons.CaretRight size={18} color={colors.mutedForeground} />
+                  </Row.Trailing>
                 </Row>
               ))}
             </RowGroup>
@@ -361,6 +391,8 @@ const styles = StyleSheet.create({
   chips: { position: 'absolute', left: 0, right: 0 },
   chipRow: { gap: 8, paddingHorizontal: 16 },
   actions: { position: 'absolute', right: 16, gap: 8 },
+  badge: { position: 'absolute', top: 2, right: 2, width: 12, height: 12, borderRadius: 6, backgroundColor: colors.inverse, borderWidth: 2, borderColor: colors.background },
+  layerDot: { width: 14, height: 14, borderRadius: 7 },
   formHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   // the placement marker: a white disc ringed in ink, with a dot underneath that marks the exact spot
   marker: { position: 'absolute', left: 0, right: 0, height: 56, alignItems: 'center' },

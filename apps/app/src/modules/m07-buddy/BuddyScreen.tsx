@@ -18,7 +18,7 @@ const FILTERS = [
   { id: 'workshop', label: 'Workshops' },
 ];
 
-export function BuddyScreen({ embedded }: { embedded?: boolean }) {
+export function BuddyScreen({ embedded, initialView }: { embedded?: boolean; initialView?: 'find' | 'chats' }) {
   const { height: windowHeight } = useWindowDimensions();
   const sheetMax = Math.round(windowHeight * 0.72);
 
@@ -32,7 +32,10 @@ export function BuddyScreen({ embedded }: { embedded?: boolean }) {
   const chats = chatStore.list();
   const unread = chatStore.unreadTotal();
 
-  const [view, setView] = useState<'find' | 'chats'>('find');
+  const [view, setView] = useState<'find' | 'chats'>(initialView ?? 'find');
+  useEffect(() => {
+    if (initialView) setView(initialView);
+  }, [initialView]);
   const [filter, setFilter] = useState('all');
   const filtered = useMemo(() => {
     if (filter === 'all') return buddies;

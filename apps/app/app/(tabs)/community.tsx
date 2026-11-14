@@ -30,7 +30,7 @@ export default function CommunityTab() {
 }
 
 function CommunityContent() {
-  const params = useLocalSearchParams<{ tab?: string; event?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; event?: string; view?: string }>();
   const [section, setSection] = useState<Section>('events');
 
   useEffect(() => {
@@ -48,7 +48,7 @@ function CommunityContent() {
 
       {section === 'events' ? <EventsScreen embedded openEventId={params.event} onOpenWallet={() => setSection('wallet')} /> : null}
       {section === 'forum' ? <ForumScreen embedded /> : null}
-      {section === 'buddies' ? <BuddyScreen embedded /> : null}
+      {section === 'buddies' ? <BuddyScreen embedded initialView={params.view === 'chats' ? 'chats' : undefined} /> : null}
       {section === 'wallet' ? <WalletScreen embedded onOpenEvents={() => setSection('events')} /> : null}
     </Screen>
   );

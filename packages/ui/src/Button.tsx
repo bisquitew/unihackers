@@ -1,5 +1,6 @@
 import * as React from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, type ViewStyle } from 'react-native';
+import { ActivityIndicator, StyleSheet, type ViewStyle } from 'react-native';
+import { SpringPressable } from './SpringPressable';
 import { colors, fonts, minTarget, radii, shadows } from './tokens';
 import { Text } from './Text';
 
@@ -24,7 +25,8 @@ const paddingX: Record<ButtonSize, number> = { lg: 28, md: 20 };
 function ButtonBase({ variant, label, onPress, size = 'lg', disabled, loading, accessibilityHint }: ButtonProps & { variant: Variant }) {
   const inactive = disabled || loading;
   return (
-    <Pressable
+    <SpringPressable
+      scaleTo={0.95}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityHint={accessibilityHint}
@@ -40,14 +42,13 @@ function ButtonBase({ variant, label, onPress, size = 'lg', disabled, loading, a
           justifyContent: 'center',
           opacity: inactive ? 0.45 : 1,
         };
-        const pressedStyle: ViewStyle = pressed ? { transform: [{ scale: 0.97 }] } : {};
         if (variant === 'primary') {
-          return [base, { backgroundColor: colors.primary, boxShadow: shadows.primaryGlow } as ViewStyle, pressed && { opacity: 0.94 }, pressedStyle];
+          return [base, { backgroundColor: colors.primary, boxShadow: shadows.primaryGlow } as ViewStyle, pressed && { opacity: 0.94 }];
         }
         if (variant === 'secondary') {
-          return [base, { backgroundColor: pressed ? colors.secondaryPressed : colors.secondary }, pressedStyle];
+          return [base, { backgroundColor: pressed ? colors.secondaryPressed : colors.secondary }];
         }
-        return [base, pressed && { backgroundColor: colors.hairline }, pressedStyle];
+        return [base, pressed && { backgroundColor: colors.hairline }];
       }}
     >
       {loading ? (
@@ -60,7 +61,7 @@ function ButtonBase({ variant, label, onPress, size = 'lg', disabled, loading, a
           {label}
         </Text>
       )}
-    </Pressable>
+    </SpringPressable>
   );
 }
 

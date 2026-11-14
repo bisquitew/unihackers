@@ -16,3 +16,5 @@ export * from './TabBar';
 export * from './illustrations';
 export * as icons from './icons';
 export * from './Segmented';
+export * from './theme';
+export * from './SpringPressable';

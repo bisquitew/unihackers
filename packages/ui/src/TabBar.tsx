@@ -1,8 +1,10 @@
 import * as React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
+import { SpringPressable } from './SpringPressable';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii, shadows } from './tokens';
+import { isDark } from './theme';
 import { Text } from './Text';
 import { House, MapTrifold, ChatsCircle, UserCircle } from './icons';
 
@@ -17,6 +19,8 @@ type TabBarProps = {
   };
   /** Called with the route name (`index`, `map`, `community`, `profile`) when an inactive tab is pressed. Preferred over `navigation`. */
   onTabPress?: (routeName: string) => void;
+  /** Android only: the view (an expo-blur BlurTargetView) that sits behind the bar, so the bar can really blur it like on iOS. */
+  blurTarget?: React.RefObject<any>;
 };
 
 const tabs: Record<string, { label: string; Icon: React.ComponentType<any> }> = {
@@ -30,11 +34,16 @@ const tabs: Record<string, { label: string; Icon: React.ComponentType<any> }> = 
  * Floating glass pill with four tabs. Icon AND label on every tab, never icon-only.
  * The active tab gets a soft ink pill and a filled icon. Alerts is not a tab: it is the bell in the screen header.
  */
-export function FloatingTabBar({ state, descriptors, navigation, onTabPress }: TabBarProps) {
+export function FloatingTabBar({ state, descriptors, navigation, onTabPress, blurTarget }: TabBarProps) {
   const insets = useSafeAreaInsets();
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 2 }]}>
-      <BlurView intensity={45} tint="light" style={styles.bar}>
+      <BlurView
+        intensity={45}
+        tint={isDark ? 'dark' : 'light'}
+        style={styles.bar}
+        {...(Platform.OS === 'android' && blurTarget ? { blurTarget, blurMethod: 'dimezisBlurView' as const, blurReductionFactor: 2 } : {})}
+      >
         <View style={styles.tint} pointerEvents="none" />
         {state.routes.map((route, i) => {
           const cfg = tabs[route.name];
@@ -51,7 +60,8 @@ export function FloatingTabBar({ state, descriptors, navigation, onTabPress }: T
             if (!event?.defaultPrevented) navigation?.navigate?.(route.name);
           };
           return (
-            <Pressable
+            <SpringPressable
+              scaleTo={0.88}
               key={route.key}
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
@@ -63,7 +73,7 @@ export function FloatingTabBar({ state, descriptors, navigation, onTabPress }: T
               <Text variant="caption" style={styles.label}>
                 {cfg.label}
               </Text>
-            </Pressable>
+            </SpringPressable>
           );
         })}
       </BlurView>
@@ -83,7 +93,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     boxShadow: shadows.float,
   } as any,
-  tint: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255, 255, 255, 0.6)' },
+  tint: { ...StyleSheet.absoluteFill, backgroundColor: isDark ? 'rgba(32, 18, 58, 0.72)' : 'rgba(255, 255, 255, 0.6)' },
   item: { minWidth: 64, height: 54, borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 4 },
   itemActive: { backgroundColor: colors.navActive },
   label: { fontFamily: 'Figtree_600SemiBold', fontSize: 11, lineHeight: 12 },

@@ -1,486 +1,359 @@
-import React from 'react';
-import {
-  StyleSheet,
-  View,
-  ScrollView,
-  TouchableOpacity,
-  SafeAreaView,
-  StatusBar,
-  Platform,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { Text, colors, radii, shadows } from '@hub/ui';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import { ScrollView, StyleSheet, Switch, View, useWindowDimensions } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { usePersonalPins, type MapTheme } from '@hub/map';
+import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, SecondaryButton, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, type ThemeMode } from '@hub/ui';
 import { useAuth } from '../../src/core/auth';
 import { WebAccessGate } from '../../src/core/WebAccessGate';
+import { Auth0SecurityCard } from '../../src/core/Auth0SecurityCard';
+import { initialsOf, toneFor } from '../../src/core/people';
+import { setPrefs, usePrefs } from '../../src/core/prefs';
+import { chatStore } from '../../src/modules/m07-buddy/chatStore';
+import { ticketStore } from '../../src/modules/m09-wallet/ticketStore';
 
+const ROLE_LABEL: Record<string, string> = { resident: 'Resident', organizer: 'Organizer', moderator: 'Moderator', admin: 'Admin', ai_agent: 'AI agent' };
+const SIGN_IN_LABEL: Record<string, string> = { 'email-passwordless': 'Email link', 'google-oauth2': 'Google', passkey: 'Passkey' };
+const ABILITY_LABEL: Record<string, string> = {
+  'read:city-alerts': 'See city alerts',
+  'read:parking': 'Check parking',
+  'read:transit': 'See transit times',
+  'create:reports': 'Report problems',
+  'rsvp:events': 'Join events',
+  'create:events': 'Host events',
+  'manage:tickets': 'Manage tickets',
+  'moderate:forum': 'Moderate the forum',
+  'resolve:reports': 'Resolve reports',
+  'publish:outages': 'Publish outage notices',
+  'manage:detours': 'Manage transit detours',
+  'manage:lots': 'Manage parking lots',
+  'view:audit-log': 'View the audit log',
+  'admin:system': 'Administer the system',
+};
+const MAP_LOOKS: { id: MapTheme; label: string }[] = [
+  { id: 'auto', label: 'Auto' },
+  { id: 'day', label: 'Day' },
+  { id: 'golden', label: 'Golden' },
+  { id: 'night', label: 'Night' },
+];
+const APPEARANCE: { id: ThemeMode; label: string }[] = [
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'system', label: 'System' },
+];
+
+type Part = 'overview' | 'settings';
+
+/**
+ * Profile: two sections of one white page. Overview is who you are and what you have done in the app; Settings is
+ * appearance, the map, alerts and your account. Every row goes somewhere or changes something.
+ */
 export default function ProfileTab() {
   return (
-    <WebAccessGate featureName="profilul tău și setările contului">
+    <WebAccessGate featureName="your profile and account settings">
       <ProfileContent />
     </WebAccessGate>
   );
 }
 
 function ProfileContent() {
-  const { user, isAdmin, isResident, loginAsResident, loginAsAdmin, logout } = useAuth();
   const router = useRouter();
+  const { height: windowHeight } = useWindowDimensions();
+  const { user, isAdmin, logout, simulateMfaStepUp, loginAsAdmin, loginAsResident } = useAuth();
+  const prefs = usePrefs();
+  const { pins } = usePersonalPins();
+  useSyncExternalStore(
+    (cb) => chatStore.subscribe(cb),
+    () => chatStore.getVersion(),
+  );
+  const [wallet, setWallet] = useState(ticketStore.getState());
+  useEffect(() => ticketStore.subscribe(() => setWallet({ ...ticketStore.getState() })), []);
+
+  const params = useLocalSearchParams<{ part?: string }>();
+  const [part, setPart] = useState<Part>(params.part === 'settings' ? 'settings' : 'overview');
+  useEffect(() => {
+    if (params.part === 'settings' || params.part === 'overview') setPart(params.part);
+  }, [params.part]);
+  const [editing, setEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
+  const [security, setSecurity] = useState(false);
+  const [devTools, setDevTools] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+
+  const accountName = user?.name ?? 'Guest';
+  const name = prefs.displayName.trim() || accountName;
+  const tickets = wallet.tickets.length;
+  const badges = wallet.poaps.length;
+  const chats = chatStore.list().length;
+  const myPins = pins.length;
+  const go = (href: string) => router.push(href as any);
+  const sheetMax = Math.round(windowHeight * 0.78);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" />
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* Top Header */}
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profil & Identitate</Text>
-          <Text style={styles.headerSub}>Timișoara City Hub • Cont Digital</Text>
-        </View>
+    <Screen>
+      <Text variant="title" accessibilityRole="header" style={styles.title}>
+        Profile
+      </Text>
+      <View style={{ marginTop: 14 }}>
+        <Segmented
+          accessibilityLabel="Profile sections"
+          value={part}
+          onChange={setPart}
+          options={[
+            { id: 'overview', label: 'Overview' },
+            { id: 'settings', label: 'Settings' },
+          ]}
+        />
+      </View>
 
-        {/* User Card */}
-        <View style={styles.userCard}>
-          <View style={styles.avatarRow}>
-            <View style={[styles.avatarCircle, isAdmin ? styles.avatarAdmin : styles.avatarResident]}>
-              <Text style={styles.avatarText}>{isAdmin ? '🏛️' : '👤'}</Text>
-            </View>
-            <View style={{ flex: 1, marginLeft: 16 }}>
-              <Text style={styles.userName}>{user?.name || 'Cetățean Timișoara'}</Text>
-              <Text style={styles.userEmail}>{user?.email}</Text>
-              <View style={styles.badgeRow}>
-                {isAdmin ? (
-                  <View style={styles.adminBadge}>
-                    <Text style={styles.adminBadgeText}>🏛️ ADMINISTRATOR PRIMĂRIE</Text>
-                  </View>
-                ) : (
-                  <View style={styles.residentBadge}>
-                    <Text style={styles.residentBadgeText}>👤 CETĂȚEAN (STANDARD USER)</Text>
-                  </View>
-                )}
-                {user?.mfa_verified && (
-                  <View style={styles.mfaBadge}>
-                    <Text style={styles.mfaBadgeText}>🔐 MFA VERIFICAT</Text>
-                  </View>
-                )}
-              </View>
-            </View>
-          </View>
-
-          <View style={styles.infoDivider} />
-
-          <View style={styles.infoGrid}>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Cartier Rezidență</Text>
-              <Text style={styles.infoValue}>{user?.neighbourhood || 'Cetate'}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Furnizor Identitate</Text>
-              <Text style={styles.infoValue}>{user?.idp || 'Auth0 Cloud'}</Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text style={styles.infoLabel}>Nivel Securitate</Text>
-              <Text style={styles.infoValue}>
-                {isAdmin ? 'Tier 2 (FIDO2 Passkey)' : 'Tier 1 (Standard)'}
+      {part === 'overview' ? (
+        <>
+          <View style={styles.head}>
+            <Avatar initials={initialsOf(name)} tone={toneFor(user?.id ?? name)} size={72} />
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="heading" numberOfLines={1} style={{ fontSize: 24, lineHeight: 30 }}>
+                {name}
+              </Text>
+              <Text variant="rowDetail" color="mutedForeground" numberOfLines={1}>
+                {user?.email ?? 'Not signed in'}
+              </Text>
+              <Text variant="label" color="info">
+                {user ? (ROLE_LABEL[user.role] ?? user.role) : 'Guest'}
               </Text>
             </View>
+            <TextButton
+              label="Edit"
+              size="md"
+              onPress={() => {
+                setNameDraft(prefs.displayName || accountName);
+                setEditing(true);
+              }}
+            />
           </View>
-        </View>
 
-        {/* ADMIN EXCLUSIVE SECTION */}
-        {isAdmin && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeaderRow}>
-              <Text style={styles.sectionTitle}>🛠️ Panou Administrație Municipală</Text>
-              <View style={styles.adminTag}>
-                <Text style={styles.adminTagText}>ADMIN ONLY</Text>
-              </View>
-            </View>
-            <Text style={styles.sectionDescription}>
-              Instrumente de dispecerat și management operativ pentru serviciile Timișoarei:
+          <View style={styles.stats}>
+            <Stat value={tickets} label="Tickets" />
+            <View style={styles.divider} />
+            <Stat value={badges} label="Badges" />
+            <View style={styles.divider} />
+            <Stat value={chats} label="Chats" />
+            <View style={styles.divider} />
+            <Stat value={myPins} label="Places" />
+          </View>
+
+          <Section title="Your things">
+            <RowGroup>
+              <LinkRow icon={<icons.Ticket size={22} color={colors.foreground} />} title="Tickets and badges" detail={`${tickets} ticket${tickets === 1 ? '' : 's'}, ${badges} badge${badges === 1 ? '' : 's'}`} onPress={() => go('/community?tab=wallet')} />
+              <LinkRow icon={<icons.ChatCircle size={22} color={colors.foreground} />} title="Chats" detail={chats ? `${chats} conversation${chats === 1 ? '' : 's'}` : 'Find someone to go with'} onPress={() => go('/community?tab=buddies&view=chats')} />
+              <LinkRow icon={<icons.MapPin size={22} color={colors.foreground} />} title="Your places on the map" detail={myPins ? `${myPins} saved` : 'Pin Home, Work or a spot you like'} onPress={() => go('/map')} />
+            </RowGroup>
+          </Section>
+
+          {isAdmin ? (
+            <Section title="City tools">
+              <RowGroup>
+                <LinkRow icon={<icons.Bell size={22} color={colors.foreground} />} title="Publish outages" detail="Water, heating and power notices" onPress={() => go('/m/utilities')} />
+                <LinkRow icon={<icons.MapPin size={22} color={colors.foreground} />} title="Transit detours" detail="Update tram and bus routes" onPress={() => go('/m/transit')} />
+                <LinkRow icon={<icons.ShieldCheck size={22} color={colors.foreground} />} title="Parking sensors" detail="Live occupancy from the city" onPress={() => go('/m/parkie')} />
+                <LinkRow icon={<icons.Sparkle size={22} color={colors.foreground} />} title="City dashboard" detail="Air, noise and parking figures" onPress={() => go('/m/dashboard')} />
+              </RowGroup>
+            </Section>
+          ) : null}
+
+          <Section title="Help">
+            <RowGroup>
+              <LinkRow icon={<icons.PaperPlaneTilt size={22} color={colors.foreground} />} title="Send feedback" detail="Tell the team what to fix" onPress={() => go('/m/feedback')} />
+            </RowGroup>
+          </Section>
+        </>
+      ) : (
+        <>
+          <Section title="Appearance">
+            <Segmented
+              options={APPEARANCE}
+              value={themeMode}
+              onChange={(mode) => {
+                if (mode !== themeMode) setThemeMode(mode, '/profile?part=settings');
+              }}
+              accessibilityLabel="Appearance"
+            />
+            <Text variant="rowDetail" color="mutedForeground" style={{ marginTop: 8 }}>
+              System follows your phone's setting.
             </Text>
+          </Section>
 
-            <View style={styles.adminGrid}>
-              <TouchableOpacity
-                style={styles.adminActionCard}
-                activeOpacity={0.8}
-                onPress={() => router.push('/m/utilities')}
-              >
-                <Text style={styles.adminActionIcon}>📢</Text>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.adminActionTitle}>Publicare Avarii Utilități</Text>
-                  <Text style={styles.adminActionDesc}>
-                    Emite alerte apă caldă, canalizare, Aquatim / Colterm
-                  </Text>
-                </View>
-                <Text style={styles.chevron}>→</Text>
-              </TouchableOpacity>
+          <Section title="Map look">
+            <Segmented options={MAP_LOOKS} value={prefs.mapTheme} onChange={(mapTheme) => setPrefs({ mapTheme })} accessibilityLabel="Map look" />
+            <Text variant="rowDetail" color="mutedForeground" style={{ marginTop: 8 }}>
+              Auto follows the time of day, and Night in dark mode.
+            </Text>
+          </Section>
 
-              <TouchableOpacity
-                style={styles.adminActionCard}
-                activeOpacity={0.8}
-                onPress={() => router.push('/m/transit')}
-              >
-                <Text style={styles.adminActionIcon}>🚌</Text>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.adminActionTitle}>Devieri Trasee Transport</Text>
-                  <Text style={styles.adminActionDesc}>
-                    Actualizează rute STPT, linii tramvai 1, 2, 4, 5
-                  </Text>
-                </View>
-                <Text style={styles.chevron}>→</Text>
-              </TouchableOpacity>
+          <Section title="Alerts">
+            <RowGroup>
+              <ToggleRow title="Safety and city alerts" detail="Water, traffic and warnings near you" value={prefs.notifySafety} onChange={(notifySafety) => setPrefs({ notifySafety })} />
+              <ToggleRow title="Event reminders" detail="Before an event you have a ticket for" value={prefs.notifyEvents} onChange={(notifyEvents) => setPrefs({ notifyEvents })} />
+              <ToggleRow title="Community replies" detail="Answers to your posts and messages" value={prefs.notifyCommunity} onChange={(notifyCommunity) => setPrefs({ notifyCommunity })} />
+            </RowGroup>
+          </Section>
 
-              <TouchableOpacity
-                style={styles.adminActionCard}
-                activeOpacity={0.8}
-                onPress={() => router.push('/m/parkie')}
-              >
-                <Text style={styles.adminActionIcon}>🅿️</Text>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.adminActionTitle}>Monitorizare Senzori Parcări</Text>
-                  <Text style={styles.adminActionDesc}>
-                    51.600+ detecții IoT în direct din TimescaleDB Cloud
-                  </Text>
-                </View>
-                <Text style={styles.chevron}>→</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.adminActionCard}
-                activeOpacity={0.8}
-                onPress={() => router.push('/m/dashboard')}
-              >
-                <Text style={styles.adminActionIcon}>📊</Text>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.adminActionTitle}>Tablou de Bord Urban (KPIs)</Text>
-                  <Text style={styles.adminActionDesc}>
-                    Calitatea aerului, zgomot, ocupare parcări și agregări
-                  </Text>
-                </View>
-                <Text style={styles.chevron}>→</Text>
-              </TouchableOpacity>
+          <Section title="Account">
+            <RowGroup>
+              <LinkRow icon={<icons.ShieldCheck size={22} color={colors.foreground} />} title="Sign-in and security" detail={user ? `Signed in with ${SIGN_IN_LABEL[user.idp] ?? user.idp}` : 'Not signed in'} onPress={() => setSecurity(true)} />
+              <LinkRow icon={<icons.Heart size={22} color={colors.foreground} />} title="Switch account" detail={isAdmin ? 'Admin now. Switch to a resident (demo)' : 'Resident now. Switch to the city admin (demo)'} onPress={() => void (isAdmin ? loginAsResident() : loginAsAdmin())} />
+              <LinkRow icon={<icons.Sparkle size={22} color={colors.foreground} />} title="Developer tools" detail="Test accounts for the demo" onPress={() => setDevTools(true)} />
+            </RowGroup>
+            <View style={{ marginTop: 16, alignItems: 'flex-start' }}>
+              <TextButton label="Sign out" size="lg" onPress={logout} />
             </View>
-          </View>
-        )}
+          </Section>
+        </>
+      )}
 
-        {/* STANDARD USER EXCLUSIVE SECTION */}
-        {isResident && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>✨ Facilități Cetățenești Active</Text>
-            <View style={styles.citizenCardsRow}>
-              <TouchableOpacity
-                style={styles.citizenCard}
-                onPress={() => router.navigate('/community')}
-              >
-                <Text style={styles.citizenCardEmoji}>🎭</Text>
-                <Text style={styles.citizenCardTitle}>Evenimente & Bilete</Text>
-                <Text style={styles.citizenCardSub}>Vezi biletele Solana și înscrierile</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.citizenCard}
-                onPress={() => router.navigate('/community')}
-              >
-                <Text style={styles.citizenCardEmoji}>💬</Text>
-                <Text style={styles.citizenCardTitle}>Forum Comunitar</Text>
-                <Text style={styles.citizenCardSub}>Dezbateri cartier & inițiative</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Persona Switcher for Hackathon Testing */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>🔄 Comutare Rol (Demonstrație UNIHACK)</Text>
-          <Text style={styles.sectionDescription}>
-            Testează ambele tipuri de utilizatori pentru a observa diferențele de permisiuni:
+      <Sheet modal visible={editing} onClose={() => setEditing(false)} accessibilityLabel="Edit your name">
+        <View style={{ gap: 14 }}>
+          <Text variant="heading" accessibilityRole="header">
+            Your name
           </Text>
-
-          <View style={styles.switchRow}>
-            {isAdmin ? (
-              <TouchableOpacity
-                style={[styles.switchButton, styles.switchButtonResident]}
-                activeOpacity={0.8}
-                onPress={loginAsResident}
-              >
-                <Text style={styles.switchBtnText}>👤 Comută pe Cetățean (Standard User)</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.switchButton, styles.switchButtonAdmin]}
-                activeOpacity={0.8}
-                onPress={loginAsAdmin}
-              >
-                <Text style={styles.switchBtnText}>🏛️ Comută pe Administrator Primărie</Text>
-              </TouchableOpacity>
-            )}
-          </View>
+          <Text variant="body" color="mutedForeground">
+            This is how you appear to other people. It does not change your account.
+          </Text>
+          <Field label="Name" value={nameDraft} onChangeText={setNameDraft} placeholder={accountName} maxLength={40} />
+          <PrimaryButton
+            label="Save"
+            size="lg"
+            onPress={() => {
+              const next = nameDraft.trim();
+              setPrefs({ displayName: next === accountName ? '' : next });
+              setEditing(false);
+            }}
+          />
         </View>
+      </Sheet>
 
-        {/* Log Out Button */}
-        <TouchableOpacity style={styles.logoutButton} activeOpacity={0.8} onPress={logout}>
-          <Text style={styles.logoutText}>🚪 Deconectare ({user?.email})</Text>
-        </TouchableOpacity>
+      <Sheet modal visible={security} onClose={() => setSecurity(false)} accessibilityLabel="Sign-in and security">
+        {user ? (
+          <ScrollView style={{ maxHeight: sheetMax }} contentContainerStyle={{ gap: 16 }} showsVerticalScrollIndicator={false}>
+            <Text variant="heading" accessibilityRole="header">
+              Sign-in and security
+            </Text>
+            <RowGroup>
+              <Row>
+                <Row.Body>
+                  <Row.Title>{user.email}</Row.Title>
+                  <Row.Detail>Your account</Row.Detail>
+                </Row.Body>
+              </Row>
+              <Row>
+                <Row.Body>
+                  <Row.Title>{SIGN_IN_LABEL[user.idp] ?? user.idp}</Row.Title>
+                  <Row.Detail>How you sign in</Row.Detail>
+                </Row.Body>
+              </Row>
+              <Row>
+                <Row.Body>
+                  <Row.Title>{ROLE_LABEL[user.role] ?? user.role}</Row.Title>
+                  <Row.Detail>Account type</Row.Detail>
+                </Row.Body>
+              </Row>
+              {user.neighbourhood ? (
+                <Row>
+                  <Row.Body>
+                    <Row.Title>{user.neighbourhood}</Row.Title>
+                    <Row.Detail>Your neighbourhood</Row.Detail>
+                  </Row.Body>
+                </Row>
+              ) : null}
+            </RowGroup>
 
-        <Text style={styles.footerNote}>
-          Autentificare susținută de Auth0 & Baza de date TimescaleDB Tiger Cloud
-        </Text>
-      </ScrollView>
-    </SafeAreaView>
+            <View style={{ gap: 6 }}>
+              <Text variant="subheading">Two-step check</Text>
+              <Text variant="body" color="mutedForeground">
+                {user.mfa_verified
+                  ? 'Done for this session. Sensitive actions, like moderating, are unlocked.'
+                  : 'A second confirmation for sensitive actions, like moderating the forum. You only need it for those.'}
+              </Text>
+              {!user.mfa_verified ? (
+                <View style={{ marginTop: 6 }}>
+                  <SecondaryButton
+                    label={verifying ? 'Checking…' : 'Verify now'}
+                    size="lg"
+                    onPress={async () => {
+                      setVerifying(true);
+                      await simulateMfaStepUp();
+                      setVerifying(false);
+                    }}
+                  />
+                </View>
+              ) : null}
+            </View>
+
+            <View style={{ gap: 8 }}>
+              <Text variant="subheading">What you can do</Text>
+              <Text variant="body" color="mutedForeground">
+                {user.permissions.map((p) => ABILITY_LABEL[p] ?? p).join(', ')}.
+              </Text>
+            </View>
+
+            <TextButton label="Sign out" size="lg" onPress={logout} />
+          </ScrollView>
+        ) : null}
+      </Sheet>
+
+      <Sheet modal visible={devTools} onClose={() => setDevTools(false)} accessibilityLabel="Developer tools">
+        <ScrollView style={{ maxHeight: sheetMax }} showsVerticalScrollIndicator={false}>
+          <Auth0SecurityCard />
+        </ScrollView>
+      </Sheet>
+    </Screen>
+  );
+}
+
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <View style={styles.stat} accessible accessibilityLabel={`${value} ${label}`}>
+      <Text variant="heading" style={{ fontSize: 24, lineHeight: 28 }}>
+        {value}
+      </Text>
+      <Text variant="caption" color="mutedForeground">
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+function LinkRow({ icon, title, detail, onPress }: { icon: React.ReactNode; title: string; detail: string; onPress: () => void }) {
+  return (
+    <Row onPress={onPress} accessibilityLabel={`${title}. ${detail}`}>
+      <Row.Illustration>{icon}</Row.Illustration>
+      <Row.Body>
+        <Row.Title>{title}</Row.Title>
+        <Row.Detail>{detail}</Row.Detail>
+      </Row.Body>
+      <Row.Trailing>
+        <icons.CaretRight size={18} color={colors.mutedForeground} />
+      </Row.Trailing>
+    </Row>
+  );
+}
+
+function ToggleRow({ title, detail, value, onChange }: { title: string; detail: string; value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <Row>
+      <Row.Body>
+        <Row.Title>{title}</Row.Title>
+        <Row.Detail>{detail}</Row.Detail>
+      </Row.Body>
+      <Row.Trailing>
+        <Switch value={value} onValueChange={onChange} accessibilityLabel={title} trackColor={{ false: colors.secondaryPressed, true: colors.success }} thumbColor="#FFFFFF" />
+      </Row.Trailing>
+    </Row>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#09090b',
-  },
-  container: {
-    padding: 20,
-    paddingBottom: 110,
-  },
-  header: {
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  headerTitle: {
-    color: '#ffffff',
-    fontSize: 26,
-    fontWeight: '800',
-  },
-  headerSub: {
-    color: '#a1a1aa',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  userCard: {
-    backgroundColor: '#18181b',
-    borderRadius: 18,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#27272a',
-    marginBottom: 24,
-  },
-  avatarRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarResident: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    borderWidth: 1.5,
-    borderColor: '#10b981',
-  },
-  avatarAdmin: {
-    backgroundColor: 'rgba(99, 102, 241, 0.25)',
-    borderWidth: 1.5,
-    borderColor: '#6366f1',
-  },
-  avatarText: {
-    fontSize: 28,
-  },
-  userName: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  userEmail: {
-    color: '#a1a1aa',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  badgeRow: {
-    flexDirection: 'row',
-    gap: 6,
-    marginTop: 6,
-    flexWrap: 'wrap',
-  },
-  residentBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  residentBadgeText: {
-    color: '#34d399',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  adminBadge: {
-    backgroundColor: 'rgba(99, 102, 241, 0.25)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  adminBadgeText: {
-    color: '#818cf8',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  mfaBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  mfaBadgeText: {
-    color: '#fbbf24',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  infoDivider: {
-    height: 1,
-    backgroundColor: '#27272a',
-    marginVertical: 16,
-  },
-  infoGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  infoItem: {
-    flex: 1,
-  },
-  infoLabel: {
-    color: '#71717a',
-    fontSize: 11,
-    marginBottom: 4,
-  },
-  infoValue: {
-    color: '#e4e4e7',
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  sectionDescription: {
-    color: '#a1a1aa',
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 14,
-  },
-  adminTag: {
-    backgroundColor: '#ef4444',
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  adminTagText: {
-    color: '#ffffff',
-    fontSize: 9,
-    fontWeight: '800',
-  },
-  adminGrid: {
-    gap: 10,
-  },
-  adminActionCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#18181b',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-  },
-  adminActionIcon: {
-    fontSize: 24,
-  },
-  adminActionTitle: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  adminActionDesc: {
-    color: '#71717a',
-    fontSize: 11,
-    marginTop: 2,
-  },
-  chevron: {
-    color: '#a1a1aa',
-    fontSize: 16,
-    fontWeight: '700',
-    marginLeft: 8,
-  },
-  citizenCardsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  citizenCard: {
-    flex: 1,
-    backgroundColor: '#18181b',
-    borderRadius: 14,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  citizenCardEmoji: {
-    fontSize: 24,
-    marginBottom: 8,
-  },
-  citizenCardTitle: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  citizenCardSub: {
-    color: '#71717a',
-    fontSize: 11,
-    marginTop: 4,
-    lineHeight: 15,
-  },
-  switchRow: {
-    marginTop: 8,
-  },
-  switchButton: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  switchButtonResident: {
-    backgroundColor: '#10b981',
-  },
-  switchButtonAdmin: {
-    backgroundColor: '#6366f1',
-  },
-  switchBtnText: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  logoutButton: {
-    backgroundColor: '#27272a',
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-  },
-  logoutText: {
-    color: '#f87171',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  footerNote: {
-    color: '#52525b',
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 20,
-    lineHeight: 16,
-  },
+  title: { fontSize: 30, lineHeight: 34, paddingHorizontal: 4 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 14, marginTop: 18, paddingHorizontal: 4 },
+  stats: { flexDirection: 'row', alignItems: 'center', marginTop: 20, paddingVertical: 14, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: colors.hairline },
+  stat: { flex: 1, alignItems: 'center', gap: 2 },
+  divider: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: colors.hairline },
 });
