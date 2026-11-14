@@ -49,12 +49,11 @@ def ensure_server():
     server_proc = subprocess.Popen(
         [node_bin, "--experimental-strip-types", "services/api/src/server.ts"],
         cwd=root_dir,
-        shell=True,
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL
     )
 
-    for _ in range(12):
+    for _ in range(25):
         time.sleep(0.4)
         found = detect_base_url()
         if found:
