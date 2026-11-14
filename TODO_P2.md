@@ -96,13 +96,15 @@ flowchart TD
 > **Sponsor Prize:** High-Performance Projects on Vultr  
 > **Judges Want:** One-click deployment, containerized architecture, S3 storage.
 
-- [ ] **4.1. Multi-Stage Dockerfile (`Dockerfile`)**
-  - Lean Node.js 22 alpine image running `@hub/api` with stripped types.
-  - Dedicated target for `workers` background processor.
-- [ ] **4.2. Docker Compose Orchestration (`docker-compose.yml`)**
-  - Orchestrate `api`, `workers`, and local PostgreSQL/TimescaleDB container.
-- [ ] **4.3. Vultr Cloud Deployment Script (`infra/vultr/deploy.sh`)**
-  - Single-command script to pull, build, and deploy containers on a Vultr VPS instance.
+- [x] **4.1. Multi-Stage Dockerfiles (`services/api/Dockerfile`, `services/workers/Dockerfile`)**
+  - Lean Node.js 22 alpine images running `@hub/api` and `@hub/workers` with stripped types.
+  - Production workspace package installation and link optimization.
+- [x] **4.2. Docker Compose Orchestration (`docker-compose.yml`)**
+  - Multi-container orchestration linking `api` and `workers` with automated healthchecks (`wget -qO- /health`).
+  - Persistent volume for uploaded media files.
+- [x] **4.3. Vultr Cloud Deployment Script & Guides (`infra/vultr/deploy.sh`, `infra/vultr/README.md`)**
+  - Single-command deployment script to pull, build, and deploy containers on a Vultr VPS instance.
+  - Vultr S3 Object Storage presigned SigV4 URLs configured in `services/api/src/core/storage.ts`.
 
 ---
 
