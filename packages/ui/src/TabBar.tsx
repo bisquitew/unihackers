@@ -10,10 +10,13 @@ import { House, MapTrifold, ChatsCircle, UserCircle } from './icons';
 type TabBarProps = {
   state: { index: number; routes: { key: string; name: string }[] };
   descriptors: Record<string, { options: { title?: string; tabBarAccessibilityLabel?: string } }>;
-  navigation: {
-    emit: (event: { type: 'tabPress'; target: string; canPreventDefault: true }) => { defaultPrevented: boolean };
-    navigate: (name: string) => void;
+  // Optional: newer router versions do not pass it, so navigation can also come from `onTabPress`.
+  navigation?: {
+    emit?: (event: { type: 'tabPress'; target: string; canPreventDefault: true }) => { defaultPrevented: boolean };
+    navigate?: (name: string) => void;
   };
+  /** Called with the route name (`index`, `map`, `community`, `profile`) when an inactive tab is pressed. Preferred over `navigation`. */
+  onTabPress?: (routeName: string) => void;
 };
 
 const tabs: Record<string, { label: string; Icon: React.ComponentType<any> }> = {
@@ -27,7 +30,7 @@ const tabs: Record<string, { label: string; Icon: React.ComponentType<any> }> = 
  * Floating glass pill with four tabs. Icon AND label on every tab, never icon-only.
  * The active tab gets a soft ink pill and a filled icon. Alerts is not a tab: it is the bell in the screen header.
  */
-export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) {
+export function FloatingTabBar({ state, descriptors, navigation, onTabPress }: TabBarProps) {
   const insets = useSafeAreaInsets();
   return (
     <View pointerEvents="box-none" style={[styles.wrap, { bottom: Math.max(insets.bottom, 12) + 2 }]}>
@@ -39,8 +42,13 @@ export function FloatingTabBar({ state, descriptors, navigation }: TabBarProps) 
           const focused = state.index === i;
           const { Icon } = cfg;
           const onPress = () => {
-            const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-            if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+            if (focused) return;
+            if (onTabPress) {
+              onTabPress(route.name);
+              return;
+            }
+            const event = navigation?.emit?.({ type: 'tabPress', target: route.key, canPreventDefault: true });
+            if (!event?.defaultPrevented) navigation?.navigate?.(route.name);
           };
           return (
             <Pressable

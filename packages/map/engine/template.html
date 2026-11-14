@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en" data-theme="day">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hop map</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css">
+<style>
+  :root { --hub-bottom: 0px; --ink: #1A1033; --muted: #5A5070; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #E4DEF0; overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
+  html[data-theme="golden"], html[data-theme="golden"] body { background: #F1E7E0; }
+  html[data-theme="night"], html[data-theme="night"] body { background: #14091F; }
+  #map { position: absolute; inset: 0; touch-action: none; }
+  .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right { margin-bottom: var(--hub-bottom); }
+  .maplibregl-ctrl-attrib { font: 500 11px/1.3 system-ui, sans-serif; border-radius: 12px 12px 12px 12px; }
+
+  /* pins: a white disc with the kind's flat illustration inside and a small pointer (the identity retired arches around marks) */
+  /* MapLibre positions markers with position:absolute + transform. Never override either on the marker element itself. */
+  .maplibregl-marker.pin { position: absolute; top: 0; left: 0; }
+  .pin { width: 48px; height: 56px; padding: 0; border: 0; background: none; cursor: pointer; font: inherit; }
+  .pin .disc { position: absolute; left: 2px; top: 0; width: 44px; height: 44px; border-radius: 50%; background: #fff; z-index: 2;
+    display: grid; place-items: center; box-shadow: 0 0 0 1px rgba(26,16,51,.08), 0 2px 4px rgba(26,16,51,.10), 0 8px 16px -6px rgba(26,16,51,.32);
+    transition: transform .16s cubic-bezier(.3,1.5,.5,1), box-shadow .16s ease-out; transform-origin: 50% 100%; }
+  .pin .tip { position: absolute; left: 18px; top: 36px; width: 12px; height: 12px; background: #fff; border-radius: 2px; transform: rotate(45deg); z-index: 1;
+    box-shadow: 1px 1px 0 0 rgba(26,16,51,.08), 3px 4px 8px -3px rgba(26,16,51,.25); }
+  .pin .foot { position: absolute; left: 15px; bottom: 0; width: 18px; height: 5px; border-radius: 50%; background: rgba(26,16,51,.20); filter: blur(2px); z-index: 0; }
+  .pin .badge { position: absolute; right: -1px; top: -1px; width: 18px; height: 18px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 1px rgba(26,16,51,.10); z-index: 3; }
+  .pin.selected { z-index: 5; }
+  .pin.selected .disc { transform: scale(1.15); box-shadow: 0 0 0 3px var(--ink), 0 12px 20px -8px rgba(26,16,51,.45); }
+  .pin:focus-visible .disc { outline: 3px solid var(--ink); outline-offset: 2px; }
+  html[data-theme="night"] .pin .disc { box-shadow: 0 0 0 1px rgba(255,255,255,.18), 0 0 16px rgba(255,185,102,.35), 0 8px 16px -6px rgba(0,0,0,.6); }
+  html[data-theme="night"] .pin.selected .disc { box-shadow: 0 0 0 3px #FFD9A8, 0 0 22px rgba(255,185,102,.5); }
+  .me { width: 18px; height: 18px; border-radius: 50%; background: #3D5BFF; box-shadow: 0 0 0 4px rgba(61,91,255,.25), 0 0 0 7px #fff; }
+
+  /* offline notice */
+  #offline { position: absolute; left: 16px; right: 16px; top: 96px; margin: 0 auto; max-width: 360px; padding: 12px 14px; border-radius: 18px;
+    background: #fff; color: var(--ink); font: 600 14px/20px system-ui, sans-serif; box-shadow: 0 10px 30px -10px rgba(26,16,51,.35); display: flex; gap: 12px; align-items: center; z-index: 10; }
+  #offline[hidden] { display: none; }
+  #offline span { flex: 1; font-weight: 500; color: var(--muted); }
+  #offline button { border: 0; border-radius: 999px; height: 40px; padding: 0 16px; background: #FF3D7F; color: #1A1033; font: 700 15px system-ui, sans-serif; cursor: pointer; }
+  @media (prefers-reduced-motion: reduce) { .pin .disc { transition: none; } }
+</style>
+</head>
+<body>
+<div id="map" role="application" aria-label="City map of Timișoara"></div>
+<div id="offline" hidden role="alert"><span>The map needs an internet connection.</span><button id="retry" type="button">Try again</button></div>
+<script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+<script>window.__PIN_ART__ = /*__PIN_ART__*/{};</script>
+<script>/*__STYLE__*/</script>
+<script>/*__ENGINE__*/</script>
+</body>
+</html>

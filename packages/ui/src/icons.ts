@@ -12,4 +12,11 @@ export {
   CheckCircleIcon as CheckCircle,
   WarningCircleIcon as WarningCircle,
   ClockIcon as Clock,
+  PlusIcon as Plus,
+  CrosshairIcon as Crosshair,
+  ListBulletsIcon as ListBullets,
+  TrashIcon as Trash,
+  LockSimpleIcon as Lock,
+  UsersThreeIcon as UsersThree,
+  XIcon as X,
 } from 'phosphor-react-native';
