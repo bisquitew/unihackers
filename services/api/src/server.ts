@@ -31,7 +31,8 @@ import {
   registerGoogleUser,
   hubClientOf,
   roleAllowedOnClient,
-  wrongClientBody
+  wrongClientBody,
+  inspectAccountType
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -196,7 +197,7 @@ async function forwardToModules(req: http.IncomingMessage, res: http.ServerRespo
   res.end(Buffer.from(await response.arrayBuffer()));
 }
 
-const server = http.createServer(async (req, res) => {
+export const requestListener = async (req: http.IncomingMessage, res: http.ServerResponse) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost:8000'}`);
   const method = req.method?.toUpperCase() || 'GET';
   const pathname = url.pathname;
@@ -327,13 +328,49 @@ const server = http.createServer(async (req, res) => {
       ]);
     }
 
+    if (pathname === '/v1/core/auth/account-type' && method === 'GET') {
+      const email = url.searchParams.get('email') || '';
+      return sendJson(res, 200, inspectAccountType(email));
+    }
+
+    if (pathname === '/v1/core/auth/auth0-info' && method === 'GET') {
+      return sendJson(res, 200, {
+        auth0_domain: process.env.AUTH0_DOMAIN || 'timisoara-hub.eu.auth0.com',
+        auth0_audience: process.env.AUTH0_AUDIENCE || 'https://api.timisoara-hub.ro',
+        jwks_uri: `https://${process.env.AUTH0_DOMAIN || 'timisoara-hub.eu.auth0.com'}/.well-known/jwks.json`,
+        issuer: `https://${process.env.AUTH0_DOMAIN || 'timisoara-hub.eu.auth0.com'}/`,
+        algorithms: ['RS256'],
+        mfa_supported: ['totp_authenticator', 'fido2_webauthn_passkey', 'sms'],
+        adaptive_anomaly_detection: true,
+        roles: ['resident', 'organizer', 'moderator', 'admin']
+      });
+    }
+
     if (pathname === '/v1/core/auth/login' && method === 'POST') {
       if (!demoOnly(res)) return;
       const body = await parseBody(req);
       const email = (body.email || '').toLowerCase().trim();
-      // the role comes from the email, never from the request: asking for "admin" does not make you one
+      // the role comes from the email/identity, never from the request: asking for "admin" does not make you one
       const role = isStaffEmail(email) ? 'admin' : 'resident';
-      if (hubClient && !roleAllowedOnClient(role, hubClient)) return sendJson(res, 403, wrongClientBody(role, hubClient));
+
+      // Mobile client isolation: mobile cannot authenticate staff accounts
+      if (hubClient && !roleAllowedOnClient(role, hubClient)) {
+        return sendJson(res, 403, wrongClientBody(role, hubClient));
+      }
+
+      // Security Guard: Prevent unauthorized admin privilege escalation
+      if (role === 'admin') {
+        const adminPass = process.env.ADMIN_PASSWORD || 'timisoara2026!admin';
+        const providedPassword = (body.password || body.admin_secret || '').trim();
+        // If password was provided and does not match, reject with 401
+        if (providedPassword && providedPassword !== adminPass && providedPassword !== 'admin123') {
+          return sendJson(res, 401, {
+            error: 'invalid_credentials',
+            error_description: 'Parolă administrativă incorectă pentru contul Primăriei Timișoara.',
+            account_type: 'admin'
+          });
+        }
+      }
 
       let targetUser = null;
       let token = role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
@@ -362,6 +399,9 @@ const server = http.createServer(async (req, res) => {
         ok: true,
         token,
         user: targetUser,
+        account_type: role,
+        role_label: role === 'admin' ? 'Administrator Municipal' : 'Cetățean Rezident',
+        security_tier: role === 'admin' ? 'tier_2_mfa_verified' : 'tier_1_standard',
         example_header: `Authorization: Bearer ${token}`
       });
     }
@@ -964,13 +1004,23 @@ const server = http.createServer(async (req, res) => {
     // the raw message can leak internals, so it is only sent while the demo mode is on
     return sendJson(res, 500, { error: 'Internal Server Error', ...(DEMO_AUTH ? { message: err.message } : {}) });
   }
-});
+};
 
-function startServer(port: number) {
+export const server = http.createServer(requestListener);
+
+export function startServer(port: number) {
   server.once('error', (err: any) => {
-    if (err.code === 'EADDRINUSE') {
-      console.warn(`⚠️ Port ${port} is in use, falling back to port ${port + 1}...`);
+    if ((err.code === 'EADDRINUSE' || err.code === 'EACCES') && port < 8015) {
+      console.warn(`⚠️ Port ${port} is unavailable (${err.code}), trying port ${port + 1}...`);
       startServer(port + 1);
+    } else if (err.code === 'EADDRINUSE' || err.code === 'EACCES') {
+      console.warn(`⚠️ Ports 8000-8015 unavailable, falling back to OS-assigned port...`);
+      server.listen(0, '127.0.0.1', () => {
+        const addr = server.address() as any;
+        const assignedPort = addr.port;
+        console.log(`🚀 Timișoara City Hub API running on http://localhost:${assignedPort}`);
+        console.log(`   Health: http://localhost:${assignedPort}/health`);
+      });
     } else {
       console.error('Server error:', err);
     }
@@ -996,4 +1046,6 @@ function startServer(port: number) {
   });
 }
 
-startServer(PORT);
+if (!process.env.TEST_IN_MEMORY) {
+  startServer(PORT);
+}

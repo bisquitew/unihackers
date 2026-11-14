@@ -548,9 +548,48 @@ export function roleAllowedOnClient(role: UserRole, client: HubClient | null): b
   return !STAFF_ROLES.includes(role);
 }
 
-/** The 403 body returned when a staff account tries to sign in from the app. */
-export function wrongClientBody(role: UserRole, _client: HubClient) {
+/** The 403 body returned when an account tries to sign in from an incompatible client. */
+export function wrongClientBody(role: UserRole, client: HubClient) {
+  if (client === 'app') {
+    return {
+      error: 'access_denied',
+      error_description: 'Conectarea nu este permisă din aplicația mobilă pentru acest cont. Folosiți portalul web securizat.'
+    };
+  }
   return { error: 'use_web_dashboard', error_description: 'Staff accounts sign in on the web dashboard, not in the app.', role };
+}
+
+/** Discloses account classification, required security tier, and permissions for UI transparency. */
+export function inspectAccountType(email: string): {
+  email: string;
+  account_type: 'admin' | 'resident' | 'moderator';
+  role_label: string;
+  security_tier: string;
+  requires_password: boolean;
+  requires_mfa: boolean;
+  description: string;
+} {
+  const isStaff = isStaffEmail(email);
+  if (isStaff) {
+    return {
+      email,
+      account_type: 'admin',
+      role_label: 'Administrator Municipal (Primăria Timișoara)',
+      security_tier: 'tier_2_mfa_verified',
+      requires_password: true,
+      requires_mfa: true,
+      description: 'Cont oficial de administrație publică. Acces la gestionarea avariilor, devierilor STPT și zonelor de parcare.'
+    };
+  }
+  return {
+    email,
+    account_type: 'resident',
+    role_label: 'Cetățean Rezident (Timișoara)',
+    security_tier: 'tier_1_standard',
+    requires_password: false,
+    requires_mfa: false,
+    description: 'Cont de cetățean rezident. Acces la transport în comun, parcări, forum comunitar și evenimente culturale.'
+  };
 }
 
 /**
