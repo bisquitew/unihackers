@@ -57,3 +57,10 @@ Thumbs.db
 # Database & temporary
 *.sqlite
 *.sqlite3
+
+# Solana Keypairs & Secrets
+*-keypair.json
+*keypair*.json
+packages/solana/src/organizer-keypair.json
+packages/solana/src/organizer-secret.ts
+organizer-keypair.json

@@ -1,11 +1,31 @@
-// Persistent Ed25519 organizer keypair for Timișoara City Hub (Devnet)
-// Public Key: H6oCfQHkpFg6rUhZmx1e6szoRveAVFrN4ji7P4HJvPU1
+import { Keypair } from '@solana/web3.js';
 
-export const ORGANIZER_SECRET_KEY = new Uint8Array([
-  116, 15, 44, 159, 169, 114, 140, 107, 15, 165, 71, 142, 228, 7, 145, 19,
-  213, 167, 128, 104, 226, 29, 209, 27, 25, 28, 250, 253, 184, 60, 92, 155,
-  239, 55, 34, 116, 26, 110, 210, 72, 43, 0, 185, 26, 114, 90, 103, 98,
-  24, 217, 100, 124, 249, 245, 126, 124, 25, 11, 83, 63, 251, 157, 3, 78,
-]);
-
+// Public Address for Timișoara Cultural Hub (Safe for public GitHub repositories)
 export const ORGANIZER_PUBLIC_KEY = 'H6oCfQHkpFg6rUhZmx1e6szoRveAVFrN4ji7P4HJvPU1';
+
+/**
+ * Loads the organizer secret key securely without committing private keys to git:
+ * 1. Checks process.env.SOLANA_ORGANIZER_SECRET_KEY (from .env)
+ * 2. Fallback: generates ephemeral keypair
+ */
+function resolveSecretKey(): Uint8Array {
+  const envVal =
+    (typeof process !== 'undefined' && process.env?.SOLANA_ORGANIZER_SECRET_KEY) || '';
+
+  if (envVal) {
+    try {
+      const clean = envVal.trim();
+      if (clean.startsWith('[')) {
+        return new Uint8Array(JSON.parse(clean));
+      }
+      return new Uint8Array(clean.split(',').map((n) => parseInt(n.trim(), 10)));
+    } catch (e) {
+      console.warn('[Solana] Could not parse SOLANA_ORGANIZER_SECRET_KEY from env:', e);
+    }
+  }
+
+  // Safe fallback if .env is missing (e.g. in public CI or fresh clone)
+  return Keypair.generate().secretKey;
+}
+
+export const ORGANIZER_SECRET_KEY = resolveSecretKey();

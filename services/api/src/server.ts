@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import http from 'node:http';
 import { TIMISOARA_AREAS } from './core/areas.ts';
 import { userService } from './core/users.ts';
