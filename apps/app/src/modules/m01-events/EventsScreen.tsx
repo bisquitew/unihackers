@@ -149,8 +149,9 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
   };
   const showOnMap = (event: EventItem) => {
     closeEvent();
-    const c = eventCoordinate(event.neighbourhood);
-    router.push(mapHref(c, { pinId: `event-${event.id}`, pinTitle: event.title, pinKind: 'event' }) as any);
+    const c = eventCoordinate(event);
+    // Opens the event's own pin (events map layer); centres on it when it has a position.
+    router.push(mapHref(c ? { pin: `events:${event.id}`, lat: c.latitude, lng: c.longitude, zoom: 16 } : { pin: `events:${event.id}` }) as any);
   };
 
   // host an event (local draft only; in production it posts to the events service)
@@ -167,7 +168,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
   });
   const canPublish = draft.title.trim().length > 2 && draft.venue.trim().length > 2;
   const publish = () => {
-    eventsStore.addEvent({
+    eventsStore.createEvent({
       title: draft.title.trim(),
       category: draft.category,
       neighbourhood: draft.area,
@@ -183,7 +184,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
   };
 
   return (
-    <ModulePage embedded={embedded} backTitle="Timișoara" title="Events" line="What's happening across Timișoara. RSVP to grab a ticket.">
+    <ModulePage embedded={embedded} title="Events">
       {/* toolbar: heading on standalone page, category chips, and filter trigger */}
       <View style={styles.head}>
         <Text variant="subheading" color="mutedForeground">
@@ -191,7 +192,9 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
         </Text>
         <View style={styles.headActions}>
           <View style={{ position: 'relative' }}>
-            <IconButton icon={icons.SlidersHorizontal} label="Filters" variant="secondary" size="md" onPress={() => setFilterOpen(true)} />
+            <IconButton label="Filters" size={44} onPress={() => setFilterOpen(true)}>
+              <icons.SlidersHorizontal size={22} weight="bold" color={colors.foreground} />
+            </IconButton>
             {activeFilters > 0 ? <View style={styles.filterDot} /> : null}
           </View>
           <PrimaryButton label="Host an event" size="md" onPress={() => setCreateOpen(true)} />
@@ -214,7 +217,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
             Afișezi o selecție de 3 evenimente din Timișoara. Conectează-te ca Cetățean pentru lista completă și bilete Solana.
           </Text>
           <View style={{ marginTop: 8 }}>
-            <SecondaryButton label="Conectare ca Cetățean →" size="sm" onPress={() => loginAsResident()} />
+            <SecondaryButton label="Conectare ca Cetățean →" size="md" onPress={() => loginAsResident()} />
           </View>
         </View>
       )}
@@ -321,7 +324,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
               </View>
 
               {mintError ? (
-                <Text variant="rowDetail" color="critical">
+                <Text variant="rowDetail" color="danger">
                   Could not mint ticket just now. Please try again.
                 </Text>
               ) : null}
@@ -458,6 +461,6 @@ const styles = StyleSheet.create({
     padding: 14,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.hairline,
   },
 });
