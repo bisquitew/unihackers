@@ -83,10 +83,16 @@ export class FallbackSmellRepository implements SmellRepository {
   private lastError: string | null = null;
   private fallbackWrites = 0;
 
+  private readonly primary: SmellRepository;
+  private readonly memory: MemorySmellRepository;
+
   constructor(
-    private readonly primary: SmellRepository = new PostgresSmellRepository(),
-    private readonly memory: MemorySmellRepository = new MemorySmellRepository(),
-  ) {}
+    primary: SmellRepository = new PostgresSmellRepository(),
+    memory: MemorySmellRepository = new MemorySmellRepository(),
+  ) {
+    this.primary = primary;
+    this.memory = memory;
+  }
 
   get kind(): StorageKind {
     return db.isTigerConnected() ? 'postgres' : 'memory';

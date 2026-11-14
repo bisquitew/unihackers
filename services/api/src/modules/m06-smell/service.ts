@@ -69,10 +69,16 @@ function dominant(reports: SmellReport[]): SmellType {
 }
 
 export class SmellService {
+  readonly repository: FallbackSmellRepository;
+  private readonly wind: WindService;
+
   constructor(
-    readonly repository = new FallbackSmellRepository(),
-    private readonly wind: WindService = windService,
-  ) {}
+    repository: FallbackSmellRepository = new FallbackSmellRepository(),
+    wind: WindService = windService,
+  ) {
+    this.repository = repository;
+    this.wind = wind;
+  }
 
   async create(input: NewSmellReport): Promise<SmellReport> {
     const report: SmellReport = { id: randomUUID(), ...input, createdAt: new Date().toISOString(), isDemo: false };

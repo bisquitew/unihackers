@@ -8,6 +8,7 @@ import { manifest as m02Manifest } from './m02-visitor-info/manifest';
 import { manifest as m06Manifest } from './m06-smell/manifest';
 import { utilitiesManifest } from './m04-utilities/manifest';
 import { transitManifest } from './m05-transit/manifest';
+import { dashboardManifest } from './m12-dashboard/manifest';
 
 export interface ModuleManifest {
   id: string;
@@ -43,7 +44,7 @@ export const registeredModuleManifests: ModuleManifest[] = [
   m09Manifest as unknown as ModuleManifest,
   m10Manifest, // [M10_ASSISTANT] - P4
   m11Manifest, // [M11_FEEDBACK] - P4
-  createStubManifest('m12-dashboard', 'Panou Municipal', 'P4', 'bar-chart', '/m/dashboard'),
+  dashboardManifest, // [M12_DASHBOARD] - P4 & P2
   createStubManifest('parkie', 'Parkie Smart Parking', 'P1', 'parking', '/m/parkie')
 ];
 

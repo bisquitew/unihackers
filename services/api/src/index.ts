@@ -1,14 +1,14 @@
-import './load-env'; // must stay first: loads root .env before other modules read process.env
+import './load-env.ts'; // must stay first: loads root .env before other modules read process.env
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { serve } from '@hono/node-server';
-import { authMiddleware } from './core/auth';
-import { TIMISOARA_AREAS } from './core/areas';
-import { userService } from './core/users';
-import { getUserNotifications, markNotificationAsRead } from './core/notifications';
-import { getAllFlags } from './core/flags';
-import { registeredModules } from './modules/index';
+import { authMiddleware } from './core/auth.ts';
+import { TIMISOARA_AREAS } from './core/areas.ts';
+import { userService } from './core/users.ts';
+import { getUserNotifications, markNotificationAsRead } from './core/notifications.ts';
+import { getAllFlags } from './core/flags.ts';
+import { registeredModules } from './modules/index.ts';
 
 type AppVariables = {
   user?: any;

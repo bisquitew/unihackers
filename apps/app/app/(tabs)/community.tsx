@@ -20,7 +20,7 @@ export default function CommunityTab() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#09090b" />
+      <StatusBar barStyle="light-content" />
       
       {/* Top 4-Module Navigation Switcher */}
       <View style={styles.header}>

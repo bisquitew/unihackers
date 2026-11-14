@@ -1,4 +1,4 @@
-import type { ChangelogEntry, FeedbackEntry } from './types';
+import type { ChangelogEntry, FeedbackEntry } from './types.ts';
 
 /**
  * Intentionally empty: these numbers are Living Labs evidence, so they must come from real

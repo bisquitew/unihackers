@@ -41,7 +41,10 @@ export class OpenMeteoWindAdapter implements WindAdapter {
 
 /** Used when Open-Meteo is unreachable: a light westerly, the most common wind direction for a demo. */
 export class MockWindAdapter implements WindAdapter {
-  constructor(private readonly reason: string) {}
+  private readonly reason: string;
+  constructor(reason: string) {
+    this.reason = reason;
+  }
   async current() {
     const now = new Date().toISOString();
     return { source: 'mock' as const, reason: this.reason, speedKmh: 8, directionDeg: 270, observedAt: now, fetchedAt: now };
@@ -51,8 +54,11 @@ export class MockWindAdapter implements WindAdapter {
 export class WindService {
   private cache: { reading: WindReading; expires: number } | null = null;
   private inflight: Promise<WindReading> | null = null;
+  private readonly live: WindAdapter;
 
-  constructor(private readonly live: WindAdapter = new OpenMeteoWindAdapter()) {}
+  constructor(live: WindAdapter = new OpenMeteoWindAdapter()) {
+    this.live = live;
+  }
 
   async current(): Promise<WindReading> {
     if (this.cache && this.cache.expires > Date.now()) return { ...this.cache.reading, cached: true };
