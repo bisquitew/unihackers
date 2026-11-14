@@ -112,7 +112,8 @@ async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, 
   // Pass the router's headers through (e.g. Retry-After on 429); the body is re-sent whole, so drop length/encoding.
   const passThrough: Record<string, string> = {};
   response.headers.forEach((value, key) => {
-    if (key !== 'content-length' && key !== 'transfer-encoding' && key !== 'content-encoding') passThrough[key] = value;
+    // content-type is set below (once, with a default); the CORS headers below replace the router's.
+    if (!['content-length', 'transfer-encoding', 'content-encoding', 'content-type'].includes(key) && !key.startsWith('access-control-allow-')) passThrough[key] = value;
   });
   res.writeHead(response.status, {
     ...passThrough,
