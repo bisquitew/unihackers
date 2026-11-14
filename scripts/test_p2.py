@@ -277,8 +277,8 @@ def main():
         status, colors = get("/v1/m/parkie/lots/colors")
         print(f"✅ [PARKIE] /v1/m/parkie/lots/colors -> {len(colors)} lightweight color items streamed")
 
-        # Live Camera Frame Capture for Admin Web Calibration
-        status, frame_resp = post("/v1/m/parkie/capture-frame", {"camera_url": "rtsp://cam.timisoara-hub.ro/live"})
+        # Live Camera Frame Capture for Admin Web Calibration (staff-only: parkie.capture requires admin)
+        status, frame_resp = post("/v1/m/parkie/capture-frame", {"camera_url": "rtsp://cam.timisoara-hub.ro/live"}, token="dev_admin")
         assert status == 200, f"Expected 200 from capture-frame, got {status}: {frame_resp}"
         assert "image" in frame_resp and frame_resp["image"].startswith("data:image/"), "Missing or invalid base64 image from capture-frame"
         print(f"   📸 Camera Frame Captured: {len(frame_resp['image'])} bytes base64 payload ready for Canvas calibration")
@@ -293,8 +293,8 @@ def main():
         assert status == 200, f"Expected 200 from parkie detections, got {status}: {updated_lot}"
         print(f"   🚗 CV Detection Update (Piața Unirii): {updated_lot.get('available_spots')}/{updated_lot.get('capacity')} spots left [{updated_lot.get('status_color').upper()}]")
 
-        # Parkie Compatibility Endpoint: /vision/update_lot
-        status, compat_lot = post("/vision/update_lot", {"lot_id": "lot-unirii-01", "detected_cars": 20})
+        # Parkie Compatibility Endpoint: /vision/update_lot (camera detections are staff-only)
+        status, compat_lot = post("/vision/update_lot", {"lot_id": "lot-unirii-01", "detected_cars": 20}, token="dev_admin")
         assert status == 200, f"Expected 200 from /vision/update_lot, got {status}: {compat_lot}"
         print(f"   📡 /vision/update_lot compat: {compat_lot.get('available_spots')}/{compat_lot.get('capacity')} spots left [{compat_lot.get('status_color').upper()}]")
 
