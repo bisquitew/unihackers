@@ -15,10 +15,16 @@ buddyRoutes.get('/', async (c) => {
 buddyRoutes.post('/', async (c) => {
   try {
     const body = await c.req.json<CreateBuddyRequestInput>();
-    if (!body.eventId || !body.userName) {
+    const me = (c as any).get('user');
+    const userName = String(body.userName || me?.name || '').trim();
+    if (!body.eventId || !userName) {
       return c.json({ error: 'eventId and userName are required' }, 400);
     }
-    const request = await buddyService.createRequest(body);
+    if (userName.length > 60 || (body.bio ?? '').length > 300) {
+      return c.json({ error: 'too_long', error_description: 'A name can be 60 characters and a bio 300.' }, 400);
+    }
+    // the request belongs to the signed-in person, not to whoever the body names
+    const request = await buddyService.createRequest({ ...body, userName, userId: me?.sub });
     return c.json({ buddyRequest: request }, 201);
   } catch {
     return c.json({ error: 'Invalid request payload' }, 400);

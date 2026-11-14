@@ -3,6 +3,7 @@ import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-
 import { useRouter } from 'expo-router';
 import { mapHref } from '@hub/map';
 import { AvatarStack, Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, radii } from '@hub/ui';
+import { useAuth } from '../../core/auth';
 import { ModulePage } from '../../core/ModulePage';
 import { WhenBlock } from '../../core/WhenBlock';
 import { BuddyModal } from '../m07-buddy/BuddyModal';
@@ -45,6 +46,11 @@ const NEW_CATEGORIES: { id: EventItem['category']; label: string }[] = [
 
 export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, openEventId }: EventsScreenProps) {
   const router = useRouter();
+  const { user } = useAuth();
+  // reload from the server whenever the events are opened
+  useEffect(() => {
+    void eventsStore.refresh();
+  }, []);
   const { height: windowHeight } = useWindowDimensions();
   const sheetMax = Math.round(windowHeight * 0.72);
 
@@ -100,7 +106,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
     setMintError(false);
     try {
       await ticketStore.addTicketFromRsvp(event.id, event.title);
-      eventsStore.rsvpEvent(event.id);
+      eventsStore.rsvpEvent(event.id, user?.name);
       setJustBooked(event.id);
     } catch {
       setMintError(true);
@@ -126,6 +132,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
   const publish = () => {
     if (!canPublish) return;
     const created = eventsStore.createEvent({
+      organizerName: user?.name,
       title: draft.title,
       category: draft.category,
       locationName: draft.venue,

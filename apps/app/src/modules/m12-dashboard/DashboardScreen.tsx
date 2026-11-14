@@ -1,3 +1,4 @@
+import { apiBaseUrl as defaultApiBase } from '../../core/api';
 import React, { useState, useEffect } from 'react';
 import { getCity } from '@hub/map';
 import {
@@ -48,7 +49,7 @@ interface CityOverview {
   };
 }
 
-export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiBaseUrl?: string }) {
+export function DashboardScreen({ apiBaseUrl = defaultApiBase() }: { apiBaseUrl?: string }) {
   const [overview, setOverview] = useState<CityOverview | null>(null);
   const [loading, setLoading] = useState(true);
 

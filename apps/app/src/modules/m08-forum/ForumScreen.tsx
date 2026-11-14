@@ -47,6 +47,10 @@ export function ForumScreen({ embedded }: { embedded?: boolean }) {
 
   const [posts, setPosts] = useState<Post[]>(forumStore.getPosts());
   useEffect(() => forumStore.subscribe(() => setPosts(forumStore.getPosts())), []);
+  // reload from the server whenever the forum is opened, so upvotes and new posts from others show up
+  useEffect(() => {
+    void forumStore.refresh();
+  }, []);
   const reported = posts.filter((p) => p.isReported);
 
   const [filter, setFilter] = useState<string>('all');
@@ -92,7 +96,7 @@ export function ForumScreen({ embedded }: { embedded?: boolean }) {
             }}
           />
         ))}
-        <Chip label={reported.length ? `Moderation, ${reported.length}` : 'Moderation'} selected={moderation} onPress={() => setModeration(true)} />
+        {/* moderating the reported posts is a staff job and lives on the website dashboard, not in the app */}
       </ScrollView>
 
       {moderation ? (

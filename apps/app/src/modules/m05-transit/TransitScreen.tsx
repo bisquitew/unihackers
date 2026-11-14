@@ -1,3 +1,4 @@
+import { apiBaseUrl as defaultApiBase } from '../../core/api';
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -29,7 +30,7 @@ interface TransitDetour {
   alternative_instructions: string;
 }
 
-export function TransitScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiBaseUrl?: string }) {
+export function TransitScreen({ apiBaseUrl = defaultApiBase() }: { apiBaseUrl?: string }) {
   const [lines, setLines] = useState<TransitLine[]>([]);
   const [detours, setDetours] = useState<TransitDetour[]>([]);
   const [loading, setLoading] = useState(true);

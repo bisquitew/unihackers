@@ -55,4 +55,28 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   return resolve(context, moduleName, platform);
 };
 
+// 4. The phone reaches the API through the dev server. Requests to `/api/...` on the Metro address are forwarded to the
+// API (default http://localhost:8000, change with API_PORT), so the same tunnel or Wi-Fi address that loads the app also
+// carries its data, and nothing else has to be exposed. The app builds its API address from this (src/core/api.ts).
+const http = require('http');
+const apiPort = process.env.API_PORT || '8000';
+config.server = {
+  ...config.server,
+  enhanceMiddleware: (middleware) => (req, res, next) => {
+    if (!req.url || !req.url.startsWith('/api/')) return middleware(req, res, next);
+    const proxy = http.request(
+      { host: '127.0.0.1', port: apiPort, method: req.method, path: req.url.slice(4), headers: { ...req.headers, host: `127.0.0.1:${apiPort}` } },
+      (apiRes) => {
+        res.writeHead(apiRes.statusCode || 502, apiRes.headers);
+        apiRes.pipe(res);
+      },
+    );
+    proxy.on('error', () => {
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'api_unreachable', error_description: `The API is not running on port ${apiPort}.` }));
+    });
+    req.pipe(proxy);
+  },
+};
+
 module.exports = config;

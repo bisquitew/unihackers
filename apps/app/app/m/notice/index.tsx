@@ -8,7 +8,7 @@ export default function NoticeRoute() {
     <>
       <Stack.Screen options={darkHeader('Scanează un anunț')} />
       {/* Same server as the Utilities screen (P2's UtilitiesScreen reads outages from server.ts on 8000), so a published alert appears there. */}
-      <NoticeScanScreen apiBaseUrl="http://localhost:8000" />
+      <NoticeScanScreen />
     </>
   );
 }

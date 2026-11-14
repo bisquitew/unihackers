@@ -1,4 +1,5 @@
 // Shared ticket & POAP store for M09 Wallet & M01 Events
+import { api } from '../../core/api';
 import {
   mintDevnetTicket,
   mintDevnetPoap,
@@ -174,28 +175,16 @@ class TicketStore {
     attendeeName: string = 'Andrei Timișan'
   ): Promise<MintedTicketResult> {
     try {
-      const apiHost =
-        typeof window !== 'undefined' && window.location?.hostname
-          ? window.location.hostname
-          : 'localhost';
-
-      const res = await fetch(`http://${apiHost}:8000/v1/m/solana/tickets/mint`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId,
-          eventTitle,
-          attendeeName,
-          attendeeWallet: this.state.walletAddress,
-        }),
+      // the server mints the ticket on Solana devnet for the signed-in person
+      const data = await api.post<MintedTicketResult>('/v1/m/solana/tickets/mint', {
+        eventId,
+        eventTitle,
+        attendeeName,
+        attendeeWallet: this.state.walletAddress,
       });
-
-      if (res.ok) {
-        const data = await res.json();
-        this.state.tickets.unshift(data);
-        this.notify();
-        return data;
-      }
+      this.state.tickets.unshift(data);
+      this.notify();
+      return data;
     } catch (e) {
       console.warn('Backend ticket mint unreachable, creating local verified ticket:', e);
     }
@@ -224,24 +213,13 @@ class TicketStore {
     ticket.isCheckedIn = true;
 
     try {
-      const apiHost =
-        typeof window !== 'undefined' && window.location?.hostname
-          ? window.location.hostname
-          : 'localhost';
-
-      const res = await fetch(`http://${apiHost}:8000/v1/m/solana/poap/mint`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          eventId: ticket.eventId,
-          eventTitle: ticket.eventTitle,
-          attendeeWallet: this.state.walletAddress,
-          ticketId: ticket.ticketId,
-        }),
+      const poapData = await api.post<any>('/v1/m/solana/poap/mint', {
+        eventId: ticket.eventId,
+        eventTitle: ticket.eventTitle,
+        attendeeWallet: this.state.walletAddress,
+        ticketId: ticket.ticketId,
       });
-
-      if (res.ok) {
-        const poapData = await res.json();
+      {
         const poap: PoapResult = {
           poapId: poapData.poapId,
           eventId: poapData.eventId,

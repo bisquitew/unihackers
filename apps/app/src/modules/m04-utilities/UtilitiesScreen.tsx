@@ -1,3 +1,4 @@
+import { apiBaseUrl as defaultApiBase } from '../../core/api';
 import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
@@ -37,7 +38,7 @@ const PROVIDER_NAMES: Record<string, string> = {
   enel: 'Rețele Electrice Banat',
 };
 
-export function UtilitiesScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiBaseUrl?: string }) {
+export function UtilitiesScreen({ apiBaseUrl = defaultApiBase() }: { apiBaseUrl?: string }) {
   const router = useRouter();
   const [outages, setOutages] = useState<Outage[]>([]);
   const [loading, setLoading] = useState(true);

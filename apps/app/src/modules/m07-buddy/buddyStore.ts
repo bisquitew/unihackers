@@ -1,4 +1,6 @@
 // Buddy requests shared by the Buddy finder screen and the per-event buddy sheet, so a request posted in one shows in the other.
+// The API holds them (GET/POST /v1/m/buddy); the seed below is what shows until the server answers or when it is offline.
+import { api } from '../../core/api';
 export interface BuddyListing {
   id: string;
   eventId: string;
@@ -58,9 +60,38 @@ const SEED: BuddyListing[] = [
   },
 ];
 
+const fromApi = (r: any): BuddyListing => ({
+  id: r.id,
+  eventId: r.eventId,
+  eventTitle: r.eventTitle ?? 'An event',
+  userName: r.userName,
+  university: r.university ?? 'Resident',
+  bio: r.bio || 'Looking for good company for this event.',
+  interests: r.interests ?? [],
+  icebreakerPrompt: r.icebreakerPrompt ?? 'Shall we meet at the entrance?',
+  matchScore: r.matchScore,
+});
+
 class BuddyStore {
   private items: BuddyListing[] = SEED;
   private listeners = new Set<() => void>();
+
+  constructor() {
+    void this.refresh();
+  }
+
+  /** Loads the open requests from the API. Keeps what is shown when the server cannot be reached. */
+  async refresh(): Promise<void> {
+    try {
+      const { buddyRequests } = await api.get<{ buddyRequests: any[] }>('/v1/m/buddy');
+      if (Array.isArray(buddyRequests) && buddyRequests.length) {
+        this.items = buddyRequests.map(fromApi);
+        this.listeners.forEach((fn) => fn());
+      }
+    } catch {
+      /* offline: the seed stays */
+    }
+  }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -86,6 +117,11 @@ class BuddyStore {
     };
     this.items = [created, ...this.items];
     this.listeners.forEach((fn) => fn());
+    // sent to the server (it needs a signed-in person); the list is then reloaded from there
+    api
+      .post('/v1/m/buddy', { eventId: input.eventId, eventTitle: input.eventTitle, userName: created.userName, bio: input.bio, interests: created.interests })
+      .then(() => this.refresh())
+      .catch(() => {});
     return created;
   }
 }

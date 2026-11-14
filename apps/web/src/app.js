@@ -22,6 +22,7 @@ export async function initApp() {
   applyTheme();
   await initAuth();
   window.addEventListener('hop-theme', renderHeader);
+  window.addEventListener('hop-refresh', () => show(activeTab, false, true));
   window.addEventListener('hashchange', () => show(tabFromHash(), false));
   onAuthChange(() => {
     renderHeader();
@@ -32,7 +33,8 @@ export async function initApp() {
 }
 
 const tabFromHash = () => {
-  const t = location.hash.replace(/^#\/?/, '');
+  // "#/map/evt-001" is the map with that place picked; only the first part names the page
+  const t = location.hash.replace(/^#\/?/, '').split('/')[0];
   return VIEWS[t] ? t : 'home';
 };
 
@@ -67,7 +69,7 @@ export function go(tab) {
   else show(tab, true);
 }
 
-async function show(tab, scrollTop = true) {
+async function show(tab, scrollTop = true, soft = false) {
   if (tab === 'admin' && !isAdmin()) {
     if (isLoggedIn()) showToast('The dashboard is for city staff.');
     else openAuthModal();
@@ -79,7 +81,9 @@ async function show(tab, scrollTop = true) {
   cleanup();
   cleanup = () => {};
   const main = document.getElementById('mainContent');
-  main.innerHTML = '<div class="page"><p class="muted" style="padding:48px 0;text-align:center">Loading…</p></div>';
+  // a soft refresh (after posting, upvoting...) keeps the page in place instead of flashing "Loading"
+  if (!soft) main.innerHTML = '<div class="page"><p class="muted" style="padding:48px 0;text-align:center">Loading…</p></div>';
+  const keepScroll = window.scrollY;
   const view = VIEWS[tab];
   const c = ctx();
   let html;
@@ -96,9 +100,10 @@ async function show(tab, scrollTop = true) {
   if (tab === 'admin') {
     cleanup = (await view.mount(c, { fetchLots, saveLotPlots, showToast })) || (() => {});
   } else {
-    cleanup = view.mount ? view.mount(c, {}) || (() => {}) : () => {};
+    cleanup = view.mount ? view.mount(c, { showToast }) || (() => {}) : () => {};
   }
   if (scrollTop) window.scrollTo(0, 0);
+  else if (soft) window.scrollTo(0, keepScroll);
 }
 
 function openAuthModal(error = '') {

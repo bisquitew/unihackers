@@ -1,5 +1,5 @@
 import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
-import { createOutage, fetchAuditLogs, fetchLots, fetchTigerStatus, saveLotPlots, createAreaAlert } from '../api.js';
+import { approveReportedPost, createOutage, fetchAuditLogs, fetchLots, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots, createAreaAlert } from '../api.js';
 import { CameraCanvas } from '../components/CameraCanvas.js';
 import { esc } from '../ui.js';
 
@@ -20,6 +20,7 @@ export async function render(ctx) {
       <button class="admin-sublink active" role="tab" data-subtab="parkie-calib">Parking cameras</button>
       <button class="admin-sublink" role="tab" data-subtab="area-alerts">🚨 Danger & Works Radius</button>
       <button class="admin-sublink" role="tab" data-subtab="outages-mfa">Publish an outage</button>
+      <button class="admin-sublink" role="tab" data-subtab="moderation">Moderation</button>
       <button class="admin-sublink" role="tab" data-subtab="audit-logs">Security log</button>
       <button class="admin-sublink" role="tab" data-subtab="tiger-db">Database</button>
     </div>
@@ -141,6 +142,13 @@ export async function render(ctx) {
           <button class="btn btn-primary btn-md" id="publishOutageBtn">Publish outage</button>
           <div class="result" id="outagePublishResult" hidden></div>
         </div>
+      </div>
+    </div>
+
+    <div class="admin-subcontent" id="subtab-moderation" style="display:none">
+      <div class="form-panel-card" style="max-width:none">
+        <div class="panel-header"><h3>Reported posts</h3><p>Posts residents flagged in the forum. Keep a post to dismiss the reports, or remove it for good.</p></div>
+        <div class="list" id="moderationList"><div class="empty">Loading the queue…</div></div>
       </div>
     </div>
 
@@ -305,6 +313,34 @@ export function mount(ctx, { saveLotPlots, showToast }) {
       btn.disabled = false;
     }
   });
+
+  // moderation queue: loaded when the tab is opened, and after every decision
+  const loadQueue = async () => {
+    const box = document.getElementById('moderationList');
+    if (!box) return;
+    try {
+      const posts = await fetchReportedPosts();
+      box.innerHTML = posts.length
+        ? posts.map((p) => `
+          <div class="row" style="align-items:flex-start">
+            <div class="body">
+              <div class="title">${esc(p.title)}</div>
+              <div class="detail">${esc((p.content || '').slice(0, 200))}</div>
+              <div class="detail">By ${esc(p.authorName)} · flagged ${p.reportCount} ${p.reportCount === 1 ? 'time' : 'times'}${p.reportReasons?.length ? `: ${esc(p.reportReasons.join('; '))}` : ''}</div>
+            </div>
+            <div class="toolbar-group">
+              <button class="btn btn-secondary btn-sm" data-keep="${esc(p.id)}">Keep</button>
+              <button class="btn btn-danger btn-sm" data-remove="${esc(p.id)}">Remove</button>
+            </div>
+          </div>`).join('')
+        : '<div class="empty">Nothing flagged. The forum is clean.</div>';
+      box.querySelectorAll('[data-keep]').forEach((b) => b.addEventListener('click', async () => { await approveReportedPost(b.dataset.keep); showToast?.('Post kept.'); loadQueue(); }));
+      box.querySelectorAll('[data-remove]').forEach((b) => b.addEventListener('click', async () => { await removeReportedPost(b.dataset.remove); showToast?.('Post removed.'); loadQueue(); }));
+    } catch (err) {
+      box.innerHTML = `<div class="empty">${esc(err.message)}</div>`;
+    }
+  };
+  document.querySelector('[data-subtab="moderation"]')?.addEventListener('click', loadQueue);
 
   document.getElementById('upgradeMfaPasskeyBtn')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); });
 

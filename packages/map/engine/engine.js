@@ -114,14 +114,26 @@
   }
 
   /* ---------- user location dot ---------- */
+  var meEl = null;
+  var meHeading = null; // degrees clockwise from north, or null when unknown
+  // the arrow points where you face on the real world, so it is turned against the map's own rotation
+  function paintMe() {
+    if (!meEl) return;
+    var known = typeof meHeading === 'number';
+    meEl.classList.toggle('has-heading', known);
+    if (known) meEl.querySelector('.arrow').style.transform = 'rotate(' + (meHeading - map.getBearing()) + 'deg)';
+  }
   function setUserLocation(p) {
-    if (!p) { if (userMarker) { userMarker.remove(); userMarker = null; } return; }
+    if (!p) { if (userMarker) { userMarker.remove(); userMarker = null; meEl = null; } return; }
+    meHeading = typeof p.heading === 'number' ? p.heading : null;
     if (!userMarker) {
-      var el = document.createElement('div');
-      el.className = 'me';
-      el.setAttribute('aria-label', 'Your location');
-      userMarker = new maplibregl.Marker({ element: el }).setLngLat([p.lng, p.lat]).addTo(map);
+      meEl = document.createElement('div');
+      meEl.className = 'me';
+      meEl.setAttribute('aria-label', 'Your location');
+      meEl.innerHTML = '<div class="halo"></div><div class="dot"></div><div class="arrow"><svg viewBox="0 0 44 44" aria-hidden="true"><path d="M22 6 L34.5 34 Q35.4 36.4 33 35.4 L22 30.4 L11 35.4 Q8.6 36.4 9.5 34 Z" fill="#3D5BFF" stroke="#fff" stroke-width="3" stroke-linejoin="round"/></svg></div>';
+      userMarker = new maplibregl.Marker({ element: meEl }).setLngLat([p.lng, p.lat]).addTo(map);
     } else userMarker.setLngLat([p.lng, p.lat]);
+    paintMe();
   }
 
   /* ---------- long press ---------- */
@@ -205,6 +217,7 @@
       if (p && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.poiImage(p[1]), { pixelRatio: 2 });
     });
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
+    map.on('rotate', paintMe);
     map.touchZoomRotate.enableRotation();
 
     map.on('load', function () {

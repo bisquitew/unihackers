@@ -1,3 +1,4 @@
+import { apiBaseUrl as defaultApiBase } from './api';
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Text, PrimaryButton, SecondaryButton, colors, radii, shadows } from '@hub/ui';
@@ -24,7 +25,7 @@ const PERSONAS = [
   { key: 'dev_ai_agent', label: 'AI Agent (M2M)', icon: '🤖', tier: 'Tier 3' },
 ];
 
-export function Auth0SecurityCard({ apiBaseUrl = 'http://localhost:8000' }: { apiBaseUrl?: string }) {
+export function Auth0SecurityCard({ apiBaseUrl = defaultApiBase() }: { apiBaseUrl?: string }) {
   const { user, token, login, simulateMfaStepUp, isLoading } = useAuth();
   const [isUpgrading, setIsUpgrading] = useState(false);
   const [auditLogs, setAuditLogs] = useState<AuditItem[]>([]);

@@ -16,6 +16,7 @@ export const icons = {
   moon: svg('<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>'),
   arrow: svg('<path d="M5 12h14M13 6l6 6-6 6"/>'),
   caret: svg('<path d="M9 6l6 6-6 6"/>'),
+  locate: svg('<path d="M12 3 L19 20 L12 16.5 L5 20 Z"/>'),
   out: svg('<path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10"/>'),
 };
 

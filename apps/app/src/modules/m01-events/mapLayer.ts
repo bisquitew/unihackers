@@ -15,6 +15,7 @@ const AREA_CENTRES: Record<string, Coordinate> = {
 };
 
 export function eventCoordinate(event: EventItem): Coordinate | null {
+  if (typeof event.latitude === 'number' && typeof event.longitude === 'number') return { latitude: event.latitude, longitude: event.longitude };
   return SPOTS[event.id] ?? AREA_CENTRES[event.neighbourhood] ?? null;
 }
 
