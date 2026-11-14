@@ -14,6 +14,7 @@ import { forumService } from './modules/m08-forum/service.ts';
 import { Hono } from 'hono';
 import { visitorInfoRoutes } from './modules/m02-visitor-info/routes.ts';
 import { smellRoutes } from './modules/m06-smell/routes.ts';
+import { safetyRoutes } from './modules/m03-safety/routes.ts';
 import { assistantRoutes } from './modules/m10-assistant/routes.ts';
 import { feedbackRoutes } from './modules/m11-feedback/routes.ts';
 import { storageService } from './core/storage.ts';
@@ -79,6 +80,7 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
 const p4App = new Hono();
 const P4_ROUTERS: [Hono, string[]][] = [
   [visitorInfoRoutes, ['visitor-info', 'm02-visitor-info']],
+  [safetyRoutes, ['safety', 'm03-safety']],
   [smellRoutes, ['smell', 'm06-smell']],
   [assistantRoutes, ['assistant', 'm10-assistant']],
   [feedbackRoutes, ['feedback', 'm11-feedback']],
@@ -101,11 +103,19 @@ async function forwardToP4(req: http.IncomingMessage, res: http.ServerResponse, 
     if (typeof value === 'string') headers.set(key, value);
     else if (Array.isArray(value)) headers.set(key, value.join(', '));
   }
+  // The routers rate-limit per client; tell them who the client is (Hono has no socket here).
+  if (!headers.has('x-forwarded-for') && req.socket.remoteAddress) headers.set('x-forwarded-for', req.socket.remoteAddress);
   const body = method === 'GET' || method === 'HEAD' ? undefined : await parseRawBuffer(req);
   const init: RequestInit = { method, headers };
   if (body && body.length) init.body = new Uint8Array(body);
   const response = await p4App.fetch(new Request(url.href, init));
+  // Pass the router's headers through (e.g. Retry-After on 429); the body is re-sent whole, so drop length/encoding.
+  const passThrough: Record<string, string> = {};
+  response.headers.forEach((value, key) => {
+    if (key !== 'content-length' && key !== 'transfer-encoding' && key !== 'content-encoding') passThrough[key] = value;
+  });
   res.writeHead(response.status, {
+    ...passThrough,
     'Content-Type': response.headers.get('content-type') ?? 'application/json',
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
