@@ -23,6 +23,7 @@ export interface SmellPin {
   intensity: number;
   createdAt: string;
   areaId: string;
+  isDemo: boolean;
 }
 
 export interface SmellAreaStats {

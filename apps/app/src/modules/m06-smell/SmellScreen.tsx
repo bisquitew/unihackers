@@ -16,6 +16,7 @@ import {
   type SourceHint,
   type Wind,
 } from './api';
+import { refreshSmellPins } from './mapLayer';
 
 const INTENSITY_LABELS = ['', 'Slab', 'Ușor', 'Mediu', 'Puternic', 'Foarte puternic'];
 const COMPASS_RO: Record<string, string> = { N: 'N', NE: 'NE', E: 'E', SE: 'SE', S: 'S', SW: 'SV', W: 'V', NW: 'NV' };
@@ -97,6 +98,7 @@ export function SmellScreen() {
       await postReport({ type, intensity, ...(coords ? { lat: coords.lat, lng: coords.lng } : { areaId: areaId! }) });
       setStatus('done');
       load();
+      void refreshSmellPins(); // the new report shows on the shared map
     } catch (e) {
       setStatus('idle');
       setFormError(e instanceof Error ? e.message : 'Nu am putut trimite. Încearcă din nou.');
