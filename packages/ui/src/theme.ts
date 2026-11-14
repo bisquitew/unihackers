@@ -137,3 +137,38 @@ export function setThemeMode(mode: ThemeMode, comeBackTo?: string): void {
 export function useThemeVersion(): number {
   return useSyncExternalStore(themeStore.subscribe, themeStore.getVersion, themeStore.getVersion);
 }
+
+// ---- small synchronous settings shared with the language (locale.ts): same storage, same "re-create the app" step ----
+/** A saved setting, read synchronously (web: localStorage, phone: a file in the app's documents folder). */
+export function readSetting(fileName: string, key: string): string | null {
+  try {
+    if (Platform.OS === 'web') return typeof localStorage !== 'undefined' ? localStorage.getItem(key) : null;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { File, Paths } = require('expo-file-system');
+    const file = new File(Paths.document, fileName);
+    return file.exists ? file.textSync() : null;
+  } catch {
+    return null;
+  }
+}
+export function writeSetting(fileName: string, key: string, value: string) {
+  try {
+    if (Platform.OS === 'web') {
+      localStorage.setItem(key, value);
+      return;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { File, Paths } = require('expo-file-system');
+    const file = new File(Paths.document, fileName);
+    if (!file.exists) file.create();
+    file.write(value);
+  } catch {
+    /* the choice just will not survive a restart */
+  }
+}
+/** Re-creates the whole screen tree (every string and colour is read again), then reopens `comeBackTo`. */
+export function remountApp(comeBackTo?: string) {
+  pendingReturn = comeBackTo ?? null;
+  version += 1;
+  listeners.forEach((fn) => fn());
+}

@@ -6,11 +6,11 @@ export type SafetyType = 'poor_lighting' | 'noise_at_night' | 'abandoned_buildin
 
 /** Labels, icons and pin colours, shared by the screen and the map layer. */
 export const SAFETY_TYPES: { id: SafetyType; label: string; icon: string; color: string }[] = [
-  { id: 'poor_lighting', label: 'Iluminat slab', icon: '💡', color: '#f59e0b' },
-  { id: 'noise_at_night', label: 'Zgomot noaptea', icon: '🔊', color: '#38bdf8' },
-  { id: 'abandoned_building', label: 'Clădire abandonată', icon: '🏚️', color: '#a16207' },
-  { id: 'feeling_unsafe', label: 'Mă simt nesigur', icon: '⚠️', color: '#ef4444' },
-  { id: 'other', label: 'Altceva', icon: '❔', color: '#a1a1aa' },
+  { id: 'poor_lighting', label: 'Poor lighting', icon: '💡', color: '#f59e0b' },
+  { id: 'noise_at_night', label: 'Noise at night', icon: '🔊', color: '#38bdf8' },
+  { id: 'abandoned_building', label: 'Abandoned building', icon: '🏚️', color: '#a16207' },
+  { id: 'feeling_unsafe', label: 'Feeling unsafe', icon: '⚠️', color: '#ef4444' },
+  { id: 'other', label: 'Other', icon: '❔', color: '#a1a1aa' },
 ];
 export const safetyType = (id: SafetyType) => SAFETY_TYPES.find((t) => t.id === id) ?? SAFETY_TYPES[SAFETY_TYPES.length - 1];
 

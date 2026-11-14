@@ -7,6 +7,7 @@ import { colors, isDark, returnTo, themeStore, useThemeVersion } from '@hub/ui';
 import { AuthProvider } from '../src/core/auth';
 import { AuthGate } from '../src/core/AuthGate';
 import { installHubClientHeader } from '../src/core/hubClient';
+import '../src/core/i18n/ro'; // registers the Romanian dictionary before the first screen is drawn
 
 installHubClientHeader();
 

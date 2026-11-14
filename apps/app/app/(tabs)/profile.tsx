@@ -2,9 +2,8 @@ import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { ScrollView, StyleSheet, Switch, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePersonalPins, type MapTheme } from '@hub/map';
-import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, type ThemeMode } from '@hub/ui';
+import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, setLang, lang, type Lang, type ThemeMode } from '@hub/ui';
 import { useAuth } from '../../src/core/auth';
-import { WebAccessGate } from '../../src/core/WebAccessGate';
 import { initialsOf, toneFor } from '../../src/core/people';
 import { setPrefs, usePrefs } from '../../src/core/prefs';
 import { chatStore } from '../../src/modules/m07-buddy/chatStore';
@@ -40,6 +39,11 @@ const APPEARANCE: { id: ThemeMode; label: string }[] = [
   { id: 'system', label: 'System' },
 ];
 
+const LANGUAGES: { id: Lang; label: string }[] = [
+  { id: 'ro', label: 'Română' },
+  { id: 'en', label: 'English' },
+];
+
 type Part = 'overview' | 'settings';
 
 /**
@@ -47,14 +51,6 @@ type Part = 'overview' | 'settings';
  * appearance, the map, alerts and your account. Every row goes somewhere or changes something.
  */
 export default function ProfileTab() {
-  return (
-    <WebAccessGate featureName="your profile and account settings">
-      <ProfileContent />
-    </WebAccessGate>
-  );
-}
-
-function ProfileContent() {
   const router = useRouter();
   const { height: windowHeight } = useWindowDimensions();
   const { user, logout } = useAuth();
@@ -153,6 +149,10 @@ function ProfileContent() {
         </>
       ) : (
         <>
+          <Section title="Language">
+            <Segmented options={LANGUAGES} value={lang} onChange={(l) => setLang(l, '/profile?part=settings')} accessibilityLabel="Language" />
+          </Section>
+
           <Section title="Appearance">
             <Segmented
               options={APPEARANCE}

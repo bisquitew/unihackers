@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, TextInput, View, useWindowDimensions } from 'react-native';
-import { Avatar, Chip, Field, IconButton, PrimaryButton, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, fonts, icons, moduleArt, palette, radii } from '@hub/ui';
+import { Avatar, Chip, Field, IconButton, PrimaryButton, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, fonts, icons, moduleArt, palette, radii, tr } from '@hub/ui';
 import { ModulePage } from '../../core/ModulePage';
 import { initialsOf, toneFor } from '../../core/people';
 import { forumStore, type Post } from './forumStore';
@@ -361,7 +361,7 @@ function Comments({ post, maxHeight }: { post: Post; maxHeight: number }) {
 
       <View style={styles.composer}>
         <Avatar initials="YO" tone="ink" size={32} />
-        <TextInput value={text} onChangeText={setText} placeholder="Write a reply" placeholderTextColor={colors.mutedForeground} accessibilityLabel="Reply" returnKeyType="send" onSubmitEditing={() => send()} style={styles.input} />
+        <TextInput value={text} onChangeText={setText} placeholder={tr('Write a reply')} placeholderTextColor={colors.mutedForeground} accessibilityLabel="Reply" returnKeyType="send" onSubmitEditing={() => send()} style={styles.input} />
         <IconButton label="Send reply" tone="ink" size={44} onPress={() => send()}>
           <icons.PaperPlaneTilt size={20} weight="fill" color={colors.inverseForeground} />
         </IconButton>

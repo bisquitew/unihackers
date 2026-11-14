@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Switch, TextInput, View, type ScrollViewInstance } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BackLink, Chip, IconButton, Row, RowGroup, Text, TextButton, colors, fonts, icons, moduleArt, radii, useKeyboardHeight } from '@hub/ui';
+import { BackLink, Chip, IconButton, Row, RowGroup, Text, TextButton, colors, fonts, icons, moduleArt, radii, useKeyboardHeight, tr } from '@hub/ui';
 import { registeredModuleManifests } from '../index';
 import { sendChat, type ChatTurn, type ToolUse } from './api';
 import { ListenButton } from './voice/ListenButton';
@@ -238,7 +238,7 @@ export function AssistantScreen() {
           style={styles.input}
           value={input}
           onChangeText={setInput}
-          placeholder="Ask a question"
+          placeholder={tr('Ask a question')}
           placeholderTextColor={colors.mutedForeground}
           accessibilityLabel="Your question"
           maxLength={MAX_MESSAGE}

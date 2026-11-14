@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from 'react-native';
 import { colors, fonts, type ColorName } from './tokens';
+import { tr } from './locale';
 
 export type TextVariant =
   | 'display'
@@ -35,6 +36,20 @@ export type TextProps = RNTextProps & {
 };
 
 /** The only way text is drawn in the app: a variant from the type scale and a semantic colour. */
-export function Text({ variant = 'body', color = 'foreground', style, ...rest }: TextProps) {
-  return <RNText {...rest} style={[typeScale[variant], { color: colors[color] }, style]} />;
+export function Text({ variant = 'body', color = 'foreground', style, children, ...rest }: TextProps) {
+  return (
+    <RNText {...rest} style={[typeScale[variant], { color: colors[color] }, style]}>
+      {translateChildren(children)}
+    </RNText>
+  );
+}
+
+/** Text in the current language. A run of strings and numbers ("{n} events") is translated as one sentence. */
+function translateChildren(children: React.ReactNode): React.ReactNode {
+  if (typeof children === 'string') return tr(children);
+  if (Array.isArray(children)) {
+    if (children.every((c) => typeof c === 'string' || typeof c === 'number')) return tr(children.join(''));
+    return children.map((c) => (typeof c === 'string' ? tr(c) : c));
+  }
+  return children;
 }

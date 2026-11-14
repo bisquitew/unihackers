@@ -41,6 +41,10 @@ export interface MapPin {
   createdAt: string;
   /** sample data that is not real yet; the UI labels it */
   demo?: boolean;
+  /** actual geographic visual radius drawn around the pin in meters (e.g. 650m danger zone) */
+  radiusMeters?: number;
+  /** type of zone to color appropriately: 'danger' (red) or 'construction' (amber) */
+  zoneType?: 'danger' | 'construction' | string;
 }
 
 /** A named group of pins that can be switched on and off. Modules contribute layers through `ModuleManifest.mapLayer`. */

@@ -558,6 +558,143 @@
   var selectedId = null;
   var userMarker = null;
 
+  /* ---------- area radius circles (danger & construction) ---------- */
+  var currentRadiiGeoJSON = { type: 'FeatureCollection', features: [] };
+
+  function makeCircleFeature(p) {
+    var radius = p.radiusMeters || p.radius || 0;
+    if (!radius || radius <= 0) return null;
+    var lat = p.lat;
+    var lng = p.lng;
+    var km = radius / 1000;
+    var radLat = (lat * Math.PI) / 180;
+    var cosLat = Math.cos(radLat);
+    var deltaLat = km / 111.132;
+    var deltaLng = km / (111.32 * (cosLat === 0 ? 0.0001 : cosLat));
+    var coords = [];
+    var points = 64;
+    for (var i = 0; i < points; i++) {
+      var angle = (i / points) * 2 * Math.PI;
+      coords.push([lng + deltaLng * Math.cos(angle), lat + deltaLat * Math.sin(angle)]);
+    }
+    coords.push(coords[0]);
+
+    var isSelected = (p.id === selectedId);
+    var isDanger = p.zoneType === 'danger' || (p.title && p.title.indexOf('🚨') !== -1) || (p.kindLabel && p.kindLabel.indexOf('danger') !== -1);
+
+    var fillColor = isSelected
+      ? (isDanger ? 'rgba(239, 68, 68, 0.38)' : 'rgba(245, 158, 11, 0.35)')
+      : (isDanger ? 'rgba(239, 68, 68, 0.22)' : 'rgba(245, 158, 11, 0.20)');
+
+    var strokeColor = isSelected
+      ? (isDanger ? '#ef4444' : '#f59e0b')
+      : (isDanger ? '#dc2626' : '#d97706');
+
+    var glowColor = isSelected
+      ? (isDanger ? 'rgba(239, 68, 68, 0.70)' : 'rgba(245, 158, 11, 0.70)')
+      : (isDanger ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)');
+
+    var strokeWidth = isSelected ? 4.5 : 2.5;
+    var glowWidth = isSelected ? 12 : 6;
+
+    return {
+      type: 'Feature',
+      id: p.id,
+      properties: {
+        id: p.id,
+        title: p.title || '',
+        radiusMeters: radius,
+        fillColor: fillColor,
+        strokeColor: strokeColor,
+        glowColor: glowColor,
+        strokeWidth: strokeWidth,
+        glowWidth: glowWidth,
+        zoneType: isDanger ? 'danger' : 'construction'
+      },
+      geometry: {
+        type: 'Polygon',
+        coordinates: [coords]
+      }
+    };
+  }
+
+  function ensureRadiusLayers() {
+    if (!map || !map.isStyleLoaded()) return;
+    if (!map.getSource('area-radii')) {
+      map.addSource('area-radii', {
+        type: 'geojson',
+        data: currentRadiiGeoJSON
+      });
+    }
+
+    var firstSymbolId = null;
+    try {
+      var mapLayers = map.getStyle().layers;
+      for (var i = 0; i < mapLayers.length; i++) {
+        if (mapLayers[i].type === 'symbol') {
+          firstSymbolId = mapLayers[i].id;
+          break;
+        }
+      }
+    } catch (e) {}
+
+    if (!map.getLayer('area-radii-fill')) {
+      map.addLayer({
+        id: 'area-radii-fill',
+        type: 'fill',
+        source: 'area-radii',
+        paint: {
+          'fill-color': ['coalesce', ['get', 'fillColor'], 'rgba(239, 68, 68, 0.22)'],
+          'fill-opacity': 1
+        }
+      }, firstSymbolId);
+    }
+    if (!map.getLayer('area-radii-glow')) {
+      map.addLayer({
+        id: 'area-radii-glow',
+        type: 'line',
+        source: 'area-radii',
+        paint: {
+          'line-color': ['coalesce', ['get', 'glowColor'], 'rgba(239, 68, 68, 0.25)'],
+          'line-width': ['coalesce', ['get', 'glowWidth'], 6]
+        }
+      }, firstSymbolId);
+    }
+    if (!map.getLayer('area-radii-stroke')) {
+      map.addLayer({
+        id: 'area-radii-stroke',
+        type: 'line',
+        source: 'area-radii',
+        paint: {
+          'line-color': ['coalesce', ['get', 'strokeColor'], '#dc2626'],
+          'line-width': ['coalesce', ['get', 'strokeWidth'], 2.5]
+        }
+      }, firstSymbolId);
+    }
+  }
+
+  function updateRadiusData(list) {
+    var features = [];
+    var selectedFeat = null;
+    (list || []).forEach(function (p) {
+      var f = makeCircleFeature(p);
+      if (f) {
+        if (p.id === selectedId) selectedFeat = f;
+        else features.push(f);
+      }
+    });
+    if (selectedFeat) features.push(selectedFeat);
+    currentRadiiGeoJSON = { type: 'FeatureCollection', features: features };
+
+    if (map && map.isStyleLoaded()) {
+      ensureRadiusLayers();
+      var s = map.getSource('area-radii');
+      if (s && s.setData) {
+        s.setData(currentRadiiGeoJSON);
+      }
+    }
+  }
+
   function send(msg) {
     try {
       if (window.ReactNativeWebView) window.ReactNativeWebView.postMessage(JSON.stringify(msg));
@@ -604,6 +741,7 @@
       }
       cur.data = p;
     });
+    updateRadiusData(list);
   }
 
   function select(id) {
@@ -613,6 +751,7 @@
       pins[selectedId].el.classList.add('selected');
       pins[selectedId].marker.getElement().style.zIndex = 5;
     }
+    updateRadiusData(Object.keys(pins).map(function (k) { return pins[k].data; }));
   }
 
   /* ---------- camera ---------- */
@@ -759,9 +898,33 @@
 
     map.on('load', function () {
       loaded = true;
+      ensureRadiusLayers();
+      updateRadiusData(Object.keys(pins).map(function (k) { return pins[k].data; }));
       send({ type: 'ready', theme: activeTheme });
       var q = queue; queue = [];
       q.forEach(handle);
+    });
+    map.on('styledata', function () {
+      if (map && map.isStyleLoaded && map.isStyleLoaded()) {
+        ensureRadiusLayers();
+        var s = map.getSource('area-radii');
+        if (s && s.setData) {
+          s.setData(currentRadiiGeoJSON);
+        }
+      }
+    });
+    map.on('click', 'area-radii-fill', function (e) {
+      if (e.features && e.features[0] && e.features[0].properties && e.features[0].properties.id) {
+        send({ type: 'pinPress', id: e.features[0].properties.id });
+      }
+    });
+    map.on('mouseenter', 'area-radii-fill', function () {
+      var c = map.getCanvas();
+      if (c) c.style.cursor = 'pointer';
+    });
+    map.on('mouseleave', 'area-radii-fill', function () {
+      var c = map.getCanvas();
+      if (c) c.style.cursor = '';
     });
     map.on('click', function (e) { send({ type: 'tap', lat: e.lngLat.lat, lng: e.lngLat.lng }); });
     map.on('mousedown', startPress); map.on('touchstart', startPress);

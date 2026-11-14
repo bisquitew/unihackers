@@ -24,8 +24,10 @@ check('asking for the admin role does not give it (google-login)', r.json?.user?
 r = await call('POST', '/v1/core/auth/google-login', { body: { email: 'admin.fan@gmail.com', name: 'V' } });
 check('an email containing "admin" is not enough', r.json?.user?.role === 'resident', JSON.stringify(r.json?.user?.role));
 const residentToken = r.json?.token;
-r = await call('POST', '/v1/core/auth/google-login', { body: { email: 'elena@timisoara-hub.ro', name: 'Elena' } });
-check('a staff email becomes an admin (demo mode)', r.json?.user?.role === 'admin', JSON.stringify(r.json?.user?.role));
+r = await call('POST', '/v1/core/auth/google-login', { body: { email: 'admin.elena@timisoara-hub.ro', name: 'Elena' } });
+check('a listed staff email becomes an admin (demo mode)', r.json?.user?.role === 'admin', JSON.stringify(r.json?.user?.role));
+r = await call('POST', '/v1/core/auth/google-login', { body: { email: 'resident@timisoara-hub.ro', name: 'R' } });
+check('the city mail domain alone is not staff', r.json?.user?.role === 'resident', JSON.stringify(r.json?.user?.role));
 r = await call('POST', '/v1/core/auth/login', { body: { email: 'someone@example.com', role: 'admin' } });
 check('asking for admin on /auth/login does not give it', r.json?.user?.role === 'resident' && r.json?.token === 'dev_resident', JSON.stringify(r.json?.token));
 check('the token is not guessable', /^google_[0-9a-f]{32}$/.test(residentToken || ''), residentToken);

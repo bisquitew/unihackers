@@ -6,12 +6,12 @@ export type SmellType = 'burnt_rubber' | 'smoke' | 'sewage' | 'chemical' | 'garb
 
 /** Labels, icons and pin colours, shared by the screen and the map layer. */
 export const SMELL_TYPES: { id: SmellType; label: string; icon: string; color: string }[] = [
-  { id: 'burnt_rubber', label: 'Cauciuc ars', icon: '🛞', color: '#ef4444' },
-  { id: 'smoke', label: 'Fum', icon: '💨', color: '#a1a1aa' },
-  { id: 'sewage', label: 'Canalizare', icon: '🚰', color: '#a16207' },
-  { id: 'chemical', label: 'Chimic', icon: '🧪', color: '#a855f7' },
-  { id: 'garbage', label: 'Gunoi', icon: '🗑️', color: '#22c55e' },
-  { id: 'other', label: 'Altceva', icon: '❔', color: '#38bdf8' },
+  { id: 'burnt_rubber', label: 'Burnt rubber', icon: '🛞', color: '#ef4444' },
+  { id: 'smoke', label: 'Smoke', icon: '💨', color: '#a1a1aa' },
+  { id: 'sewage', label: 'Sewage', icon: '🚰', color: '#a16207' },
+  { id: 'chemical', label: 'Chemical', icon: '🧪', color: '#a855f7' },
+  { id: 'garbage', label: 'Garbage', icon: '🗑️', color: '#22c55e' },
+  { id: 'other', label: 'Other', icon: '❔', color: '#38bdf8' },
 ];
 export const smellType = (id: SmellType) => SMELL_TYPES.find((t) => t.id === id) ?? SMELL_TYPES[SMELL_TYPES.length - 1];
 

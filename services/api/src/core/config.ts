@@ -6,12 +6,16 @@
 export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 export const DEMO_AUTH = process.env.DEMO_AUTH !== undefined ? process.env.DEMO_AUTH !== '0' && process.env.DEMO_AUTH !== 'false' : !IS_PRODUCTION;
 
-/** Staff accounts: the demo treats the city's mail domain as staff; with real Auth0 the role comes from the token instead. */
-const STAFF_DOMAIN = '@timisoara-hub.ro';
+/**
+ * Staff accounts. With real Auth0 the role comes from the token; the demo sign-in has no passwords, so staff are an explicit
+ * list (STAFF_EMAILS in the environment, plus these demo addresses while DEMO_AUTH is on). A city mail domain alone is not
+ * enough: resident@timisoara-hub.ro is a resident.
+ */
+const DEMO_STAFF = ['admin@timisoara-hub.ro', 'admin.elena@timisoara-hub.ro', 'moderator@timisoara-hub.ro'];
 const STAFF_EMAILS = (process.env.STAFF_EMAILS || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 export const isStaffEmail = (email: string): boolean => {
   const e = String(email || '').trim().toLowerCase();
-  return STAFF_EMAILS.includes(e) || (DEMO_AUTH && e.endsWith(STAFF_DOMAIN));
+  return STAFF_EMAILS.includes(e) || (DEMO_AUTH && DEMO_STAFF.includes(e));
 };
 
 /** An error that carries the HTTP status to answer with. */

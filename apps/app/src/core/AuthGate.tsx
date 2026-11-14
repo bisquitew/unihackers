@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { colors } from '@hub/ui';
 import { useAuth } from './auth';
 import { MobileLoginScreen } from './MobileLoginScreen';
@@ -19,11 +19,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
-  if (Platform.OS !== 'web' && !isLoggedIn) {
-    return <MobileLoginScreen />;
-  }
-
-  // Expo web builds keep the old behaviour (guests in, restricted sections behind WebAccessGate) until the real website replaces them
+  if (!isLoggedIn) return <MobileLoginScreen />;
   return <>{children}</>;
 }
 
