@@ -19,6 +19,7 @@
     "db:inspect": "node scripts/inspect-db.mjs",
     "db:seed:users": "node scripts/seed-users.mjs",
     "test:auth": "node scripts/test-e2e-auth.mjs",
+    "verify:all": "node scripts/verify-all.mjs",
     "test:solana": "node --experimental-strip-types scripts/test-solana-real.ts",
     "test:p2": "python3 scripts/test_p2.py",
     "test:workers": "python3 scripts/test_workers.py",
