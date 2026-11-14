@@ -1,13 +1,6 @@
 import React from 'react';
-import { Stack } from 'expo-router';
-import { DashboardScreen } from '../../../src/modules/m12-dashboard/DashboardScreen';
-import { darkHeader } from '../../../src/modules/m06-smell/header';
+import { StaffOnly } from '../../../src/core/StaffOnly';
 
-export default function DashboardRoute() {
-  return (
-    <>
-      <Stack.Screen options={darkHeader('Panou Municipal — Tiger Data')} />
-      <DashboardScreen />
-    </>
-  );
+export default function Route() {
+  return <StaffOnly title="City dashboard" art="dashboard" />;
 }

@@ -20,15 +20,41 @@ export function mount(ctx, { showToast } = {}) {
   const hidden = {};
   let selected = null;
 
-  const map = createMap(page, { onPinPress: (id) => pick(id) });
+  const map = createMap(page, { onPinPress: (id) => pick(id), onTap: () => close() });
 
   const visiblePins = () => Object.entries(layers).filter(([k]) => !hidden[k]).flatMap(([, l]) => l.pins);
   const pushPins = () => map.setPins(visiblePins());
+
+  // the card for the picked pin sits on the map, next to the panel, so it is seen the moment a pin is clicked
+  const card = document.createElement('div');
+  card.className = 'pin-card';
+  card.hidden = true;
+  page.appendChild(card);
+  function showCard() {
+    if (!selected) {
+      card.hidden = true;
+      return;
+    }
+    card.hidden = false;
+    card.innerHTML = `
+      <button class="icon-btn pin-card-close" id="pinCardClose" aria-label="Close">×</button>
+      <div class="head">${art(selected.art, 56)}<div><h3>${esc(selected.title)}</h3><div class="muted">${esc(selected.kindLabel)}</div></div></div>
+      ${selected.desc ? `<p class="desc">${esc(selected.desc)}</p>` : ''}
+      ${selected.link ? `<a class="btn btn-secondary btn-md" href="${esc(selected.link.href)}">${esc(selected.link.label)}</a>` : ''}`;
+    card.querySelector('#pinCardClose').addEventListener('click', close);
+  }
+  function close() {
+    selected = null;
+    map.select(null);
+    showCard();
+    draw();
+  }
 
   function pick(id) {
     selected = visiblePins().find((p) => p.id === id) || null;
     map.select(selected ? selected.id : null);
     if (selected) map.flyTo(selected.lat, selected.lng, 16);
+    showCard();
     draw();
   }
 
@@ -49,7 +75,7 @@ export function mount(ctx, { showToast } = {}) {
       <h3 style="font-size:17px;margin:18px 0 4px">Places</h3><div class="list">${places || '<div class="empty">Nothing shown.</div>'}</div>`;
     scroll.querySelectorAll('[data-layer]').forEach((el) => el.addEventListener('change', () => {
       hidden[el.dataset.layer] = !el.checked;
-      if (selected && !visiblePins().some((p) => p.id === selected.id)) selected = null;
+      if (selected && !visiblePins().some((p) => p.id === selected.id)) { selected = null; showCard(); }
       pushPins();
       draw();
     }));

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { isDark } from './theme';
+import { tr } from './locale';
 import { colors, fonts, radii } from './tokens';
 import { Text } from './Text';
 
@@ -18,7 +19,8 @@ export function Field({ label, ...input }: FieldProps) {
       </Text>
       <TextInput
         {...input}
-        accessibilityLabel={label}
+        placeholder={input.placeholder ? tr(input.placeholder) : undefined}
+        accessibilityLabel={tr(label)}
         placeholderTextColor={colors.mutedForeground}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}

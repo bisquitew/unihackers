@@ -18,3 +18,4 @@ export * as icons from './icons';
 export * from './Segmented';
 export * from './theme';
 export * from './SpringPressable';
+export * from './locale';

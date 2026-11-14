@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Modal, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Avatar, Chip, IconButton, Text, colors, fonts, icons, radii, useKeyboardHeight } from '@hub/ui';
+import { Avatar, Chip, IconButton, Text, colors, fonts, icons, radii, useKeyboardHeight, tr } from '@hub/ui';
 import { initialsOf, toneFor } from '../../core/people';
 import { chatStore, formatChatTime } from './chatStore';
 
@@ -86,7 +86,7 @@ export function ChatRoom({ chatId, onClose }: { chatId: string | null; onClose: 
           <TextInput
             value={text}
             onChangeText={setText}
-            placeholder="Write a message"
+            placeholder={tr('Write a message')}
             placeholderTextColor={colors.mutedForeground}
             accessibilityLabel="Message"
             returnKeyType="send"
