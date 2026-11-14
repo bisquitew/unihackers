@@ -117,7 +117,7 @@ export default function HomeScreen() {
               <Row.Time>Until Dec</Row.Time>
             </Row.Trailing>
           </Row>
-          <Row>
+          <Row onPress={() => go('/m/parkie')} accessibilityLabel="42 free spots, Iulius Town parking">
             <Row.Illustration>
               <ParkieArt size={44} />
             </Row.Illustration>

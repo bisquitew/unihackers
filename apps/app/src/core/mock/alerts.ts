@@ -6,6 +6,8 @@ export type AlertStep = { state: 'done' | 'now' | 'next'; title: string; note?: 
 
 export type AlertItem = {
   id: string;
+  /** where it happens; the map layer uses this */
+  coordinate: { latitude: number; longitude: number };
   /** Which module the alert comes from; its illustration leads the row. Use each illustration once per screen. */
   module: ModuleArtId;
   group: 'places' | 'city';
@@ -21,6 +23,7 @@ export type AlertItem = {
 export const alerts: AlertItem[] = [
   {
     id: 'hot-water-garii-2',
+    coordinate: { latitude: 45.7499, longitude: 21.2083 },
     module: 'utilities',
     group: 'places',
     title: 'Hot water is off',
@@ -37,6 +40,7 @@ export const alerts: AlertItem[] = [
   },
   {
     id: 'tram-5',
+    coordinate: { latitude: 45.7488, longitude: 21.2244 },
     module: 'transit',
     group: 'places',
     title: 'Tram 5 isn’t running',
@@ -53,6 +57,7 @@ export const alerts: AlertItem[] = [
   },
   {
     id: 'smell-east',
+    coordinate: { latitude: 45.763, longitude: 21.266 },
     module: 'smell',
     group: 'city',
     title: 'Burnt smell in the east',
@@ -69,6 +74,7 @@ export const alerts: AlertItem[] = [
   },
   {
     id: 'lights-gara',
+    coordinate: { latitude: 45.7505, longitude: 21.2071 },
     module: 'safety',
     group: 'city',
     title: 'Streetlights out',

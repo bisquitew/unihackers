@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { mapHref, pinRef } from '@hub/map';
 import { AvatarStack, BackLink, PrimaryButton, Screen, Text, TextButton, Timeline } from '@hub/ui';
 import { alertById } from '../../src/core/mock/alerts';
 
@@ -43,6 +44,9 @@ export default function AlertDetail() {
         {alert.context}
       </Text>
       <Timeline steps={alert.steps} />
+      <View style={styles.mapLink}>
+        <TextButton label="Show on map" size="md" onPress={() => router.push(mapHref({ pin: pinRef('alerts', alert.id) }) as any)} />
+      </View>
       <View style={styles.confirm}>
         <AvatarStack
           label={`${alert.confirmedBy} neighbours confirmed this`}
@@ -59,4 +63,5 @@ export default function AlertDetail() {
 const styles = StyleSheet.create({
   context: { marginTop: 8, marginBottom: 18 },
   confirm: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  mapLink: { alignItems: 'flex-start', marginLeft: -20, marginBottom: 8 },
 });
