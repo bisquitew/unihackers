@@ -195,6 +195,10 @@
       var rf = /^hop-roof-(day|golden|night)-([0-9]+)$/.exec(ev.id);
       if (rf && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.roofImage(rf[1], parseInt(rf[2], 10)), { pixelRatio: 2 });
     });
+    map.on('styleimagemissing', function (ev) {
+      var p = /^hop-poi-(landmark|fountain|health|transit|dot)$/.exec(ev.id);
+      if (p && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.poiImage(p[1]), { pixelRatio: 2 });
+    });
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     map.touchZoomRotate.enableRotation();
 

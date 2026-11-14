@@ -120,7 +120,83 @@
   function fade(a, b) { return ['interpolate', ['linear'], ['zoom'], a, 0, b, 1]; }
 
   var ROAD_CLASSES =['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'minor', 'service'];
+
   var NAME = ['coalesce', ['get', 'name:latin'], ['get', 'name']];
+
+  /* ---------- points of interest: landmarks, public drinking fountains and a few useful services ----------
+     The map data holds thousands of POIs (parking, bollards, litter bins...). Only the useful groups are drawn, each
+     revealed at the zoom where it stops being clutter. Icons are painted on a canvas (see poiImage), no image files.
+     Colour follows the app's hue-by-meaning: blue = getting around and water, mint = health and services, a ringed
+     star = a landmark worth a look, a small plain dot = food and shops. */
+  var POI_DOT = ['restaurant', 'cafe', 'bar', 'fast_food', 'bakery', 'grocery'];
+  var POI_HEALTH = ['pharmacy', 'hospital', 'dentist', 'doctors'];
+  var POI_LANDMARK = ['attraction', 'monument', 'museum', 'castle', 'theatre', 'ruins', 'viewpoint', 'zoo'];
+
+  function poiImage(kind) {
+    var S = 48, c = document.createElement('canvas'); c.width = S; c.height = S;
+    var g = c.getContext('2d'), INK = '#1A1033', BLUE = '#3D5BFF', MINT = '#12C99B';
+    function disc(r, fill, ring, ringW) {
+      g.save(); g.shadowColor = 'rgba(26,16,51,0.28)'; g.shadowBlur = 5; g.shadowOffsetY = 1.5;
+      g.beginPath(); g.arc(24, 24, r, 0, Math.PI * 2); g.fillStyle = fill; g.fill(); g.restore();
+      if (ring) { g.beginPath(); g.arc(24, 24, r - ringW / 2, 0, Math.PI * 2); g.lineWidth = ringW; g.strokeStyle = ring; g.stroke(); }
+    }
+    if (kind === 'landmark') {
+      disc(20, '#FFFFFF', INK, 3);
+      g.beginPath();
+      for (var i = 0; i < 10; i++) { var r = i % 2 ? 5.2 : 12.5, a = -Math.PI / 2 + i * Math.PI / 5; g.lineTo(24 + r * Math.cos(a), 24.5 + r * Math.sin(a)); }
+      g.closePath(); g.fillStyle = INK; g.fill();
+    } else if (kind === 'fountain') {
+      disc(19, '#FFFFFF', BLUE, 2.5);
+      g.beginPath(); g.moveTo(24, 10); g.bezierCurveTo(24, 10, 14, 22, 14, 29); g.arc(24, 29, 10, Math.PI, 0, true); g.bezierCurveTo(34, 22, 24, 10, 24, 10); g.closePath();
+      g.fillStyle = BLUE; g.fill();
+      g.beginPath(); g.ellipse(20.5, 29, 2.2, 4, 0.3, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fill();
+    } else if (kind === 'health') {
+      disc(18, MINT, '#FFFFFF', 2.5);
+      g.fillStyle = '#FFFFFF'; g.fillRect(21, 14, 6, 20); g.fillRect(14, 21, 20, 6);
+    } else if (kind === 'transit') {
+      disc(18, BLUE, '#FFFFFF', 2.5);
+      g.fillStyle = '#FFFFFF'; g.beginPath(); g.moveTo(17, 17); g.arcTo(31, 17, 31, 31, 3); g.lineTo(31, 29); g.arcTo(31, 31, 17, 31, 3); g.lineTo(17, 31); g.closePath(); g.fill();
+      g.fillRect(17, 17, 14, 13);
+      g.fillStyle = BLUE; g.fillRect(19.5, 19.5, 9, 5);
+      g.beginPath(); g.arc(20.5, 33.5, 1.8, 0, Math.PI * 2); g.arc(27.5, 33.5, 1.8, 0, Math.PI * 2); g.fillStyle = '#FFFFFF'; g.fill();
+    } else { // dot: food and shops
+      disc(10, '#FFFFFF', 'rgba(26,16,51,0.75)', 3);
+    }
+    var d = g.getImageData(0, 0, S, S);
+    return { width: S, height: S, data: new Uint8Array(d.data.buffer) };
+  }
+
+  function poiLayers(f) {
+    var text = function (size, bold, fromZoom) {
+      return {
+        'text-field': fromZoom ? ['step', ['zoom'], '', fromZoom, NAME] : NAME,
+        'text-font': [bold ? 'Noto Sans Bold' : 'Noto Sans Regular'], 'text-size': size, 'text-max-width': 7,
+        'text-anchor': 'top', 'text-offset': [0, 1.1], 'text-optional': true
+      };
+    };
+    var icon = function (img, a, b) {
+      return { 'icon-image': img, 'icon-size': ['interpolate', ['linear'], ['zoom'], 15, a, 18, b], 'icon-padding': 3 };
+    };
+    var paint = function (muted) { return { 'text-color': muted ? f.labelMuted : f.label, 'text-halo-color': f.halo, 'text-halo-width': 1.6 }; };
+    var layer = function (id, minzoom, filter, layout, p) {
+      return { id: id, type: 'symbol', source: 'ofm', 'source-layer': 'poi', minzoom: minzoom, filter: filter, layout: layout, paint: p };
+    };
+    var cls = function (list) { return ['in', ['get', 'class'], ['literal', list]]; };
+    var sortByRank = { 'symbol-sort-key': ['coalesce', ['get', 'rank'], 99] };
+    return [
+      layer('poi-dot', 16.5, cls(POI_DOT), Object.assign(icon('hop-poi-dot', 0.5, 0.7), text(11, false, 17.5), sortByRank), paint(true)),
+      layer('poi-bus', 17.2, cls(['bus']), icon('hop-poi-transit', 0.5, 0.65), {}),
+      layer('poi-transit', 15.5, ['all', ['==', ['get', 'class'], 'railway'], ['in', ['get', 'subclass'], ['literal', ['tram_stop', 'station', 'halt']]]],
+        Object.assign(icon('hop-poi-transit', 0.6, 0.85), text(11, false, 16.8), sortByRank), paint(true)),
+      layer('poi-health', 16, cls(POI_HEALTH), Object.assign(icon('hop-poi-health', 0.6, 0.8), text(11, false, 17.2), sortByRank), paint(true)),
+      layer('poi-fountain', 15.5, ['==', ['get', 'class'], 'drinking_water'], icon('hop-poi-fountain', 0.65, 0.9), {}),
+      // churches and similar: the major ones earlier, the rest only close up
+      layer('poi-landmark-minor', 16.5, ['all', ['has', 'name'], ['==', ['get', 'class'], 'place_of_worship'], ['>', ['coalesce', ['get', 'rank'], 99], 10]],
+        Object.assign(icon('hop-poi-landmark', 0.55, 0.75), text(11, false, 17.2), sortByRank), paint(true)),
+      layer('poi-landmark', 14.5, ['all', ['has', 'name'], ['any', cls(POI_LANDMARK), ['all', ['==', ['get', 'class'], 'place_of_worship'], ['<=', ['coalesce', ['get', 'rank'], 99], 10]]]],
+        Object.assign(icon('hop-poi-landmark', 0.8, 1.1), text(12.5, true, 14.5), sortByRank, { 'text-optional': false, 'text-padding': 4 }), paint(false))
+    ];
+  }
 
   function roadWidth(base) {
     var w = function (m, p, s, t, mi, sv) {
@@ -146,12 +222,14 @@
       bg: '#FBF1E8', city: '#F8DEC6', park: '#BDEBC8', wood: '#A9E2B7', water: '#AFC0F5', waterLine: '#8294EE',
       road: '#FFFDFA', casing: 'rgba(58,47,92,0.14)', rail: 'rgba(36,56,201,0.45)', shadow: 'rgba(58,47,92,0.14)', edge: 'rgba(58,47,92,0.10)',
       blds: ['#FFAA73', '#8FA0F5', '#BFA2F0', '#FFC7A0', '#A3B0F2'],
+      ramp: ['#F5EDF1', '#E2D3E4', '#C2AAD0', '#6E5A92'],
       label: '#3A2F5C', labelMuted: '#6B5C7A', halo: '#FFF9F2'
     },
     night: {
       bg: '#14091F', city: '#2A1850', park: '#14343B', wood: '#112C34', water: '#1B2A82', waterLine: '#3D5BFF',
       road: '#4A3A7C', casing: 'rgba(0,0,0,0.0)', rail: 'rgba(108,132,255,0.7)', shadow: 'rgba(0,0,0,0.35)', edge: 'rgba(255,255,255,0.06)',
       blds: ['#5A3FA0', '#3347C4', '#6B3FB0', '#2E63A8', '#7C46A0'],
+      ramp: ['#2A2147', '#3A2D66', '#52408F', '#7A62C4'],
       label: '#F8F6FB', labelMuted: '#B9A8DD', halo: '#14091F'
     }
   };
@@ -169,12 +247,16 @@
       bg: '#FFFBF5', city: '#FFE6CF', park: '#8BE9CD', wood: '#74E2C2', water: '#7C96FF', waterLine: '#3D5BFF',
       road: '#FFFFFF', casing: 'rgba(26,16,51,0.22)', rail: 'rgba(36,56,201,0.55)', shadow: 'rgba(26,16,51,0.16)', edge: 'rgba(26,16,51,0.10)',
       blds: ['#FFB88A', '#8FA3FF', '#C3A8FF', '#FFD0B0', '#A9B8FF'],
+      ramp: ['#F1EDF8', '#DCD3EC', '#B5A8D6', '#5E4F94'], // plum: the ink and lilac family, deeper as buildings get taller
       label: '#1A1033', labelMuted: '#5A5070', halo: '#FFFFFF'
     }
   };
   function buildFlat(themeName, palette) {
     var f = (themeName === 'day' && FLAT_ALT[palette || 'vivid']) || FLAT[themeName] || FLAT.day;
-    var variantColor = ['match', VARIANT, 0, f.blds[0], 1, f.blds[1], 2, f.blds[2], 3, f.blds[3], f.blds[4]];
+    // Colour means height: one hue, deeper as the building gets taller. (Random per-building colours meant nothing.)
+    var variantColor = f.ramp
+      ? ['interpolate', ['linear'], ['coalesce', ['get', 'render_height'], 6], 0, f.ramp[0], 8, f.ramp[1], 16, f.ramp[2], 32, f.ramp[3]]
+      : ['match', VARIANT, 0, f.blds[0], 1, f.blds[1], 2, f.blds[2], 3, f.blds[3], f.blds[4]];
     var roadFilter = ['all', ['in', ['get', 'class'], ['literal', ROAD_CLASSES]], ['any', ['!=', ['get', 'class'], 'service'], ['>=', ['zoom'], 17]]];
     var cap = { 'line-cap': 'round', 'line-join': 'round' };
     var layers = [
@@ -210,6 +292,8 @@
         layout: { 'text-field': NAME, 'text-font': ['Noto Sans Bold'], 'text-size': ['interpolate', ['linear'], ['zoom'], 8, 13, 14, 20], 'text-max-width': 8 },
         paint: { 'text-color': f.label, 'text-halo-color': f.halo, 'text-halo-width': 2 } }
     ];
+    var labelAt = layers.map(function (l) { return l.id; }).indexOf('place-suburb');
+    Array.prototype.splice.apply(layers, [labelAt, 0].concat(poiLayers(f)));
     return {
       version: 8, name: 'hop-flat-' + themeName,
       glyphs: 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf',
@@ -323,6 +407,7 @@
         } });
     }
     layers.push();
+    layers.push.apply(layers, poiLayers(t));
     layers.push(
       { id: 'water-name', type: 'symbol', source: 'ofm', 'source-layer': 'water_name', minzoom: 13,
         layout: { 'text-field': NAME, 'text-font': ['Noto Sans Italic'], 'text-size': 12, 'text-letter-spacing': 0.1 },
@@ -378,12 +463,17 @@
     return Math.asin(Math.sin(lat * rad) * Math.sin(dec * rad) + Math.cos(lat * rad) * Math.cos(dec * rad) * Math.cos(ha)) / rad;
   }
 
+  /* The automatic theme. Night is a clock-time choice (22:00 to 06:00 on the phone's clock), not the moment the sun sets:
+     in winter the sun is down by 17:00, and a dark map at tea time feels like a bug. The rest of the day follows the sun:
+     day while it is high, the warm golden look for the low sun and for the evening and early morning hours. */
+  var NIGHT_FROM_HOUR = 22;
+  var NIGHT_UNTIL_HOUR = 6;
   function themeForNow(date) {
-    var alt = sunAltitude(date || new Date());
-    if (alt > 12) return 'day';
-    if (alt > -3) return 'golden';
-    return 'night';
+    var now = date || new Date();
+    var hour = now.getHours();
+    if (hour >= NIGHT_FROM_HOUR || hour < NIGHT_UNTIL_HOUR) return 'night';
+    return sunAltitude(now) > 12 ? 'day' : 'golden';
   }
 
-  window.HubStyle = { buildStyle: buildStyle, themeForNow: themeForNow, sunAltitude: sunAltitude, themes: THEMES, wallImage: wallImage, groundImage: groundImage, roofImage: roofImage };
+  window.HubStyle = { buildStyle: buildStyle, themeForNow: themeForNow, sunAltitude: sunAltitude, themes: THEMES, wallImage: wallImage, groundImage: groundImage, roofImage: roofImage, poiImage: poiImage };
 })();

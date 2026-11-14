@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { AccessibilityInfo, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, View, type LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -19,13 +19,15 @@ import {
   type PinKind,
   type PinVisibility,
 } from '@hub/map';
-import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, palette } from '@hub/ui';
+import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, palette, radii, shadows } from '@hub/ui';
 
 // The hue dot on a switched-on layer chip. Blue = getting around and city information, mint = people and services, ink = yours.
 const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500 };
 import { allMapLayers } from '../../src/core/map-layers';
 
-const TAB_BAR_CLEARANCE = 100; // the floating tab bar sits at the bottom of this screen
+const TAB_BAR_BODY = 68; // height of the floating tab bar (see packages/ui/src/TabBar.tsx); it sits above the bottom safe area
+const PLACE_BAR_H = 140; // the "Choose the spot" bar, shown while the user places a pin
+const PIN_TIP = 52; // distance from the top of the placement marker to the exact spot it marks
 const UNIRII: Coordinate = { latitude: 45.7579, longitude: 21.229 };
 
 type Draft = { coordinate: Coordinate; kind: PinKind; title: string; visibility: PinVisibility };
@@ -56,6 +58,9 @@ export default function MapScreen() {
   const [focus, setFocus] = React.useState<MapFocus | null>(null);
   const camera = React.useRef<Coordinate>(UNIRII);
   const [draft, setDraft] = React.useState<Draft | null>(null);
+  // 'new': choosing where a new pin goes. 'move': moving the spot of the pin that is being filled in.
+  const [placing, setPlacing] = React.useState<null | 'new' | 'move'>(null);
+  const [mapHeight, setMapHeight] = React.useState(0);
   const [listOpen, setListOpen] = React.useState(false);
   const [sheetHeight, setSheetHeight] = React.useState(0);
   const [reducedMotion, setReducedMotion] = React.useState(false);
@@ -67,6 +72,8 @@ export default function MapScreen() {
   }, []);
 
   const goTo = React.useCallback((c: Coordinate, zoom = 17) => setFocus((f) => ({ latitude: c.latitude, longitude: c.longitude, zoom, nonce: (f?.nonce ?? 0) + 1 })), []);
+  // Move the camera without changing the zoom (used while choosing a spot).
+  const panTo = React.useCallback((c: Coordinate) => setFocus((f) => ({ latitude: c.latitude, longitude: c.longitude, nonce: (f?.nonce ?? 0) + 1 })), []);
 
   const select = React.useCallback(
     (pin: MapPin | null) => {
@@ -102,6 +109,19 @@ export default function MapScreen() {
     const kind: PinKind = 'favourite';
     setDraft({ coordinate, kind, title: '', visibility: effectiveVisibility(kind) });
   };
+  // "+" opens placement: a fixed marker in the middle of the map; the user moves the map under it, then confirms.
+  const startPlacing = () => {
+    setSelectedId(null);
+    setListOpen(false);
+    setDraft(null);
+    setPlacing('new');
+  };
+  const confirmPlacing = () => {
+    const spot = camera.current;
+    if (placing === 'move' && draft) setDraft({ ...draft, coordinate: spot });
+    else startDraft(spot);
+    setPlacing(null);
+  };
   const chooseKind = (kind: PinKind) => setDraft((d) => (d ? { ...d, kind, visibility: effectiveVisibility(kind) } : d));
   const saveDraft = () => {
     if (!draft) return;
@@ -113,23 +133,44 @@ export default function MapScreen() {
   };
 
   /* ---------- layout ---------- */
-  const anySheet = !!selected || !!draft || listOpen;
-  const bottomInset = anySheet ? sheetHeight + TAB_BAR_CLEARANCE : TAB_BAR_CLEARANCE;
+  const anySheet = !!selected || (!!draft && !placing) || listOpen;
   const topSpace = insets.top + 8;
+  // Everything that floats at the bottom (sheets, the placement bar) sits just above the tab bar, which itself sits
+  // above the phone's bottom safe area. Measured from the real insets so nothing overlaps on phones with a home bar.
+  const clearance = Math.max(insets.bottom, 12) + 2 + TAB_BAR_BODY + 10;
+  // The map keeps its middle clear of whatever covers the bottom (tab bar, a sheet, the placement bar).
+  const bottomInset = placing ? PLACE_BAR_H + clearance : anySheet ? sheetHeight + clearance : clearance;
+  // The tallest a sheet's content can be: the map area, minus the tab bar and the chips row.
+  const sheetMax = Math.max(220, mapHeight - clearance - topSpace - 70);
+  // The pin being filled in shows on the map, so the user can see where it will go.
+  const draftPin: MapPin | null =
+    draft && !placing
+      ? { id: 'draft', kind: draft.kind, layerId: 'mine', coordinate: draft.coordinate, title: draft.title || pinKinds[draft.kind].label, visibility: 'private', owner: 'me', createdAt: new Date().toISOString() }
+      : null;
+  const mapPins = draftPin ? [...visiblePins, draftPin] : visiblePins;
+  // The placement marker's tip sits on the middle of the visible map (the camera centre, above the bottom inset).
+  const markerTop = mapHeight > 0 ? (mapHeight - bottomInset) / 2 - PIN_TIP : 0;
 
   return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={styles.root}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      onLayout={(e: LayoutChangeEvent) => setMapHeight(e.nativeEvent.layout.height)}
+    >
       <CityMap
         style={StyleSheet.absoluteFill}
-        pins={visiblePins}
+        pins={mapPins}
         selectedId={selectedId}
         focus={focus}
         reducedMotion={reducedMotion}
         insets={{ bottom: bottomInset }}
-        onPinPress={(id) => select(visiblePins.find((p) => p.id === id) ?? null)}
-        onLongPress={startDraft}
-        onMapPress={() => {
-          if (!draft) setSelectedId(null);
+        onPinPress={(id) => {
+          if (id !== 'draft') select(visiblePins.find((p) => p.id === id) ?? null); // the pin being filled in is not selectable
+        }}
+        onLongPress={placing ? undefined : startDraft}
+        onMapPress={(c) => {
+          if (placing) panTo(c); // tapping the map while choosing a spot moves the marker there
+          else if (!draft) setSelectedId(null);
         }}
         onCamera={(c) => {
           camera.current = { latitude: c.latitude, longitude: c.longitude };
@@ -152,37 +193,60 @@ export default function MapScreen() {
         </ScrollView>
       </View>
 
-      {/* actions */}
-      <View pointerEvents="box-none" style={[styles.actions, { top: topSpace + 60 }]}>
-        <IconButton label="Add a pin here" onPress={() => startDraft(camera.current)}>
-          <icons.Plus size={24} weight="bold" color={colors.foreground} />
-        </IconButton>
-        <IconButton label="List pins on the map" onPress={() => { setSelectedId(null); setDraft(null); setListOpen(true); }}>
-          <icons.ListBullets size={24} weight="bold" color={colors.foreground} />
-        </IconButton>
-      </View>
+      {/* actions: the pink "+" is the one main action here, the list button is frosted like the chips */}
+      {placing ? null : (
+        <View pointerEvents="box-none" style={[styles.actions, { top: topSpace + 56 }]}>
+          <IconButton label="Add a pin" tone="primary" size={44} onPress={startPlacing}>
+            <icons.Plus size={22} weight="bold" color={colors.primaryForeground} />
+          </IconButton>
+          <IconButton label="List pins on the map" tone="glass" size={44} onPress={() => { setSelectedId(null); setDraft(null); setListOpen(true); }}>
+            <icons.ListBullets size={22} weight="bold" color={colors.foreground} />
+          </IconButton>
+        </View>
+      )}
+
+      {/* choosing the spot for a pin */}
+      {placing ? (
+        <>
+          <View pointerEvents="none" style={[styles.marker, { top: markerTop }]}>
+            <View style={styles.markerDisc}>
+              <icons.Plus size={22} weight="bold" color={colors.foreground} />
+            </View>
+            <View style={styles.markerDot} />
+          </View>
+          <View style={[styles.placeBar, { bottom: clearance }]}>
+            <Text variant="subheading" accessibilityRole="header">
+              Choose the spot
+            </Text>
+            <Text variant="rowDetail" color="mutedForeground">
+              Move the map, or tap where the pin should go.
+            </Text>
+            <View style={styles.placeActions}>
+              <TextButton label="Cancel" size="md" onPress={() => setPlacing(null)} />
+              <PrimaryButton label="Place pin here" size="md" onPress={confirmPlacing} />
+            </View>
+          </View>
+        </>
+      ) : null}
 
       {/* a selected pin */}
-      <Sheet visible={!!selected && !draft} scrim={false} bottomOffset={TAB_BAR_CLEARANCE - 8} onHeight={setSheetHeight} onClose={() => setSelectedId(null)} accessibilityLabel="Pin details">
-        {selected ? <PinDetail pin={selected} onClose={() => setSelectedId(null)} onOpen={(href) => router.push(href as any)} onDelete={() => { mine.remove(selected.id); setSelectedId(null); }} onToggleShare={(v) => mine.update(selected.id, { visibility: v })} /> : null}
+      <Sheet visible={!!selected && !draft} scrim={false} bottomOffset={clearance} onHeight={setSheetHeight} onClose={() => setSelectedId(null)} accessibilityLabel="Pin details">
+        {selected ? <PinDetail pin={selected} onOpen={(href) => router.push(href as any)} onDelete={() => { mine.remove(selected.id); setSelectedId(null); }} onToggleShare={(v) => mine.update(selected.id, { visibility: v })} /> : null}
       </Sheet>
 
       {/* a new pin */}
-      <Sheet visible={!!draft} scrim bottomOffset={TAB_BAR_CLEARANCE - 8} onHeight={setSheetHeight} onClose={() => setDraft(null)} accessibilityLabel="New pin">
-        {draft ? <NewPinForm draft={draft} onKind={chooseKind} onTitle={(title) => setDraft({ ...draft, title })} onVisibility={(visibility) => setDraft({ ...draft, visibility })} onSave={saveDraft} onCancel={() => setDraft(null)} /> : null}
+      <Sheet visible={!!draft && !placing} scrim bottomOffset={clearance} onHeight={setSheetHeight} onClose={() => setDraft(null)} accessibilityLabel="New pin">
+        {draft ? <NewPinForm draft={draft} onKind={chooseKind} onTitle={(title) => setDraft({ ...draft, title })} onVisibility={(visibility) => setDraft({ ...draft, visibility })} onMove={() => setPlacing('move')} onSave={saveDraft} maxHeight={sheetMax} /> : null}
       </Sheet>
 
       {/* the list view: every visible pin as text, for people who cannot use the map */}
-      <Sheet visible={listOpen} scrim bottomOffset={TAB_BAR_CLEARANCE - 8} onHeight={setSheetHeight} onClose={() => setListOpen(false)} accessibilityLabel="Pins on the map">
+      <Sheet visible={listOpen} scrim bottomOffset={clearance} onHeight={setSheetHeight} onClose={() => setListOpen(false)} accessibilityLabel="Pins on the map">
         <View style={styles.listHead}>
           <Text variant="subheading" accessibilityRole="header">
             On the map
           </Text>
-          <IconButton label="Close list" onPress={() => setListOpen(false)}>
-            <icons.X size={22} weight="bold" color={colors.foreground} />
-          </IconButton>
         </View>
-        <ScrollView style={{ maxHeight: 320 }}>
+        <ScrollView style={{ maxHeight: Math.min(320, sheetMax) }}>
           {visiblePins.length === 0 ? (
             <Text variant="body" color="mutedForeground">
               No pins yet. Long-press the map to add one.
@@ -214,7 +278,7 @@ function visibilityNote(pin: MapPin) {
   return '';
 }
 
-function PinDetail({ pin, onClose, onOpen, onDelete, onToggleShare }: { pin: MapPin; onClose: () => void; onOpen: (href: string) => void; onDelete: () => void; onToggleShare: (v: PinVisibility) => void }) {
+function PinDetail({ pin, onOpen, onDelete, onToggleShare }: { pin: MapPin; onOpen: (href: string) => void; onDelete: () => void; onToggleShare: (v: PinVisibility) => void }) {
   const canChoose = pin.owner === 'me' && allowedVisibilities(pin.kind).length > 1;
   const note = visibilityNote(pin);
   return (
@@ -229,9 +293,6 @@ function PinDetail({ pin, onClose, onOpen, onDelete, onToggleShare }: { pin: Map
             {pinKinds[pin.kind].label}
           </Text>
         </View>
-        <IconButton label="Close" onPress={onClose}>
-          <icons.X size={22} weight="bold" color={colors.foreground} />
-        </IconButton>
       </View>
       {pin.subtitle ? <Text variant="body">{pin.subtitle}</Text> : null}
       {note ? (
@@ -253,14 +314,17 @@ function PinDetail({ pin, onClose, onOpen, onDelete, onToggleShare }: { pin: Map
   );
 }
 
-function NewPinForm({ draft, onKind, onTitle, onVisibility, onSave, onCancel }: { draft: Draft; onKind: (k: PinKind) => void; onTitle: (t: string) => void; onVisibility: (v: PinVisibility) => void; onSave: () => void; onCancel: () => void }) {
+function NewPinForm({ draft, onKind, onTitle, onVisibility, onMove, onSave, maxHeight }: { draft: Draft; onKind: (k: PinKind) => void; onTitle: (t: string) => void; onVisibility: (v: PinVisibility) => void; onMove: () => void; onSave: () => void; maxHeight: number }) {
   const choices = allowedVisibilities(draft.kind);
   const def = pinKinds[draft.kind];
   return (
-    <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: 520 }} contentContainerStyle={styles.detail}>
-      <Text variant="subheading" accessibilityRole="header">
-        New pin
-      </Text>
+    <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight }} contentContainerStyle={styles.detail}>
+      <View style={styles.formHead}>
+        <Text variant="subheading" accessibilityRole="header">
+          New pin
+        </Text>
+        <TextButton label="Change spot" size="md" onPress={onMove} />
+      </View>
       <View style={styles.kinds}>
         {userCreatableKinds.map((k) => (
           <Chip key={k.id} label={k.label} selected={draft.kind === k.id} onPress={() => onKind(k.id)} leading={<PinArt kind={k.id} size={22} />} />
@@ -284,7 +348,6 @@ function NewPinForm({ draft, onKind, onTitle, onVisibility, onSave, onCancel }: 
       )}
       <View style={styles.stack}>
         <PrimaryButton label="Save pin" size="lg" onPress={onSave} />
-        <TextButton label="Cancel" size="lg" onPress={onCancel} />
       </View>
     </ScrollView>
   );
@@ -294,7 +357,14 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.backgroundPage },
   chips: { position: 'absolute', left: 0, right: 0 },
   chipRow: { gap: 8, paddingHorizontal: 16 },
-  actions: { position: 'absolute', right: 16, gap: 10 },
+  actions: { position: 'absolute', right: 16, gap: 8 },
+  formHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  // the placement marker: a white disc ringed in ink, with a dot underneath that marks the exact spot
+  marker: { position: 'absolute', left: 0, right: 0, height: 56, alignItems: 'center' },
+  markerDisc: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.background, borderWidth: 3, borderColor: colors.inverse, alignItems: 'center', justifyContent: 'center', boxShadow: shadows.float } as any,
+  markerDot: { width: 8, height: 8, borderRadius: 4, marginTop: 4, backgroundColor: colors.inverse },
+  placeBar: { position: 'absolute', left: 12, right: 12, height: PLACE_BAR_H, padding: 16, gap: 4, borderRadius: radii.sheet, backgroundColor: colors.background, boxShadow: shadows.float } as any,
+  placeActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' },
   detail: { gap: 12 },
   detailHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   stack: { gap: 8, marginTop: 4 },
