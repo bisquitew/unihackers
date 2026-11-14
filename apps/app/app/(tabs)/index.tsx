@@ -29,6 +29,7 @@ const explore: { id: ModuleArtId; label: string; route?: string }[] = [
   { id: 'wallet', label: 'Wallet', route: '/m/wallet' },
   { id: 'feedback', label: 'Feedback', route: '/m/feedback' },
   { id: 'visitorInfo', label: 'Visitor info', route: '/m/visitor-info' },
+  { id: 'smell', label: 'Smell', route: '/m/smell' },
 ];
 
 export default function HomeScreen() {
