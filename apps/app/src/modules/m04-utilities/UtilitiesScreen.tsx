@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ListenButton } from '../m10-assistant/voice/ListenButton';
 
 interface Outage {
   id: string;
@@ -227,6 +228,7 @@ export function UtilitiesScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
                   👥 {outage.crowd_confirmations_count} cetățeni au confirmat
                 </Text>
               </View>
+              <ListenButton lang="ro" text={`${outage.title}. Zone afectate: ${outage.affected_areas.join(', ') || 'nespecificat'}.`} />
             </View>
           );
         })
