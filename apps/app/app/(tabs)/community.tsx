@@ -6,6 +6,7 @@ import { EventsScreen } from '../../src/modules/m01-events/EventsScreen';
 import { ForumScreen } from '../../src/modules/m08-forum/ForumScreen';
 import { BuddyScreen } from '../../src/modules/m07-buddy/BuddyScreen';
 import { WalletScreen } from '../../src/modules/m09-wallet/WalletScreen';
+import { WebAccessGate } from '../../src/core/WebAccessGate';
 
 type Section = 'events' | 'forum' | 'buddies' | 'wallet';
 const SECTIONS: { id: Section; label: string }[] = [
@@ -21,6 +22,14 @@ const SECTIONS: { id: Section; label: string }[] = [
  * section with ?tab= and an event with ?event=.
  */
 export default function CommunityTab() {
+  return (
+    <WebAccessGate featureName="comunitatea, forumul civic și portofelul Solana">
+      <CommunityContent />
+    </WebAccessGate>
+  );
+}
+
+function CommunityContent() {
   const params = useLocalSearchParams<{ tab?: string; event?: string; view?: string }>();
   const [section, setSection] = useState<Section>('events');
 

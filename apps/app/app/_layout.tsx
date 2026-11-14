@@ -4,6 +4,8 @@ import { StatusBar } from 'expo-status-bar';
 import { Nunito_700Bold, Nunito_800ExtraBold, useFonts as useNunito } from '@expo-google-fonts/nunito';
 import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700Bold } from '@expo-google-fonts/figtree';
 import { colors, isDark, returnTo, themeStore, useThemeVersion } from '@hub/ui';
+import { AuthProvider } from '../src/core/auth';
+import { AuthGate } from '../src/core/AuthGate';
 
 export default function RootLayout() {
   const [loaded] = useNunito({
@@ -41,18 +43,20 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      <Stack key={themeVersion} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
-        <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="alerts/index" />
-        <Stack.Screen name="alerts/[id]" />
-        {/* The four community modules are on the hop design system: they draw their own back link and title. */}
-        <Stack.Screen name="m/forum/index" />
-        <Stack.Screen name="m/events/index" />
-        <Stack.Screen name="m/buddy/index" />
-        <Stack.Screen name="m/wallet/index" />
-      </Stack>
-    </>
+    <AuthProvider>
+      <AuthGate>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <Stack key={themeVersion} screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="alerts/index" />
+          <Stack.Screen name="alerts/[id]" />
+          {/* The four community modules are on the hop design system: they draw their own back link and title. */}
+          <Stack.Screen name="m/forum/index" />
+          <Stack.Screen name="m/events/index" />
+          <Stack.Screen name="m/buddy/index" />
+          <Stack.Screen name="m/wallet/index" />
+        </Stack>
+      </AuthGate>
+    </AuthProvider>
   );
 }

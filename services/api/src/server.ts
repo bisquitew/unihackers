@@ -29,7 +29,9 @@ import {
   handleLoginLocationCheck,
   getSecurityEmails,
   trustLocation,
-  isLocationTrusted
+  isLocationTrusted,
+  DEV_USERS,
+  registerGoogleUser
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -78,8 +80,8 @@ function sendJson(res: http.ServerResponse, status: number, data: any) {
   res.end(JSON.stringify(data));
 }
 
-function serveWebAdmin(req: http.IncomingMessage, res: http.ServerResponse, pathname: string) {
-  let subPath = pathname.replace(/^\/admin\/?/, '');
+function serveWebApp(req: http.IncomingMessage, res: http.ServerResponse, pathname: string) {
+  let subPath = pathname.replace(/^(\/admin|\/web|\/app)\/?/, '');
   if (!subPath || subPath === '') subPath = 'index.html';
 
   const webRoot = path.resolve(process.cwd(), 'apps/web');
@@ -119,7 +121,7 @@ function serveWebAdmin(req: http.IncomingMessage, res: http.ServerResponse, path
     return fs.createReadStream(fallback).pipe(res);
   }
 
-  return sendJson(res, 404, { error: 'Web admin not found' });
+  return sendJson(res, 404, { error: 'Web app not found' });
 }
 
 // P4 modules run on their Hono routers here too, mounted like index.ts does (short id and full id).
@@ -210,6 +212,89 @@ const server = http.createServer(async (req, res) => {
     // 3. User & Auth0 Security (Sponsor Challenge)
     if ((pathname === '/v1/core/user/me' || pathname === '/v1/core/auth/me') && method === 'GET') {
       return sendJson(res, 200, currentUser);
+    }
+
+    if (pathname === '/v1/core/users' && method === 'GET') {
+      const authCheck = enforceSecurityPolicy(currentUser, 'users.list', {
+        requiredRoles: ['admin'],
+        ip: req.socket.remoteAddress
+      });
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status, authCheck.body);
+      }
+      if (db.isTigerConnected()) {
+        try {
+          const users = await db.query(`
+            SELECT id, auth0_id, email, name, role, neighbourhood, created_at, updated_at 
+            FROM core_users 
+            ORDER BY role, name ASC;
+          `);
+          return sendJson(res, 200, users);
+        } catch (err: any) {
+          console.warn('Error reading core_users:', err.message);
+        }
+      }
+      return sendJson(res, 200, [
+        {
+          id: '5121dd56-e1cc-42af-bd8e-5fe8c5126502',
+          email: 'resident@timisoara-hub.ro',
+          name: 'Andrei Timișan (Cetățean)',
+          role: 'resident',
+          neighbourhood: 'Cetate'
+        },
+        {
+          id: '4002bf66-c6b0-4f8c-9e5e-300018deb27e',
+          email: 'admin@timisoara-hub.ro',
+          name: 'Admin Primăria TM (Administrator)',
+          role: 'admin',
+          neighbourhood: 'Centru - Primărie'
+        }
+      ]);
+    }
+
+    if (pathname === '/v1/core/auth/login' && method === 'POST') {
+      const body = await parseBody(req);
+      const email = (body.email || '').toLowerCase().trim();
+      const role = body.role || (email.includes('admin') ? 'admin' : 'resident');
+
+      let targetUser = null;
+      let token = role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
+
+      if (db.isTigerConnected() && email) {
+        try {
+          const rows = await db.query<any>(`
+            SELECT id, auth0_id, email, name, role, neighbourhood 
+            FROM core_users 
+            WHERE LOWER(email) = $1 LIMIT 1;
+          `, [email]);
+          if (rows && rows.length > 0) {
+            targetUser = rows[0];
+            token = targetUser.role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
+          }
+        } catch (err: any) {
+          console.warn('Login db query error:', err.message);
+        }
+      }
+
+      if (!targetUser) {
+        targetUser = role === 'admin' ? DEV_USERS.dev_admin_mfa : DEV_USERS.dev_resident;
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        token,
+        user: targetUser,
+        example_header: `Authorization: Bearer ${token}`
+      });
+    }
+
+    if (pathname === '/v1/core/auth/google-login' && method === 'POST') {
+      const body = await parseBody(req);
+      const email = body.email || 'citizen.google@gmail.com';
+      const name = body.name || 'Cetățean Conectat cu Google';
+      const role = body.role || (email.endsWith('@timisoara-hub.ro') || email.toLowerCase().includes('admin') ? 'admin' : 'resident');
+      const result = registerGoogleUser({ email, name, role, picture: body.picture });
+      return sendJson(res, 200, result);
     }
 
     if (pathname === '/v1/core/auth/dev-tokens' && method === 'GET') {
@@ -800,9 +885,14 @@ const server = http.createServer(async (req, res) => {
     // and the survey ingest token check are identical on both servers.
     if (isP4Path(pathname)) return forwardToP4(req, res, url, method);
 
-    // --- [PARKIE WEB ADMIN PORTAL] ---
-    if (pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/')) {
-      return serveWebAdmin(req, res, pathname);
+    // --- [TIMIȘOARA CITY HUB WEB APP & ADMIN PORTAL] ---
+    if (
+      pathname === '/admin' || pathname === '/admin/' || pathname.startsWith('/admin/') ||
+      pathname === '/web' || pathname === '/web/' || pathname.startsWith('/web/') ||
+      pathname === '/app' || pathname === '/app/' || pathname.startsWith('/app/') ||
+      pathname.startsWith('/src/') || pathname === '/styles.css'
+    ) {
+      return serveWebApp(req, res, pathname);
     }
 
     // 404
@@ -833,7 +923,8 @@ function startServer(port: number) {
     console.log(`   Utilities: http://localhost:${port}/v1/m/utilities/outages`);
     console.log(`   Transit: http://localhost:${port}/v1/m/transit/lines`);
     console.log(`   Parkie: http://localhost:${port}/v1/m/parkie/lots`);
-    console.log(`   Parkie Web Admin: http://localhost:${port}/admin`);
+    console.log(`   Web App: http://localhost:${port}/web`);
+    console.log(`   Admin Portal: http://localhost:${port}/admin`);
     console.log(`   Tiger Status: http://localhost:${port}/v1/core/tiger/status`);
     console.log(`   Tiger Aggregates: http://localhost:${port}/v1/m/parkie/analytics/hourly`);
     console.log(`   Open Data: http://localhost:${port}/v1/core/open-data/export`);

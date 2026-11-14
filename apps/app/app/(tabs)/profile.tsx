@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePersonalPins, type MapTheme } from '@hub/map';
 import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, SecondaryButton, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, type ThemeMode } from '@hub/ui';
 import { useAuth } from '../../src/core/auth';
+import { WebAccessGate } from '../../src/core/WebAccessGate';
 import { Auth0SecurityCard } from '../../src/core/Auth0SecurityCard';
 import { initialsOf, toneFor } from '../../src/core/people';
 import { setPrefs, usePrefs } from '../../src/core/prefs';
@@ -20,6 +21,13 @@ const ABILITY_LABEL: Record<string, string> = {
   'rsvp:events': 'Join events',
   'create:events': 'Host events',
   'manage:tickets': 'Manage tickets',
+  'moderate:forum': 'Moderate the forum',
+  'resolve:reports': 'Resolve reports',
+  'publish:outages': 'Publish outage notices',
+  'manage:detours': 'Manage transit detours',
+  'manage:lots': 'Manage parking lots',
+  'view:audit-log': 'View the audit log',
+  'admin:system': 'Administer the system',
 };
 const MAP_LOOKS: { id: MapTheme; label: string }[] = [
   { id: 'auto', label: 'Auto' },
@@ -40,9 +48,17 @@ type Part = 'overview' | 'settings';
  * appearance, the map, alerts and your account. Every row goes somewhere or changes something.
  */
 export default function ProfileTab() {
+  return (
+    <WebAccessGate featureName="your profile and account settings">
+      <ProfileContent />
+    </WebAccessGate>
+  );
+}
+
+function ProfileContent() {
   const router = useRouter();
   const { height: windowHeight } = useWindowDimensions();
-  const { user, logout, simulateMfaStepUp } = useAuth();
+  const { user, isAdmin, logout, simulateMfaStepUp, loginAsAdmin, loginAsResident } = useAuth();
   const prefs = usePrefs();
   const { pins } = usePersonalPins();
   useSyncExternalStore(
@@ -132,6 +148,17 @@ export default function ProfileTab() {
             </RowGroup>
           </Section>
 
+          {isAdmin ? (
+            <Section title="City tools">
+              <RowGroup>
+                <LinkRow icon={<icons.Bell size={22} color={colors.foreground} />} title="Publish outages" detail="Water, heating and power notices" onPress={() => go('/m/utilities')} />
+                <LinkRow icon={<icons.MapPin size={22} color={colors.foreground} />} title="Transit detours" detail="Update tram and bus routes" onPress={() => go('/m/transit')} />
+                <LinkRow icon={<icons.ShieldCheck size={22} color={colors.foreground} />} title="Parking sensors" detail="Live occupancy from the city" onPress={() => go('/m/parkie')} />
+                <LinkRow icon={<icons.Sparkle size={22} color={colors.foreground} />} title="City dashboard" detail="Air, noise and parking figures" onPress={() => go('/m/dashboard')} />
+              </RowGroup>
+            </Section>
+          ) : null}
+
           <Section title="Help">
             <RowGroup>
               <LinkRow icon={<icons.PaperPlaneTilt size={22} color={colors.foreground} />} title="Send feedback" detail="Tell the team what to fix" onPress={() => go('/m/feedback')} />
@@ -172,6 +199,7 @@ export default function ProfileTab() {
           <Section title="Account">
             <RowGroup>
               <LinkRow icon={<icons.ShieldCheck size={22} color={colors.foreground} />} title="Sign-in and security" detail={user ? `Signed in with ${SIGN_IN_LABEL[user.idp] ?? user.idp}` : 'Not signed in'} onPress={() => setSecurity(true)} />
+              <LinkRow icon={<icons.Heart size={22} color={colors.foreground} />} title="Switch account" detail={isAdmin ? 'Admin now. Switch to a resident (demo)' : 'Resident now. Switch to the city admin (demo)'} onPress={() => void (isAdmin ? loginAsResident() : loginAsAdmin())} />
               <LinkRow icon={<icons.Sparkle size={22} color={colors.foreground} />} title="Developer tools" detail="Test accounts for the demo" onPress={() => setDevTools(true)} />
             </RowGroup>
             <View style={{ marginTop: 16, alignItems: 'flex-start' }}>
@@ -227,6 +255,14 @@ export default function ProfileTab() {
                   <Row.Detail>Account type</Row.Detail>
                 </Row.Body>
               </Row>
+              {user.neighbourhood ? (
+                <Row>
+                  <Row.Body>
+                    <Row.Title>{user.neighbourhood}</Row.Title>
+                    <Row.Detail>Your neighbourhood</Row.Detail>
+                  </Row.Body>
+                </Row>
+              ) : null}
             </RowGroup>
 
             <View style={{ gap: 6 }}>

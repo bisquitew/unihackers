@@ -1,254 +1,224 @@
-import { fetchLots, fetchLotById, saveLotPlots, sendDetection } from './api.js';
-import { CameraCanvas } from './components/CameraCanvas.js';
+import { initAuth, onAuthChange, switchToken, getCurrentUser, isAdmin, loginGoogleUser, logout } from './auth.js';
+import { renderNavbar } from './components/Navbar.js';
+import { renderAuthModal } from './components/AuthModal.js';
+import { renderHomeView } from './views/HomeView.js';
+import { renderMapView, initMapLogic } from './views/MapView.js';
+import { renderAlertsView, initAlertsLogic } from './views/AlertsView.js';
+import { renderCommunityView } from './views/CommunityView.js';
+import { renderParkieView } from './views/ParkieView.js';
+import { renderAssistantView, initAssistantLogic } from './views/AssistantView.js';
+import { renderAdminView, initAdminLogic } from './views/AdminView.js';
+import { fetchLots, fetchOutages, fetchEvents, fetchSmellPins, saveLotPlots, simulateLocationAnomaly } from './api.js';
 
-let lots = [];
-let currentLot = null;
-let cameraCanvas = null;
-
-// DOM Elements
-const lotListEl = document.getElementById('lotList');
-const canvasEl = document.getElementById('cameraCanvas');
-const drawModeBtn = document.getElementById('drawModeBtn');
-const selectModeBtn = document.getElementById('selectModeBtn');
-const addGridBtn = document.getElementById('addGridBtn');
-const savePlotsBtn = document.getElementById('savePlotsBtn');
-const toastEl = document.getElementById('toast');
-
-// Inspector Elements
-const inspectorTitleEl = document.getElementById('inspectorTitle');
-const plotIdInput = document.getElementById('plotIdInput');
-const plotTypeSelect = document.getElementById('plotTypeSelect');
-const plotStatusSelect = document.getElementById('plotStatusSelect');
-const plotXInput = document.getElementById('plotXInput');
-const plotYInput = document.getElementById('plotYInput');
-const plotWInput = document.getElementById('plotWInput');
-const plotHInput = document.getElementById('plotHInput');
-const deletePlotBtn = document.getElementById('deletePlotBtn');
-const toggleOccupancyBtn = document.getElementById('toggleOccupancyBtn');
-
-// Stats Elements
-const totalSpotsEl = document.getElementById('totalSpots');
-const freeSpotsEl = document.getElementById('freeSpots');
-const occSpotsEl = document.getElementById('occSpots');
-const statusBadgeEl = document.getElementById('statusBadge');
-const cameraUrlInput = document.getElementById('cameraUrlInput');
+let activeTab = 'home';
+let cachedLots = [];
 
 export async function initApp() {
-  console.log('[Parkie Web] Initializing Admin Dashboard...');
+  console.log('[Timișoara Hub Web] Initializing unified platform...');
 
-  // Initialize Canvas
-  cameraCanvas = new CameraCanvas(canvasEl, {
-    onPlotSelected: (plot) => updateInspector(plot),
-    onPlotsChanged: (plots) => updateStats(plots),
+  // 1. Initialize Auth state
+  await initAuth();
+
+  // 2. Initial Data Load
+  try {
+    cachedLots = await fetchLots();
+  } catch (e) {
+    console.warn('Could not prefetch lots:', e);
+  }
+
+  // 3. Render Navbar
+  renderHeader();
+
+  // 4. Render Active Tab
+  await switchTab(activeTab);
+
+  // 5. Setup Listeners
+  onAuthChange(() => {
+    renderHeader();
+    if (activeTab === 'admin' && !isAdmin()) {
+      switchTab('home');
+    } else {
+      switchTab(activeTab);
+    }
   });
+}
 
-  // Setup Toolbar Events
-  drawModeBtn.addEventListener('click', () => {
-    cameraCanvas.setMode('draw');
-    drawModeBtn.classList.add('btn-active');
-    selectModeBtn.classList.remove('btn-active');
-  });
+function renderHeader() {
+  const headerContainer = document.getElementById('navbarContainer');
+  if (!headerContainer) return;
 
-  selectModeBtn.addEventListener('click', () => {
-    cameraCanvas.setMode('select');
-    selectModeBtn.classList.add('btn-active');
-    drawModeBtn.classList.remove('btn-active');
-  });
+  headerContainer.innerHTML = renderNavbar(activeTab);
 
-  addGridBtn.addEventListener('click', () => {
-    cameraCanvas.addGridSlots(5);
-  });
-
-  savePlotsBtn.addEventListener('click', async () => {
-    await handleSavePlots();
-  });
-
-  // Setup Inspector Events
-  plotIdInput.addEventListener('input', (e) => {
-    cameraCanvas.updateSelectedPlot({ id: e.target.value });
-  });
-
-  plotTypeSelect.addEventListener('change', (e) => {
-    cameraCanvas.updateSelectedPlot({ type: e.target.value });
-  });
-
-  plotStatusSelect.addEventListener('change', (e) => {
-    cameraCanvas.updateSelectedPlot({ status: e.target.value });
-  });
-
-  [plotXInput, plotYInput, plotWInput, plotHInput].forEach(inp => {
-    inp.addEventListener('input', () => {
-      cameraCanvas.updateSelectedPlot({
-        x: parseFloat(plotXInput.value) || 0,
-        y: parseFloat(plotYInput.value) || 0,
-        width: parseFloat(plotWInput.value) || 10,
-        height: parseFloat(plotHInput.value) || 10,
-      });
+  // Nav link clicks
+  headerContainer.querySelectorAll('.nav-link').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.getAttribute('data-tab');
+      switchTab(tab);
     });
   });
 
-  deletePlotBtn.addEventListener('click', () => {
-    cameraCanvas.deleteSelectedPlot();
-  });
-
-  toggleOccupancyBtn.addEventListener('click', () => {
-    const plot = cameraCanvas.getSelectedPlot();
-    if (plot) {
-      const nextStatus = plot.status === 'occupied' ? 'available' : 'occupied';
-      cameraCanvas.updateSelectedPlot({ status: nextStatus });
-      plotStatusSelect.value = nextStatus;
-    }
-  });
-
-  cameraUrlInput.addEventListener('change', (e) => {
-    if (currentLot) {
-      currentLot.camera_url = e.target.value;
-    }
-  });
-
-  // Load Initial Lots
-  await loadLots();
-}
-
-async function loadLots() {
-  lots = await fetchLots();
-  renderLotList();
-
-  if (lots.length > 0) {
-    selectLot(lots[0]);
-  }
-}
-
-function renderLotList() {
-  lotListEl.innerHTML = '';
-  lots.forEach(lot => {
-    const card = document.createElement('div');
-    card.className = `lot-card ${currentLot?.id === lot.id ? 'active' : ''}`;
-    card.onclick = () => selectLot(lot);
-
-    const available = lot.available_spots;
-    const capacity = lot.capacity;
-    const statusColor = lot.status_color || 'green';
-
-    card.innerHTML = `
-      <div class="lot-card-header">
-        <div class="lot-name">${lot.name}</div>
-        <span class="status-pill status-${statusColor}">${statusColor}</span>
-      </div>
-      <div class="lot-stats">
-        <div class="stat-item">Liber: <strong>${available}/${capacity}</strong></div>
-        <div class="stat-item">Plots: <strong>${lot.slots_data?.length || 0}</strong></div>
-      </div>
-    `;
-    lotListEl.appendChild(card);
+  // User chip click -> open auth modal
+  document.getElementById('userChipBtn')?.addEventListener('click', () => {
+    openAuthModal();
   });
 }
 
-function selectLot(lot) {
-  currentLot = lot;
-  renderLotList();
-
-  cameraUrlInput.value = lot.camera_url || '';
-  cameraCanvas.setLot(lot);
-
-  // If lot has 0 plots, initialize with a standard sample grid for quick onboarding
-  if (!lot.slots_data || lot.slots_data.length === 0) {
-    cameraCanvas.addGridSlots(6);
-  }
-
-  showToast(`Parcarea "${lot.name}" a fost selectată.`);
-}
-
-function updateInspector(plot) {
-  if (!plot) {
-    inspectorTitleEl.textContent = 'Niciun Plot Selectat';
-    plotIdInput.value = '';
-    plotIdInput.disabled = true;
-    plotTypeSelect.disabled = true;
-    plotStatusSelect.disabled = true;
-    plotXInput.disabled = true;
-    plotYInput.disabled = true;
-    plotWInput.disabled = true;
-    plotHInput.disabled = true;
-    deletePlotBtn.disabled = true;
-    toggleOccupancyBtn.disabled = true;
+export async function switchTab(tabId) {
+  if (tabId === 'admin' && !isAdmin()) {
+    showToast('⚠️ Acces restricționat: Necesită autentificare cu rol de Administrator.');
+    activeTab = 'home';
+    await switchTab('home');
+    openAuthModal();
     return;
   }
 
-  inspectorTitleEl.textContent = `Editare: ${plot.id}`;
-  plotIdInput.disabled = false;
-  plotTypeSelect.disabled = false;
-  plotStatusSelect.disabled = false;
-  plotXInput.disabled = false;
-  plotYInput.disabled = false;
-  plotWInput.disabled = false;
-  plotHInput.disabled = false;
-  deletePlotBtn.disabled = false;
-  toggleOccupancyBtn.disabled = false;
+  activeTab = tabId;
+  renderHeader();
 
-  plotIdInput.value = plot.id;
-  plotTypeSelect.value = plot.type || 'standard';
-  plotStatusSelect.value = plot.status || 'available';
-  plotXInput.value = plot.x;
-  plotYInput.value = plot.y;
-  plotWInput.value = plot.width;
-  plotHInput.value = plot.height;
-}
+  const mainEl = document.getElementById('mainContent');
+  if (!mainEl) return;
 
-function updateStats(plots) {
-  const total = plots.length;
-  const occ = plots.filter(p => p.status === 'occupied').length;
-  const free = Math.max(0, total - occ);
+  mainEl.innerHTML = '<div class="view-content" style="text-align: center; padding: 48px;"><p>Se încarcă datele orașului...</p></div>';
 
-  totalSpotsEl.textContent = total;
-  freeSpotsEl.textContent = free;
-  occSpotsEl.textContent = occ;
-
-  let color = 'green';
-  if (total === 0 || free === 0) color = 'red';
-  else if (free / total <= 0.25) color = 'yellow';
-
-  statusBadgeEl.className = `status-pill status-${color}`;
-  statusBadgeEl.textContent = color.toUpperCase();
-}
-
-async function handleSavePlots() {
-  if (!currentLot) return;
-
-  savePlotsBtn.disabled = true;
-  savePlotsBtn.textContent = 'Salvare în curs...';
-
-  try {
-    const plots = cameraCanvas.getPlots();
-    const cameraUrl = cameraUrlInput.value.trim() || null;
-
-    const updated = await saveLotPlots(currentLot.id, {
-      slots_data: plots,
-      camera_url: cameraUrl,
-      capacity: Math.max(plots.length, currentLot.capacity),
+  if (tabId === 'home') {
+    mainEl.innerHTML = await renderHomeView();
+    setupHomeNavigation();
+  } else if (tabId === 'map') {
+    mainEl.innerHTML = await renderMapView();
+    const [lots, outages, events, smell] = await Promise.all([
+      fetchLots(),
+      fetchOutages(),
+      fetchEvents(),
+      fetchSmellPins(),
+    ]);
+    initMapLogic(lots, outages, events, smell.pins || []);
+  } else if (tabId === 'alerts') {
+    mainEl.innerHTML = await renderAlertsView();
+    initAlertsLogic();
+  } else if (tabId === 'community') {
+    mainEl.innerHTML = await renderCommunityView();
+  } else if (tabId === 'parkie') {
+    mainEl.innerHTML = await renderParkieView();
+    document.getElementById('openAdminCalibrationBtn')?.addEventListener('click', () => {
+      switchTab('admin');
     });
-
-    // Update in local lot store
-    Object.assign(currentLot, updated);
-    renderLotList();
-    showToast(`✅ ${plots.length} plots salvate în baza de date!`);
-  } catch (err) {
-    showToast(`❌ Eroare la salvare: ${err.message}`);
-  } finally {
-    savePlotsBtn.disabled = false;
-    savePlotsBtn.textContent = '💾 Salvează & Calibrează';
+  } else if (tabId === 'assistant') {
+    mainEl.innerHTML = renderAssistantView();
+    initAssistantLogic();
+  } else if (tabId === 'admin') {
+    mainEl.innerHTML = await renderAdminView();
+    const lots = await fetchLots();
+    initAdminLogic(lots, async (lotId, payload) => {
+      const updated = await saveLotPlots(lotId, payload);
+      showToast(`✅ Salvat în baza de date! ${payload.slots_data.length} plots configurate.`);
+      return updated;
+    });
   }
 }
 
-function showToast(message) {
-  toastEl.textContent = message;
-  toastEl.classList.add('show');
-  setTimeout(() => {
-    toastEl.classList.remove('show');
-  }, 3000);
+function setupHomeNavigation() {
+  document.querySelectorAll('[data-goto]').forEach(el => {
+    el.addEventListener('click', () => {
+      const target = el.getAttribute('data-goto');
+      if (target) switchTab(target);
+    });
+  });
 }
 
-// Auto-run on load
+function openAuthModal() {
+  const modalContainer = document.getElementById('modalContainer');
+  modalContainer.innerHTML = renderAuthModal();
+
+  // Close modal
+  document.getElementById('closeAuthModalBtn')?.addEventListener('click', () => {
+    modalContainer.innerHTML = '';
+  });
+
+  document.getElementById('authModalBackdrop')?.addEventListener('click', (e) => {
+    if (e.target.id === 'authModalBackdrop') modalContainer.innerHTML = '';
+  });
+
+  // Logout
+  document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    await logout();
+    modalContainer.innerHTML = '';
+    showToast('🚪 Deconectat cu succes. Sunteți în modul oaspete.');
+  });
+
+  // Google Citizen Login
+  document.getElementById('googleCitizenLoginBtn')?.addEventListener('click', async () => {
+    try {
+      const user = await loginGoogleUser({
+        email: 'alex.popescu@gmail.com',
+        name: 'Alex Popescu'
+      });
+      modalContainer.innerHTML = '';
+      showToast(`🔵 Conectat cu Google ca ${user.name} (${user.role})`);
+    } catch (e) {
+      showToast(`Eroare conectare: ${e.message}`);
+    }
+  });
+
+  // Google Admin Login
+  document.getElementById('googleAdminLoginBtn')?.addEventListener('click', async () => {
+    try {
+      const user = await loginGoogleUser({
+        email: 'admin.elena@timisoara-hub.ro',
+        name: 'Elena Dobre (Admin Primărie)',
+        role: 'admin'
+      });
+      modalContainer.innerHTML = '';
+      showToast(`🛡️ Conectat cu Google Workspace Primărie: ${user.name} (${user.role})`);
+    } catch (e) {
+      showToast(`Eroare conectare: ${e.message}`);
+    }
+  });
+
+  // Google Custom Email Login
+  document.getElementById('googleCustomLoginBtn')?.addEventListener('click', async () => {
+    const input = document.getElementById('googleCustomEmailInput');
+    const email = input?.value?.trim();
+    if (!email) {
+      showToast('Introduceți o adresă de email.');
+      return;
+    }
+    try {
+      const name = email.split('@')[0].replace(/[._]/g, ' ');
+      const user = await loginGoogleUser({ email, name });
+      modalContainer.innerHTML = '';
+      showToast(`🌐 Conectat cu Google ca ${user.name} (${user.role})`);
+    } catch (e) {
+      showToast(`Eroare conectare: ${e.message}`);
+    }
+  });
+
+  // Switch account
+  modalContainer.querySelectorAll('.account-card').forEach(card => {
+    card.addEventListener('click', async () => {
+      const token = card.getAttribute('data-token');
+      await switchToken(token);
+      modalContainer.innerHTML = '';
+      const user = getCurrentUser();
+      showToast(`🔑 Autentificat ca ${user?.name} (${user?.role})`);
+    });
+  });
+
+  // Anomaly alert simulation
+  document.getElementById('simulateAnomalyBtn')?.addEventListener('click', async () => {
+    const res = await simulateLocationAnomaly('București', 'România', '86.120.45.12');
+    showToast(`🚨 Alertă securitate declanșată! Email și push trimise către ${res.target_email || 'rezident'}.`);
+    modalContainer.innerHTML = '';
+  });
+}
+
+export function showToast(msg) {
+  const toastEl = document.getElementById('toast');
+  if (!toastEl) return;
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(() => toastEl.classList.remove('show'), 3500);
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   initApp();
 });

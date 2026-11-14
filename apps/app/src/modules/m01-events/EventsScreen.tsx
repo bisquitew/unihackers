@@ -1,8 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, Platform, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { mapHref } from '@hub/map';
-import { AvatarStack, Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, radii } from '@hub/ui';
+import {
+  AvatarStack,
+  Chip,
+  Field,
+  IconButton,
+  PrimaryButton,
+  Row,
+  RowGroup,
+  SecondaryButton,
+  Sheet,
+  Text,
+  TextButton,
+  colors,
+  icons,
+  radii,
+} from '@hub/ui';
 import { ModulePage } from '../../core/ModulePage';
 import { WhenBlock } from '../../core/WhenBlock';
 import { BuddyModal } from '../m07-buddy/BuddyModal';
@@ -11,6 +26,7 @@ import { chatStore } from '../m07-buddy/chatStore';
 import { ticketStore } from '../m09-wallet/ticketStore';
 import { eventsStore, type EventItem } from './eventsStore';
 import { eventCoordinate } from './mapLayer';
+import { useAuth } from '../../core/auth';
 
 interface EventsScreenProps {
   /** Inside the Community tab: render bare content. */
@@ -45,6 +61,9 @@ const NEW_CATEGORIES: { id: EventItem['category']; label: string }[] = [
 
 export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, openEventId }: EventsScreenProps) {
   const router = useRouter();
+  const { isLoggedIn, loginAsResident } = useAuth();
+  const isGuestWeb = Platform.OS === 'web' && !isLoggedIn;
+
   const { height: windowHeight } = useWindowDimensions();
   const sheetMax = Math.round(windowHeight * 0.72);
 
@@ -71,6 +90,8 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
     [events, category, area, age],
   );
 
+  const displayedEvents = isGuestWeb ? filtered.slice(0, 3) : filtered;
+
   // the open event, the ticket step, and the buddy sheet
   const [openId, setOpenId] = useState<string | null>(openEventId ?? null);
   const open = events.find((e) => e.id === openId) ?? null;
@@ -95,6 +116,18 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
     else router.push('/m/wallet' as any);
   };
   const reserve = async (event: EventItem) => {
+    if (isGuestWeb) {
+      Alert.alert(
+        'Autentificare Necesară',
+        'Pentru a rezerva un bilet pe blockchain Solana și a primi un POAP, te rugăm să te conectezi ca Cetățean.',
+        [
+          { text: 'Anulează', style: 'cancel' },
+          { text: 'Conectare Cetățean', onPress: () => loginAsResident() },
+        ],
+      );
+      return;
+    }
+
     if (minting) return;
     setMinting(true);
     setMintError(false);
@@ -116,43 +149,50 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
   };
   const showOnMap = (event: EventItem) => {
     closeEvent();
-    router.push(mapHref({ pin: `events:${event.id}` }) as any);
+    const c = eventCoordinate(event.neighbourhood);
+    router.push(mapHref(c, { pinId: `event-${event.id}`, pinTitle: event.title, pinKind: 'event' }) as any);
   };
 
-  // hosting an event
+  // host an event (local draft only; in production it posts to the events service)
   const [createOpen, setCreateOpen] = useState(false);
-  const [draft, setDraft] = useState({ title: '', when: '', venue: '', description: '', area: 'Fabric', category: 'cinema' as EventItem['category'], paid: false, price: '' });
-  const canPublish = draft.title.trim().length > 0 && draft.venue.trim().length > 0;
+  const [draft, setDraft] = useState({
+    title: '',
+    category: 'cinema' as EventItem['category'],
+    area: 'Fabric',
+    venue: '',
+    description: '',
+    when: '',
+    paid: false,
+    price: '',
+  });
+  const canPublish = draft.title.trim().length > 2 && draft.venue.trim().length > 2;
   const publish = () => {
-    if (!canPublish) return;
-    const created = eventsStore.createEvent({
-      title: draft.title,
+    eventsStore.addEvent({
+      title: draft.title.trim(),
       category: draft.category,
-      locationName: draft.venue,
       neighbourhood: draft.area,
-      dateTime: draft.when,
-      description: draft.description || 'Join us for this community gathering.',
+      locationName: draft.venue.trim(),
+      dateTime: draft.when.trim() || 'This weekend',
+      description: draft.description.trim() || 'Community event hosted in Timișoara.',
       isFree: !draft.paid,
-      priceAmount: draft.paid ? parseInt(draft.price || '15', 10) : undefined,
+      priceAmount: draft.paid ? parseInt(draft.price, 10) || 20 : undefined,
       ageGroup: 'all',
     });
     setCreateOpen(false);
-    setDraft({ title: '', when: '', venue: '', description: '', area: 'Fabric', category: 'cinema', paid: false, price: '' });
-    setOpenId(created.id);
+    setDraft({ title: '', category: 'cinema', area: 'Fabric', venue: '', description: '', when: '', paid: false, price: '' });
   };
 
   return (
-    <ModulePage title="Events" embedded={embedded}>
+    <ModulePage embedded={embedded} backTitle="Timișoara" title="Events" line="What's happening across Timișoara. RSVP to grab a ticket.">
+      {/* toolbar: heading on standalone page, category chips, and filter trigger */}
       <View style={styles.head}>
-        <Text variant="rowDetail" color="mutedForeground">
+        <Text variant="subheading" color="mutedForeground">
           {filtered.length} {filtered.length === 1 ? 'event' : 'events'}
         </Text>
         <View style={styles.headActions}>
-          <View>
-            <IconButton label={activeFilters ? `Filters, ${activeFilters} on` : 'Filters'} tone="glass" size={44} onPress={() => setFilterOpen(true)}>
-              <icons.SlidersHorizontal size={22} weight="bold" color={colors.foreground} />
-            </IconButton>
-            {activeFilters ? <View style={styles.filterDot} /> : null}
+          <View style={{ position: 'relative' }}>
+            <IconButton icon={icons.SlidersHorizontal} label="Filters" variant="secondary" size="md" onPress={() => setFilterOpen(true)} />
+            {activeFilters > 0 ? <View style={styles.filterDot} /> : null}
           </View>
           <PrimaryButton label="Host an event" size="md" onPress={() => setCreateOpen(true)} />
         </View>
@@ -164,59 +204,78 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
         ))}
       </ScrollView>
 
-      {filtered.length === 0 ? (
-        <View style={styles.empty}>
-          <Text variant="subheading" accessibilityRole="header">
-            Nothing matches yet
+      {/* Guest Web Limited Access Notification Banner */}
+      {isGuestWeb && (
+        <View style={styles.guestBanner}>
+          <Text variant="subheading" style={{ color: colors.primary, fontWeight: 'bold' }}>
+            Mod Vizitator Web (Previzualizare Limitată)
           </Text>
-          <Text variant="body" color="mutedForeground" style={{ textAlign: 'center' }}>
-            Try another type or area, or host the first one.
+          <Text variant="rowDetail" color="mutedForeground" style={{ marginTop: 2 }}>
+            Afișezi o selecție de 3 evenimente din Timișoara. Conectează-te ca Cetățean pentru lista completă și bilete Solana.
           </Text>
-          {category !== 'all' || activeFilters ? (
-            <TextButton
-              label="Clear filters"
-              size="md"
-              onPress={() => {
-                setCategory('all');
-                setArea('all');
-                setAge('all');
-              }}
-            />
-          ) : null}
+          <View style={{ marginTop: 8 }}>
+            <SecondaryButton label="Conectare ca Cetățean →" size="sm" onPress={() => loginAsResident()} />
+          </View>
         </View>
-      ) : (
-        <RowGroup>
-          {filtered.map((e) => {
-            const held = heldIds.includes(e.id);
-            return (
-              <Row key={e.id} onPress={() => setOpenId(e.id)} accessibilityLabel={`${e.title}, ${e.dateTime}, ${e.locationName}, ${e.isFree ? 'free' : `${e.priceAmount} lei`}${held ? ', you have a ticket' : ''}`}>
-                <WhenBlock dateTime={e.dateTime} />
-                <Row.Body>
-                  <Row.Title>{e.title}</Row.Title>
-                  <Row.Detail>
-                    {e.locationName}, {e.neighbourhood}
-                  </Row.Detail>
-                  <Row.Detail>{e.attendeeCount} going</Row.Detail>
-                </Row.Body>
-                <Row.Trailing>
-                  {held ? (
-                    <View style={styles.going}>
-                      <icons.CheckCircle size={18} weight="fill" color={colors.success} />
-                      <Text variant="label" color="success">
-                        Going
-                      </Text>
-                    </View>
-                  ) : (
-                    <Text variant="label" color={e.isFree ? 'success' : 'foreground'}>
-                      {e.isFree ? 'Free' : `${e.priceAmount} lei`}
-                    </Text>
-                  )}
-                </Row.Trailing>
-              </Row>
-            );
-          })}
-        </RowGroup>
       )}
+
+      {/* events list */}
+      <View style={{ marginTop: 14 }}>
+        {displayedEvents.length === 0 ? (
+          <View style={styles.empty}>
+            <Text variant="heading" accessibilityRole="header">
+              Nothing matches yet
+            </Text>
+            <Text variant="body" color="mutedForeground">
+              Try choosing another category or clearing your filters.
+            </Text>
+            {activeFilters > 0 ? (
+              <SecondaryButton
+                label="Clear filters"
+                size="md"
+                onPress={() => {
+                  setArea('all');
+                  setAge('all');
+                }}
+              />
+            ) : null}
+          </View>
+        ) : (
+          <RowGroup>
+            {displayedEvents.map((e) => {
+              const held = heldIds.includes(e.id);
+              return (
+                <Row
+                  key={e.id}
+                  onPress={() => setOpenId(e.id)}
+                  accessibilityLabel={`${e.title}, ${e.dateTime}, ${e.locationName}, ${e.isFree ? 'free' : `${e.priceAmount} lei`}${held ? ', you have a ticket' : ''}`}
+                >
+                  <WhenBlock dateTime={e.dateTime} />
+                  <Row.Body>
+                    <Row.Title>{e.title}</Row.Title>
+                    <Row.Detail>
+                      {e.locationName}, {e.neighbourhood}
+                    </Row.Detail>
+                    <Row.Detail>{e.attendeeCount} going</Row.Detail>
+                  </Row.Body>
+                  <Row.Trailing>
+                    {held ? (
+                      <View style={styles.going}>
+                        <icons.Ticket size={18} weight="fill" color={colors.foreground} />
+                        <Text variant="rowDetail">Got ticket</Text>
+                      </View>
+                    ) : (
+                      <Text variant="rowDetail" color="mutedForeground">
+                        {e.isFree ? 'Free' : `${e.priceAmount} lei`}
+                      </Text>
+                    )}
+                  </Row.Trailing>
+                </Row>
+              );
+            })}
+          </RowGroup>
+        )}
+      </View>
 
       {/* one event: details, ticket, buddy, map */}
       <Sheet modal visible={!!open} onClose={closeEvent} accessibilityLabel="Event details">
@@ -231,54 +290,72 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
                 {open.title}, {open.dateTime}. Your ticket is in the wallet, ready to scan at the door.
               </Text>
               <View style={styles.stack}>
-                <PrimaryButton label="View my ticket" size="lg" onPress={goWallet} />
+                <PrimaryButton label="View in wallet" size="lg" onPress={goWallet} />
+                <SecondaryButton label="Find a buddy to go with" size="lg" onPress={() => findBuddy(open)} />
                 <TextButton label="Done" size="lg" onPress={closeEvent} />
               </View>
             </View>
           ) : (
             <ScrollView style={{ maxHeight: sheetMax }} contentContainerStyle={styles.sheetBody} showsVerticalScrollIndicator={false}>
-              {open.imageUrl ? <Image source={{ uri: open.imageUrl }} accessibilityLabel={`Photo for ${open.title}`} style={styles.photo} /> : null}
+              {open.imageUrl ? <Image source={{ uri: open.imageUrl }} style={styles.photo} /> : null}
               <Text variant="heading" accessibilityRole="header">
                 {open.title}
               </Text>
-              <Text variant="body" color="mutedForeground">
-                {open.dateTime}, {open.locationName}, {open.neighbourhood}
+              <Text variant="rowDetail" color="mutedForeground">
+                {open.locationName}, {open.neighbourhood}
               </Text>
-              <Text variant="body">{open.description}</Text>
+              <Text variant="body" color="mutedForeground">
+                {open.description}
+              </Text>
+
               <View style={styles.goingRow}>
-                <AvatarStack label={`${open.attendeeCount} people are going`} people={[{ initials: 'MA' }, { initials: 'DR' }, { initials: 'IO' }]} />
-                <Text variant="label">{open.attendeeCount} going</Text>
-                <Text variant="label" color={open.isFree ? 'success' : 'foreground'} style={{ marginLeft: 'auto' }}>
-                  {open.isFree ? 'Free' : `${open.priceAmount} lei`}
-                </Text>
+                <AvatarStack
+                  label={`${open.attendeeCount} people going`}
+                  people={[
+                    { initials: 'MA', tone: 'apricot' },
+                    { initials: 'DR', tone: 'blue' },
+                    { initials: 'IO', tone: 'mint' },
+                  ]}
+                />
+                <Text variant="label">{open.attendeeCount} people going</Text>
               </View>
+
               {mintError ? (
-                <Text variant="rowDetail" color="danger">
-                  We could not reserve your spot. Check your connection and try again.
+                <Text variant="rowDetail" color="critical">
+                  Could not mint ticket just now. Please try again.
                 </Text>
               ) : null}
+
               <View style={styles.stack}>
                 {heldIds.includes(open.id) ? (
-                  <PrimaryButton label="View my ticket" size="lg" onPress={goWallet} />
+                  <SecondaryButton label="View your ticket in wallet" size="lg" onPress={goWallet} />
                 ) : (
-                  <PrimaryButton label="Get a ticket" size="lg" loading={minting} onPress={() => reserve(open)} />
+                  <PrimaryButton
+                    label={minting ? 'Minting your ticket...' : open.isFree ? 'RSVP for free' : `Get ticket · ${open.priceAmount} lei`}
+                    size="lg"
+                    disabled={minting}
+                    onPress={() => reserve(open)}
+                  />
                 )}
-                <SecondaryButton label="Find a buddy" size="lg" onPress={() => findBuddy(open)} />
-                {eventCoordinate(open) ? <TextButton label="Show on the map" size="lg" onPress={() => showOnMap(open)} /> : null}
+                <SecondaryButton label="Find someone to go with" size="lg" onPress={() => findBuddy(open)} />
+                <SecondaryButton label="Show on map" size="lg" onPress={() => showOnMap(open)} />
               </View>
             </ScrollView>
           )
         ) : null}
       </Sheet>
 
-      {/* filters */}
+      {/* filter sheet */}
       <Sheet modal visible={filterOpen} onClose={() => setFilterOpen(false)} accessibilityLabel="Filter events">
         <View style={styles.sheetBody}>
+          <Text variant="heading" accessibilityRole="header">
+            Filter events
+          </Text>
           <Text variant="subheading" accessibilityRole="header">
             Area
           </Text>
           <View style={styles.wrap}>
-            <Chip label="Anywhere" selected={area === 'all'} onPress={() => setArea('all')} />
+            <Chip label="All areas" selected={area === 'all'} onPress={() => setArea('all')} />
             {AREAS.map((a) => (
               <Chip key={a} label={a} selected={area === a} onPress={() => setArea(a)} />
             ))}
@@ -375,4 +452,12 @@ const styles = StyleSheet.create({
   goingRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   stack: { gap: 8, marginTop: 4 },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  guestBanner: {
+    backgroundColor: '#18181b',
+    borderRadius: radii.group,
+    padding: 14,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
 });

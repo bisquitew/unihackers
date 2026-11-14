@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Linking,
 } from 'react-native';
+import { WebAccessGate } from '../../core/WebAccessGate';
 
 interface CityOverview {
   generated_at: string;
@@ -109,7 +110,8 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <WebAccessGate requiredRole="admin" featureName="Tabloul de Bord Urban și Administrația">
+      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       {/* Hero */}
       <View style={styles.heroBox}>
         <Text style={styles.heroTitle}>Panou Oficial — Municipiul Timișoara</Text>
@@ -217,6 +219,7 @@ export function DashboardScreen({ apiBaseUrl = 'http://localhost:8000' }: { apiB
         </>
       ) : null}
     </ScrollView>
+    </WebAccessGate>
   );
 }
 

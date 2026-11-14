@@ -2,10 +2,13 @@
 
 let realZod: any = null;
 try {
-  // synchronous on purpose: a top-level `await` breaks the web server render (Metro compiles it as plain CommonJS)
+  // Synchronous safe require fallback without top-level await (fixes Expo Web / SSR bundling)
   // @ts-ignore
-  const zodModule = require('zod');
-  realZod = zodModule.z || zodModule.default || zodModule;
+  const req = typeof require === 'function' ? require : null;
+  if (req) {
+    const zodModule = req('zod');
+    realZod = zodModule.z || zodModule.default || zodModule;
+  }
 } catch {
   // Fallback to lightweight shim
 }
