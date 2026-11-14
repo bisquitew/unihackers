@@ -19,7 +19,9 @@ export function placeMatches(stored: string, query: string): boolean {
   const b = normalizePlace(query);
   if (!a || !b) return false;
   if (a.includes(b) || b.includes(a)) return true;
-  const storedWords = a.split(' ').filter((w) => !GENERIC.has(w));
+  // House numbers ("Str. Văcărescu nr. 1–40") only count when the question has numbers too.
+  const queryHasNumbers = /\d/.test(b);
+  const storedWords = a.split(' ').filter((w) => !GENERIC.has(w) && (queryHasNumbers || !/^\d+$/.test(w)));
   const queryWords = b.split(' ').filter((w) => !GENERIC.has(w));
   if (storedWords.length === 0 || queryWords.length === 0) return false;
   return storedWords.every((w) => queryWords.some((q) => sameWord(w, q)));

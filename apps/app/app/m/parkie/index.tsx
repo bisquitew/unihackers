@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { darkHeader } from '../../../src/modules/m06-smell/header';
-import { PARKIE_SEED_LOTS, type ParkingLot } from '@hub/contracts';
+import type { ParkingLot } from '@hub/contracts';
+// Straight from the seed file: the @hub/contracts entry loads zod-shim (top-level await), which breaks Expo's web build.
+import { PARKIE_SEED_LOTS } from '../../../../../packages/contracts/src/seed/parkie.seed.ts';
 
 export default function ParkieCitizenRoute() {
   const router = useRouter();

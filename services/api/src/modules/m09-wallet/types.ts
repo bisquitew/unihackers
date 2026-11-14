@@ -23,3 +23,15 @@ export interface CheckInPayload {
   ticketId: string;
   qrPayloadRaw: string;
 }
+
+/** Proof-of-attendance badge minted on Solana devnet after a check-in. */
+export interface PoapRecord {
+  poapId: string;
+  eventId: string;
+  eventTitle: string;
+  attendeeWallet: string;
+  badgeName: string;
+  txSignature: string;
+  explorerUrl: string;
+  issuedAt: string;
+}
