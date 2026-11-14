@@ -11,6 +11,9 @@ import os
 import subprocess
 import time
 
+# Windows consoles default to cp1252, which can't print the emoji below.
+sys.stdout.reconfigure(encoding="utf-8")
+
 BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
 server_proc = None
 

@@ -2,6 +2,7 @@ import type { TransitLine, DetourAlert } from '@hub/contracts';
 import { TRANSIT_LINES_SEED_DATA, TRANSIT_DETOURS_SEED_DATA } from '@hub/contracts';
 import { notify } from '../../core/notifications.ts';
 import { eventBus } from '../../core/events.ts';
+import { placeMatches } from '../../core/text.ts';
 
 let transitLines: TransitLine[] = [...TRANSIT_LINES_SEED_DATA];
 let detourAlerts: DetourAlert[] = [...TRANSIT_DETOURS_SEED_DATA];
@@ -27,11 +28,9 @@ export const transitService = {
     suspended_lines: string[];
     guidance_message: string;
   } {
-    const q = stopName.toLowerCase().trim();
-
-    // Find alerts affecting this stop
+    // Find alerts affecting this stop (diacritics, case and articles don't matter)
     const matchedAlerts = detourAlerts.filter((alert) =>
-      alert.affected_stops.some((s) => s.toLowerCase().includes(q) || q.includes(s.toLowerCase()))
+      alert.affected_stops.some((s) => placeMatches(s, stopName))
     );
 
     const suspendedLines = matchedAlerts

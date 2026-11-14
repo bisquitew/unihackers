@@ -2,6 +2,7 @@ import type { Outage, OutageCreatePayload } from '@hub/contracts';
 import { UTILITIES_SEED_DATA } from '@hub/contracts';
 import { notify } from '../../core/notifications.ts';
 import { eventBus } from '../../core/events.ts';
+import { placeMatches } from '../../core/text.ts';
 
 // In-memory outage store seeded with realistic Timișoara data
 let outages: Outage[] = [...UTILITIES_SEED_DATA];
@@ -57,14 +58,13 @@ export const utilitiesService = {
   },
 
   checkAddressImpact(addressOrArea: string): { is_affected: boolean; active_outages: Outage[]; message: string } {
-    const q = addressOrArea.toLowerCase().trim();
     const active = outages.filter((o) => o.status !== 'resolved');
 
-    const matched = active.filter((o) => {
-      const inArea = o.affected_areas.some((area) => area.toLowerCase().includes(q) || q.includes(area.toLowerCase()));
-      const inStreet = o.affected_streets.some((street) => street.toLowerCase().includes(q) || q.includes(street.toLowerCase()));
-      return inArea || inStreet;
-    });
+    // Diacritics, case and Romanian articles ("Complexul") don't matter.
+    const matched = active.filter((o) =>
+      o.affected_areas.some((area) => placeMatches(area, addressOrArea)) ||
+      o.affected_streets.some((street) => placeMatches(street, addressOrArea))
+    );
 
     if (matched.length > 0) {
       return {

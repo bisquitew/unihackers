@@ -3,6 +3,8 @@ import m01Events from './m01-events/index.ts';
 import m07Buddy from './m07-buddy/index.ts';
 import m08Forum from './m08-forum/index.ts';
 import m09Wallet from './m09-wallet/index.ts';
+import m10Assistant from './m10-assistant/index.ts';
+import m11Feedback from './m11-feedback/index.ts';
 import { utilitiesApiModule } from './m04-utilities/index.ts';
 import { transitApiModule } from './m05-transit/index.ts';
 import { parkieApiModule } from './parkie/index.ts';
@@ -29,8 +31,8 @@ export const registeredModules: ApiModule[] = [
   m07Buddy,                                    // [M07_BUDDY] - P3
   m08Forum,                                    // [M08_FORUM] - P3
   m09Wallet,                                   // [M09_WALLET] - P3
-  createStubModule('m10-assistant'),
-  createStubModule('m11-feedback'),
+  m10Assistant,                                // [M10_ASSISTANT] - P4
+  m11Feedback,                                 // [M11_FEEDBACK] - P4
   createStubModule('m12-dashboard'),
   parkieApiModule      // [PARKIE] - P2 & P1
 ];
