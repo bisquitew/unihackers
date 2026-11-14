@@ -1,57 +1,76 @@
-import http from 'http';
-import { spawn } from 'child_process';
+process.env.TEST_IN_MEMORY = '1';
+import { Readable, Writable } from 'node:stream';
+import { requestListener } from '../services/api/src/server.ts';
 
-const PORT = 8001; // Test on port 8001 to avoid clashing with any running instances
-
-console.log('🚀 Starting API server on port', PORT, 'for user & auth testing...');
-
-const serverProc = spawn('node', ['--experimental-strip-types', 'services/api/src/server.ts'], {
-  env: { ...process.env, PORT: String(PORT) },
-  stdio: ['ignore', 'pipe', 'pipe']
-});
-
-let serverOutput = '';
-serverProc.stdout.on('data', (d) => { serverOutput += d.toString(); });
-serverProc.stderr.on('data', (d) => { serverOutput += d.toString(); });
-
-function wait(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+console.log('\n======================================================');
+console.log('🧪 UNIHACK USER, ROLE TRANSPARENCY & AUTH0 TEST SUITE');
+console.log('======================================================\n');
 
 async function request(path, options = {}) {
   return new Promise((resolve, reject) => {
-    const req = http.request({
-      hostname: '127.0.0.1',
-      port: PORT,
-      path,
-      method: options.method || 'GET',
-      headers: options.headers || {}
-    }, (res) => {
-      let body = '';
-      res.on('data', (c) => { body += c; });
-      res.on('end', () => {
-        try {
-          resolve({ status: res.statusCode, body: JSON.parse(body) });
-        } catch {
-          resolve({ status: res.statusCode, body });
-        }
-      });
-    });
-    req.on('error', reject);
-    if (options.body) {
-      req.write(typeof options.body === 'string' ? options.body : JSON.stringify(options.body));
+    const req = new Readable({ read() {} });
+    req.url = path;
+    req.method = options.method || 'GET';
+    req.headers = {
+      host: 'localhost:8000',
+      'content-type': 'application/json'
+    };
+    if (options.headers) {
+      for (const [k, v] of Object.entries(options.headers)) {
+        req.headers[k.toLowerCase()] = v;
+      }
     }
-    req.end();
+    req.socket = { remoteAddress: '127.0.0.1' };
+
+    if (options.body) {
+      const data = typeof options.body === 'string' ? options.body : JSON.stringify(options.body);
+      req.push(data);
+    }
+    req.push(null);
+
+    let statusCode = 200;
+    const responseHeaders = {};
+    let responseBody = '';
+
+    const res = new Writable({
+      write(chunk, enc, cb) {
+        responseBody += chunk.toString();
+        cb();
+      }
+    });
+
+    res.writeHead = function(status, headers = {}) {
+      statusCode = status;
+      Object.assign(responseHeaders, headers);
+      return res;
+    };
+
+    res.setHeader = function(name, val) {
+      responseHeaders[name.toLowerCase()] = val;
+    };
+
+    res.getHeader = function(name) {
+      return responseHeaders[name.toLowerCase()];
+    };
+
+    res.on('finish', () => {
+      let parsed = null;
+      try {
+        parsed = JSON.parse(responseBody);
+      } catch {
+        parsed = responseBody;
+      }
+      resolve({ status: statusCode, body: parsed, headers: responseHeaders });
+    });
+
+    req.on('error', reject);
+    res.on('error', reject);
+
+    requestListener(req, res).catch(reject);
   });
 }
 
 async function runTests() {
-  await wait(2500); // Give server time to bind
-
-  console.log('\n======================================================');
-  console.log('🧪 UNIHACK USER & ACCESS CONTROL TEST SUITE');
-  console.log('======================================================\n');
-
   let passed = 0;
   let total = 0;
 
@@ -73,28 +92,60 @@ async function runTests() {
     // 2. Test Login as Standard User (Resident)
     const residentLogin = await request('/v1/core/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: { email: 'resident@timisoara-hub.ro' }
     });
-    assert('Resident login returns valid token and profile', 
+    assert('Resident login returns valid token, role_label, and resident profile', 
       residentLogin.status === 200 && 
       residentLogin.body.token === 'dev_resident' && 
-      residentLogin.body.user.role === 'resident'
+      residentLogin.body.user.role === 'resident' &&
+      residentLogin.body.role_label === 'Cetățean Rezident'
     );
 
-    // 3. Test Login as Admin
+    // 3. Test Privilege Escalation Attack: Resident sending role: 'admin'
+    const escalationAttempt = await request('/v1/core/auth/login', {
+      method: 'POST',
+      body: { email: 'resident@timisoara-hub.ro', role: 'admin' }
+    });
+    assert('Privilege escalation blocked: requesting admin role is ignored by server',
+      escalationAttempt.status === 200 &&
+      escalationAttempt.body.token === 'dev_resident' &&
+      escalationAttempt.body.user.role === 'resident'
+    );
+
+    // 4. Test Admin Login with Wrong Password -> Must be 401 Unauthorized
+    const wrongPasswordAdmin = await request('/v1/core/auth/login', {
+      method: 'POST',
+      body: { email: 'admin@timisoara-hub.ro', password: 'wrongpassword' }
+    });
+    assert('Admin login with wrong password rejected with 401 Unauthorized',
+      wrongPasswordAdmin.status === 401 &&
+      wrongPasswordAdmin.body.error === 'invalid_credentials'
+    );
+
+    // 5. Test Admin Login with Correct Staff Password -> Must succeed with 200 OK
     const adminLogin = await request('/v1/core/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: { email: 'admin@timisoara-hub.ro' }
+      body: { email: 'admin@timisoara-hub.ro', password: 'timisoara2026!admin' }
     });
-    assert('Admin login returns admin MFA token and admin profile',
+    assert('Admin login with valid password returns admin MFA token and admin profile',
       adminLogin.status === 200 &&
       adminLogin.body.token === 'dev_admin_mfa' &&
-      adminLogin.body.user.role === 'admin'
+      adminLogin.body.user.role === 'admin' &&
+      adminLogin.body.role_label === 'Administrator Municipal'
     );
 
-    // 4. Test Resident trying to access Admin Users list (/v1/core/users) -> Must be 403 Forbidden
+    // 6. Test Mobile App Isolation: Mobile client cannot log into staff account
+    const mobileStaffLogin = await request('/v1/core/auth/login', {
+      method: 'POST',
+      headers: { 'X-Hub-Client': 'app' },
+      body: { email: 'admin@timisoara-hub.ro' }
+    });
+    assert('Mobile app client blocks staff login without revealing role enumeration',
+      mobileStaffLogin.status === 403 &&
+      mobileStaffLogin.body.error === 'access_denied'
+    );
+
+    // 7. Test Resident trying to access Admin Users list (/v1/core/users) -> Must be 403 Forbidden
     const residentUsersAccess = await request('/v1/core/users', {
       headers: { 'Authorization': 'Bearer dev_resident' }
     });
@@ -103,7 +154,7 @@ async function runTests() {
       residentUsersAccess.body.error === 'insufficient_role'
     );
 
-    // 5. Test Admin accessing Admin Users list (/v1/core/users) -> Must be 200 OK
+    // 8. Test Admin accessing Admin Users list (/v1/core/users) -> Must be 200 OK
     const adminUsersAccess = await request('/v1/core/users', {
       headers: { 'Authorization': 'Bearer dev_admin_mfa' }
     });
@@ -113,13 +164,10 @@ async function runTests() {
       adminUsersAccess.body.length >= 2
     );
 
-    // 6. Test Resident attempting to publish Utility Outage -> Must be 403 Forbidden
+    // 9. Test Resident attempting to publish Utility Outage -> Must be 403 Forbidden
     const residentOutageCreate = await request('/v1/m/utilities/outages', {
       method: 'POST',
-      headers: { 
-        'Authorization': 'Bearer dev_resident',
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': 'Bearer dev_resident' },
       body: {
         title: 'Unauthorized outage test',
         neighbourhood: 'Cetate',
@@ -130,13 +178,10 @@ async function runTests() {
       residentOutageCreate.status === 403
     );
 
-    // 7. Test Admin without MFA attempting high-privilege action -> Must trigger MFA challenge
+    // 10. Test Admin without MFA attempting high-privilege action -> Must trigger MFA challenge
     const adminNoMfaOutage = await request('/v1/m/utilities/outages', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer dev_admin_no_mfa',
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': 'Bearer dev_admin_no_mfa' },
       body: {
         title: 'Test outage',
         neighbourhood: 'Cetate'
@@ -147,13 +192,10 @@ async function runTests() {
       adminNoMfaOutage.body.error === 'mfa_required'
     );
 
-    // 8. Test Admin WITH MFA publishing Utility Outage -> Must succeed (201 Created)
+    // 11. Test Admin WITH MFA publishing Utility Outage -> Must succeed (201 Created)
     const adminMfaOutage = await request('/v1/m/utilities/outages', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer dev_admin_mfa',
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': 'Bearer dev_admin_mfa' },
       body: {
         title: 'Avarie test STPT / Aquatim',
         neighbourhood: 'Cetate',
@@ -162,19 +204,38 @@ async function runTests() {
         estimated_restoration: new Date(Date.now() + 3600000).toISOString()
       }
     });
-    console.log('Test 8 response:', adminMfaOutage.status, adminMfaOutage.body);
     assert('Admin WITH MFA successfully publishes municipal utility outage (201 Created)',
       adminMfaOutage.status === 201 && (adminMfaOutage.body.id || adminMfaOutage.body.outage?.id)
+    );
+
+    // 12. Test Account Type Disclosure Endpoint (/v1/core/auth/account-type)
+    const accountTypeAdmin = await request('/v1/core/auth/account-type?email=admin@timisoara-hub.ro');
+    const accountTypeResident = await request('/v1/core/auth/account-type?email=alex.popescu@gmail.com');
+    assert('Account type disclosure endpoint correctly identifies Admin vs Resident roles',
+      accountTypeAdmin.status === 200 &&
+      accountTypeAdmin.body.account_type === 'admin' &&
+      accountTypeResident.status === 200 &&
+      accountTypeResident.body.account_type === 'resident'
+    );
+
+    // 13. Test Auth0 Tenant Configuration Endpoint (/v1/core/auth/auth0-info)
+    const auth0Info = await request('/v1/core/auth/auth0-info');
+    assert('Auth0 tenant configuration returns RS256 JWKS and verified tenant parameters',
+      auth0Info.status === 200 &&
+      auth0Info.body.auth0_domain === 'timisoara-hub.eu.auth0.com' &&
+      auth0Info.body.algorithms.includes('RS256')
     );
 
     console.log(`\n======================================================`);
     console.log(`🎉 RESULTS: ${passed}/${total} TESTS PASSED (100% Success)`);
     console.log(`======================================================\n`);
 
+    if (passed < total) process.exit(1);
+    process.exit(0);
+
   } catch (err) {
     console.error('Test execution error:', err);
-  } finally {
-    serverProc.kill();
+    process.exit(1);
   }
 }
 

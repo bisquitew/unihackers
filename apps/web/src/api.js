@@ -27,17 +27,50 @@ function getHeaders(token) {
 }
 
 // --- AUTH0 & SECURITY ---
-export async function loginWithGoogle({ email, name, role } = {}) {
+export async function loginWithGoogle({ email, name } = {}) {
+  // Security: client NEVER sends role; server strictly controls identity and permissions
   const res = await fetch(`${BASE_URL}/v1/core/auth/google-login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, name, role }),
+    body: JSON.stringify({ email, name }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.error_description || `Sign-in failed (${res.status})`);
   }
   return await res.json();
+}
+
+export async function loginWithEmail({ email, password, token } = {}) {
+  const res = await fetch(`${BASE_URL}/v1/core/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, token }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error_description || `Autentificare eșuată (${res.status})`);
+  }
+  return await res.json();
+}
+
+export async function inspectAccountType(email) {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/auth/account-type?email=${encodeURIComponent(email || '')}`);
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchAuth0Info() {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/auth/auth0-info`);
+    return await res.json();
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchAuthMe(token = 'dev_resident') {

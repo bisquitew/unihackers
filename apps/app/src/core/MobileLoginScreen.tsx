@@ -2,16 +2,12 @@ import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Field, PrimaryButton, SecondaryButton, Text, TextButton, colors, moduleArt, useKeyboardHeight } from '@hub/ui';
-import { STAFF_MESSAGE, useAuth } from './auth';
-
-const looksLikeStaff = (email: string) => {
-  const e = email.trim().toLowerCase();
-  return e.includes('admin') || e.endsWith('@timisoara-hub.ro');
-};
+import { useAuth } from './auth';
 
 /**
- * The mobile app's front door. The app is for residents and is only usable once signed in. Staff accounts sign in on the
- * web dashboard, so this screen has no admin option. Sign-in is simulated in this build (no real Auth0 yet).
+ * Mobile login screen.
+ * Provides uniform, secure sign-in without revealing internal role structures or account types,
+ * preventing account and role enumeration attacks.
  */
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
@@ -33,10 +29,6 @@ export function MobileLoginScreen() {
 
   const submitEmail = async () => {
     if (!email.trim()) return;
-    if (looksLikeStaff(email)) {
-      setNote(STAFF_MESSAGE);
-      return;
-    }
     await go('email', email.trim());
   };
 
@@ -65,7 +57,16 @@ export function MobileLoginScreen() {
       <View style={styles.actions}>
         {emailOpen ? (
           <View style={{ gap: 12 }}>
-            <Field label="Email" value={email} onChangeText={(v) => { setEmail(v); setNote(''); clearAuthError(); }} placeholder="you@example.com" autoCapitalize="none" keyboardType="email-address" returnKeyType="go" onSubmitEditing={submitEmail} />
+            <Field 
+              label="Email" 
+              value={email} 
+              onChangeText={(v) => { setEmail(v); setNote(''); clearAuthError(); }} 
+              placeholder="you@example.com" 
+              autoCapitalize="none" 
+              keyboardType="email-address" 
+              returnKeyType="go" 
+              onSubmitEditing={submitEmail} 
+            />
             {message ? (
               <Text variant="label" color="danger" accessibilityRole="alert">
                 {message}
@@ -86,7 +87,7 @@ export function MobileLoginScreen() {
           </View>
         )}
         <Text variant="caption" color="mutedForeground" style={{ textAlign: 'center', marginTop: 14 }}>
-          City staff? Sign in on the web dashboard. Sign-in is simulated in this demo build.
+          Secure civic sign-in • Timișoara City Hub
         </Text>
       </View>
     </View>

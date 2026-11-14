@@ -28,20 +28,18 @@ interface AuthContextType {
   isResident: boolean;
   login: (tokenOrRole?: string) => Promise<void>;
   loginAsResident: () => Promise<void>;
-  /** Signs in through the API (the demo sign-in). Resolves with an error message when it is refused. */
+  /** Signs in through the API. Resolves with an error message when refused. */
   signIn: (method: 'google' | 'email', email?: string) => Promise<{ ok: boolean; error?: string }>;
-  loginAsAdmin: () => Promise<void>;
-  simulateMfaStepUp: (factor?: string) => Promise<boolean>;
   logout: () => void;
   isLoading: boolean;
-  /** Set when a sign-in is refused, e.g. a staff account in the app. Cleared by the next attempt or `clearAuthError`. */
+  /** Set when a sign-in is refused. Cleared by the next attempt or `clearAuthError`. */
   authError: string | null;
   clearAuthError: () => void;
 }
 
-/** Staff (admin, moderator) sign in only on the web dashboard; the app is for residents. The API enforces the same rule. */
+/** Staff sign in only on the web dashboard; the mobile app is strictly for residents. */
 export const STAFF_ROLES = ['admin', 'moderator'];
-export const STAFF_MESSAGE = 'City staff accounts sign in on the web dashboard, not in the app.';
+export const STAFF_MESSAGE = 'Autentificarea nu este permisă pentru acest cont în aplicația mobilă.';
 
 const STORAGE_KEY = '@hub_auth_token';
 
@@ -60,46 +58,10 @@ export const USER_RESIDENT: AuthUser = {
   security_tier: 'tier_1_standard'
 };
 
-export const USER_ADMIN: AuthUser = {
-  id: '4002bf66-c6b0-4f8c-9e5e-300018deb27e',
-  sub: 'auth0|dev-admin-01',
-  email: 'admin@timisoara-hub.ro',
-  name: 'Admin Primăria TM',
-  role: 'admin',
-  neighbourhood: 'Centru - Primărie',
-  permissions: [
-    'read:city-alerts',
-    'read:parking',
-    'read:transit',
-    'create:reports',
-    'rsvp:events',
-    'create:events',
-    'moderate:forum',
-    'publish:outages',
-    'manage:detours',
-    'manage:lots',
-    'view:audit-log',
-    'admin:system'
-  ],
-  mfa_enabled: true,
-  mfa_verified: true,
-  amr: ['pwd', 'mfa', 'webauthn'],
-  idp: 'auth0',
-  security_tier: 'tier_2_mfa_verified'
-};
-
 export const TOKEN_PROFILES: Record<string, { user: AuthUser; token: string }> = {
   dev_resident: {
     user: USER_RESIDENT,
     token: 'dev_resident'
-  },
-  dev_admin_mfa: {
-    user: USER_ADMIN,
-    token: 'dev_admin_mfa'
-  },
-  dev_admin: {
-    user: USER_ADMIN,
-    token: 'dev_admin_mfa'
   },
   dev_organizer: {
     user: {
@@ -117,23 +79,6 @@ export const TOKEN_PROFILES: Record<string, { user: AuthUser; token: string }> =
       security_tier: 'tier_1_standard'
     },
     token: 'dev_organizer'
-  },
-  dev_moderator_mfa: {
-    user: {
-      id: 'usr-mod-01',
-      sub: 'auth0|dev-mod-01',
-      email: 'moderator@timisoara-hub.ro',
-      name: 'Mihai Moderator [MFA Active]',
-      role: 'moderator',
-      neighbourhood: 'Circumvalațiunii',
-      permissions: ['read:city-alerts', 'moderate:forum', 'resolve:reports', 'view:audit-log'],
-      mfa_enabled: true,
-      mfa_verified: true,
-      amr: ['pwd', 'mfa', 'totp'],
-      idp: 'auth0',
-      security_tier: 'tier_2_mfa_verified'
-    },
-    token: 'dev_moderator_mfa'
   }
 };
 
@@ -146,8 +91,6 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   loginAsResident: async () => {},
   signIn: async () => ({ ok: false }),
-  loginAsAdmin: async () => {},
-  simulateMfaStepUp: async () => false,
   logout: () => {},
   isLoading: true,
   authError: null,
@@ -259,17 +202,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await login('dev_resident');
   };
 
-  const loginAsAdmin = async () => {
-    await login('dev_admin_mfa');
-  };
-
-  const simulateMfaStepUp = async (factor = 'totp_authenticator'): Promise<boolean> => {
-    if (!user) return false;
-    const upgradedToken = user.role === 'moderator' ? 'dev_moderator_mfa' : 'dev_admin_mfa';
-    await login(upgradedToken);
-    return true;
-  };
-
   const logout = () => {
     setSessionToken(null);
     setUser(null);
@@ -292,8 +224,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         loginAsResident,
         signIn,
-        loginAsAdmin,
-        simulateMfaStepUp,
         logout,
         isLoading,
         authError,

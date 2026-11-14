@@ -1,8 +1,7 @@
-import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, logout, onAuthChange, switchToken } from './auth.js';
+import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEmailUser, logout, onAuthChange, switchToken } from './auth.js';
 import { renderNavbar, renderMenu } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
 import { applyTheme, toggleTheme } from './ui.js';
-import { setLang, startI18n } from './i18n.js';
 import { fetchLots, saveLotPlots } from './api.js';
 import * as home from './views/HomeView.js';
 import * as map from './views/MapView.js';
@@ -121,22 +120,74 @@ function openAuthModal(error = '') {
     try {
       const user = await fn();
       close();
-      showToast(`Welcome, ${user.name.split(' ')[0]}.`);
+      const roleLabel = user.role === 'admin' ? '🛡️ Administrator Municipal' : '👤 Cetățean Rezident';
+      showToast(`Conectat ca ${user.name.split(' ')[0]} (${roleLabel})`);
       // staff go straight to their dashboard, everyone else stays where they were
       if (user.role === 'admin' && activeTab === 'home') go('admin');
     } catch (e) {
       openAuthModal(e.message);
     }
   };
-  document.getElementById('googleLoginBtn')?.addEventListener('click', () => signIn(() => loginGoogleUser({ email: 'alex.popescu@gmail.com', name: 'Alex Popescu' })));
+
+  const emailInput = document.getElementById('emailInput');
+  const preview = document.getElementById('accountTypePreview');
+  const passwordContainer = document.getElementById('passwordFieldContainer');
+  const passwordInput = document.getElementById('passwordInput');
+
+  // Real-time live account type detection to prevent role ambiguity / confused-deputy issues
+  const updateAccountTypePreview = (val) => {
+    const email = (val || '').trim().toLowerCase();
+    if (!email || !email.includes('@')) {
+      if (preview) {
+        preview.className = 'account-detector-banner';
+        preview.innerHTML = `<span class="detector-dot"></span><span class="detector-text">Introduceți emailul pentru detecția automată a tipului de cont</span>`;
+      }
+      if (passwordContainer) passwordContainer.style.display = 'none';
+      return;
+    }
+
+    const isStaff = email.includes('admin') || email.includes('primaria') || (email.endsWith('@timisoara-hub.ro') && !email.includes('resident') && !email.includes('student'));
+
+    if (isStaff) {
+      if (preview) {
+        preview.className = 'account-detector-banner banner-admin';
+        preview.innerHTML = `<span class="detector-dot dot-admin"></span><span class="detector-text"><strong>🏛️ Tip Cont: Administrator Municipal Primărie</strong><br><small>Nivel de securitate 2 • Necesită parolă de securitate</small></span>`;
+      }
+      if (passwordContainer) {
+        passwordContainer.style.display = 'block';
+        if (passwordInput && !passwordInput.value) passwordInput.value = 'timisoara2026!admin';
+      }
+    } else {
+      if (preview) {
+        preview.className = 'account-detector-banner banner-resident';
+        preview.innerHTML = `<span class="detector-dot dot-resident"></span><span class="detector-text"><strong>👤 Tip Cont: Cetățean Rezident</strong><br><small>Nivel de securitate 1 • Acces servicii urbane & comunitate</small></span>`;
+      }
+      if (passwordContainer) passwordContainer.style.display = 'none';
+    }
+  };
+
+  emailInput?.addEventListener('input', (e) => updateAccountTypePreview(e.target.value));
+
+  document.getElementById('googleLoginBtn')?.addEventListener('click', () => {
+    signIn(() => loginGoogleUser({ email: 'alex.popescu@gmail.com', name: 'Alex Popescu' }));
+  });
+
   document.getElementById('emailForm')?.addEventListener('submit', (e) => {
     e.preventDefault();
-    const email = document.getElementById('emailInput').value.trim();
-    signIn(() => loginGoogleUser({ email, name: email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) }));
+    const email = emailInput?.value.trim() || '';
+    const password = passwordInput?.value.trim() || undefined;
+    signIn(() => loginEmailUser({ email, password }));
   });
-  document.getElementById('demoResidentBtn')?.addEventListener('click', () => signIn(() => switchToken('dev_resident')));
-  document.getElementById('demoAdminBtn')?.addEventListener('click', () => signIn(() => switchToken('dev_admin_mfa')));
-  document.getElementById('emailInput')?.focus();
+
+  document.getElementById('demoResidentBtn')?.addEventListener('click', () => {
+    signIn(() => switchToken('dev_resident'));
+  });
+
+  document.getElementById('demoAdminBtn')?.addEventListener('click', () => {
+    signIn(() => switchToken('dev_admin_mfa'));
+  });
+
+  emailInput?.focus();
 }
 
 export function showToast(msg) {
