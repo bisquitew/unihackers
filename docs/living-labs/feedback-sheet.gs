@@ -42,6 +42,7 @@ const MODULES = [
 // Lowercase start of each question title (English part).
 const Q = {
   role: 'who are you',
+  city: 'which city',
   age: 'age',
   problems: 'how much does each problem',
   wanted: 'which features would you use',
@@ -56,7 +57,7 @@ const Q = {
 };
 
 const CLEAN_HEADERS = [
-  'response_id', 'submitted_at', 'app_version', 'source', 'role', 'role_other', 'age',
+  'response_id', 'submitted_at', 'app_version', 'source', 'role', 'role_other', 'city', 'age',
   'install_likelihood', 'top_feature', 'wanted_features', 'tried_app', 'tried_parts',
   'app_rating', 'confusing', 'missing', 'has_email',
 ]
@@ -160,6 +161,7 @@ function toRecord_(headers, values, id) {
     source: 'survey',
     role: mapRole_(roleRaw),
     role_other: '',
+    city: mapCity_(text(Q.city)),
     age: text(Q.age).split('/')[0].trim(),
     install_likelihood: scale_(get(Q.install)),
     top_feature: matchModules_(text(Q.top))[0] || '',
@@ -190,6 +192,15 @@ function mapRole_(s) {
   if (t.includes('resident')) return 'resident';
   if (t.includes('new to the city')) return 'newcomer';
   if (t.includes('visitor')) return 'visitor';
+  return 'other';
+}
+
+function mapCity_(s) {
+  const t = s.toLowerCase();
+  if (!t) return '';
+  if (t.includes('timi')) return 'timisoara';
+  if (t.includes('romania')) return 'other_romania';
+  if (t.includes('another country')) return 'abroad';
   return 'other';
 }
 
@@ -284,6 +295,16 @@ function buildSummary() {
     const vr = rows.filter((r) => String(r.app_version) === v);
     const vt = vr.filter((r) => isTrue(r.tried_app));
     out.push([v, vr.length, avg(vr.map((r) => r.install_likelihood)), avg(vt.map((r) => r.app_rating))]);
+  });
+  out.push(['', '', '', '']);
+
+  out.push(['BY CITY', 'responses', 'avg install', 'avg app rating']);
+  const cities = [];
+  rows.forEach((r) => { const c = String(r.city || '(not asked)'); if (cities.indexOf(c) < 0) cities.push(c); });
+  cities.forEach((c) => {
+    const cr = rows.filter((r) => String(r.city || '(not asked)') === c);
+    const ct = cr.filter((r) => isTrue(r.tried_app));
+    out.push([c, cr.length, avg(cr.map((r) => r.install_likelihood)), avg(ct.map((r) => r.app_rating))]);
   });
   out.push(['', '', '', '']);
 
