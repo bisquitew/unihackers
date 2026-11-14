@@ -25,8 +25,9 @@ const explore: { id: ModuleArtId; label: string; route?: string }[] = [
   { id: 'events', label: 'Events', route: '/m/events' },
   { id: 'buddy', label: 'Buddy', route: '/m/buddy' },
   { id: 'forum', label: 'Forum', route: '/m/forum' },
-  { id: 'assistant', label: 'Assistant' },
+  { id: 'assistant', label: 'Assistant', route: '/m/assistant' },
   { id: 'wallet', label: 'Wallet', route: '/m/wallet' },
+  { id: 'feedback', label: 'Feedback', route: '/m/feedback' },
 ];
 
 export default function HomeScreen() {
@@ -63,7 +64,7 @@ export default function HomeScreen() {
         </Pressable>
       </View>
 
-      <AskBar label="Ask hop about Timișoara" />
+      <AskBar label="Ask hop about Timișoara" onPress={() => go('/m/assistant')} />
 
       <Section title="Tonight">
         <View style={styles.featureHead}>
