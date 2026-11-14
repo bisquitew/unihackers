@@ -187,18 +187,11 @@ export const db = {
 
     try {
       // 1. Version
-      const vRes = await pool.query<{ extversion: string }>('SELECT extversion FROM pg_extension WHERE extname = $1;', ['timescaledb']);
+      const vRes: any = await pool.query('SELECT extversion FROM pg_extension WHERE extname = $1;', ['timescaledb']);
       const version = vRes.rows[0]?.extversion || '2.32.0';
 
       // 2. Hypertables
-      const hRes = await pool.query<{
-        hypertable_schema: string;
-        hypertable_name: string;
-        num_chunks: string;
-        compression_enabled: boolean;
-        num_dimensions: number;
-        primary_dimension: string;
-      }>(`
+      const hRes: any = await pool.query(`
         SELECT 
           hypertable_schema, 
           hypertable_name, 
@@ -210,7 +203,7 @@ export const db = {
         ORDER BY hypertable_name;
       `);
 
-      const hypertables: TigerHypertableInfo[] = hRes.rows.map(r => ({
+      const hypertables: TigerHypertableInfo[] = hRes.rows.map((r: any) => ({
         schema: r.hypertable_schema,
         table_name: r.hypertable_name,
         num_chunks: parseInt(r.num_chunks || '0', 10),
@@ -220,16 +213,13 @@ export const db = {
       }));
 
       // 3. Continuous aggregates
-      const cRes = await pool.query<{
-        view_name: string;
-        materialization_hypertable_name: string;
-      }>(`
+      const cRes: any = await pool.query(`
         SELECT view_name, materialization_hypertable_name 
         FROM timescaledb_information.continuous_aggregates
         ORDER BY view_name;
       `);
 
-      const continuous_aggregates: TigerContinuousAggregateInfo[] = cRes.rows.map(r => ({
+      const continuous_aggregates: TigerContinuousAggregateInfo[] = cRes.rows.map((r: any) => ({
         view_name: r.view_name,
         materialization_hypertable: r.materialization_hypertable_name,
         schedule_interval: '15 minutes',
@@ -240,16 +230,7 @@ export const db = {
       const compression: TigerCompressionStats[] = [];
       for (const h of ['parking_detection_events', 'city_metric_events']) {
         try {
-          const sRes = await pool.query<{
-            total_chunks: string;
-            number_compressed_chunks: string;
-            before_compression_total_bytes: string;
-            after_compression_total_bytes: string;
-            before_compression_table_bytes: string;
-            after_compression_table_bytes: string;
-            before_compression_index_bytes: string;
-            after_compression_index_bytes: string;
-          }>(`SELECT * FROM hypertable_compression_stats($1);`, [h]);
+          const sRes: any = await pool.query(`SELECT * FROM hypertable_compression_stats($1);`, [h]);
 
           if (sRes.rows.length > 0) {
             const row = sRes.rows[0];

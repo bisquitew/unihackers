@@ -72,6 +72,7 @@ def main():
 
     migrations = [
         "db/core/migrations/001_core_schema.sql",
+        "db/core/migrations/002_auth_security_audit.sql",
         "db/modules/m04-utilities/migrations/001_utilities_schema.sql",
         "db/modules/m05-transit/migrations/001_transit_schema.sql",
         "db/modules/parkie/migrations/001_parkie_schema.sql",

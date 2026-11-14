@@ -8,7 +8,7 @@ export interface NotifyParams {
   moduleId: string;
   title: string;
   body: string;
-  category: 'outage' | 'transit_detour' | 'smell_alert' | 'safety' | 'system';
+  category: 'outage' | 'transit_detour' | 'smell_alert' | 'safety' | 'system' | 'security';
   data?: Record<string, any>;
 }
 

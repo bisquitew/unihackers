@@ -122,9 +122,95 @@ def main():
         status, areas = get("/v1/core/areas")
         print(f"✅ /v1/core/areas -> {len(areas)} Timișoara neighbourhoods loaded")
 
-        # 3. User & Auth
+        # 3. User & Auth0 Security
         status, user = get("/v1/core/user/me", token="dev_resident")
         print(f"✅ Auth: dev_resident -> {user.get('name')} (Role: {user.get('role')})")
+
+        print("\n" + "=" * 60)
+        print("🔐 TESTING AUTH0 SECURITY, RBAC & MFA ENFORCEMENT")
+        print("=" * 60)
+        status, profile = get("/v1/core/auth/me", token="dev_resident")
+        print(f"✅ Auth0 Profile: {profile.get('name')} | Role: {profile.get('role')} | Tier: {profile.get('security_tier')}")
+
+        status, tokens_catalog = get("/v1/core/auth/dev-tokens")
+        print(f"✅ Auth0 Dev Tokens Catalog: {len(tokens_catalog)} test profiles available for judges")
+
+        # Test A: Resident attempts administrative action -> HTTP 403 insufficient_role
+        test_outage = {
+            "title": "Avarie Colterm Calea Șagului",
+            "provider": "colterm",
+            "type": "heating",
+            "status": "unplanned_breakdown",
+            "affected_areas": ["area-girocului"],
+            "affected_streets": ["Calea Șagului"],
+            "start_time": "2026-11-14T10:00:00Z"
+        }
+        status, denied_role = post("/v1/m/utilities/outages", test_outage, token="dev_resident")
+        assert status == 403, f"Expected 403 for resident outage publishing, got {status}"
+        print(f"✅ RBAC Guard: Resident publishing blocked -> HTTP {status}: {denied_role.get('error')}")
+
+        # Test B: Admin WITHOUT MFA attempts administrative action -> HTTP 403 mfa_required
+        status, mfa_challenge = post("/v1/m/utilities/outages", test_outage, token="dev_admin_no_mfa")
+        assert status == 403, f"Expected 403 MFA challenge, got {status}"
+        assert mfa_challenge.get('error') == 'mfa_required', f"Expected mfa_required error"
+        print(f"✅ Step-Up MFA Challenge: Admin without MFA blocked -> HTTP {status}: {mfa_challenge.get('error_description')}")
+        print(f"   🛡️ Supported Factors: {mfa_challenge.get('supported_mfa_factors')}")
+
+        # Test C: Admin WITH MFA attempts administrative action -> HTTP 201 Created!
+        status, created_outage = post("/v1/m/utilities/outages", test_outage, token="dev_admin_mfa")
+        assert status == 201, f"Expected 201 for admin with MFA, got {status}"
+        print(f"✅ MFA Step-Up Passed: Admin with FIDO2/WebAuthn created outage -> HTTP {status}: {created_outage.get('title')}")
+
+        # Test D: Auth0 for AI Agents (M2M Service Principal) -> HTTP 201 Created!
+        test_detour = {
+            "line_number": "E2",
+            "title": "Deviere temporară E2 - Lucrări Bulevardul Take Ionescu",
+            "reason": "Lucrări carosabil municipal",
+            "affected_stops": ["Take Ionescu", "Punctele Cardinale"],
+            "alternative_instructions": "Traseu deviat pe Splaiul Nistrului"
+        }
+        status, created_detour = post("/v1/m/transit/detours", test_detour, token="dev_ai_agent")
+        assert status == 201, f"Expected 201 for AI Agent M2M, got {status}"
+        print(f"✅ Auth0 for AI Agents: Autonomous Netrom Gemini Worker authorized (M2M) -> HTTP {status}: {created_detour.get('title')}")
+
+        # Test E: Security Audit Log retrieval
+        status, audit_logs = get("/v1/core/auth/audit-log", token="dev_admin_mfa")
+        print(f"✅ Auth0 Security Audit Trail: {len(audit_logs)} real-time security decisions logged")
+        if audit_logs:
+            sample_audit = audit_logs[0]
+            print(f"   📝 Latest Audit Event: [{sample_audit.get('outcome')}] Action: {sample_audit.get('action')} by {sample_audit.get('email')} (MFA: {sample_audit.get('mfa_verified')})")
+
+        # Test F: Auth0 MFA Step-Up Simulation
+        status, step_up = post("/v1/core/auth/simulate-mfa", {"role": "admin", "factor": "fido2_webauthn_passkey"}, token="dev_admin_no_mfa")
+        assert status == 200 and step_up.get('ok'), "MFA simulation failed"
+        print(f"✅ Auth0 MFA Step-Up Simulation: Upgraded session token -> {step_up.get('upgraded_token')} [Tier: {step_up.get('security_tier')}]")
+
+        # Test G: Auth0 Actions Webhook Handler
+        webhook_payload = {
+            "event_type": "post_login_mfa_success",
+            "user_id": "auth0|resident-99",
+            "email": "test-resident@timisoara-hub.ro",
+            "ip": "10.109.24.1"
+        }
+        status, wh_res = post("/v1/core/auth/webhook", webhook_payload)
+        assert status == 200 and wh_res.get('received'), "Webhook processing failed"
+        print(f"✅ Auth0 Actions Webhook: Event '{wh_res.get('event_type')}' received and logged")
+
+        # Test H: Adaptive Geolocation Anomaly (Push Notification & Security Warning Email)
+        anomaly_payload = {
+            "token": "dev_resident",
+            "city": "București",
+            "country": "România",
+            "ip": "86.120.45.12",
+            "device": "Mobile Safari / iPhone 15 Pro"
+        }
+        status, anomaly_res = post("/v1/core/auth/simulate-login", anomaly_payload)
+        assert status == 200 and anomaly_res.get('is_new_location'), "Anomaly detection failed to recognize new location"
+        assert anomaly_res.get('push_notification_sent'), "Push notification not dispatched on new location"
+        assert anomaly_res.get('email_alert_sent'), "Security warning email not dispatched on new location"
+        print(f"✅ Auth0 Location Anomaly Alert: New login from {anomaly_res.get('location_evaluated', {}).get('city')} triggered dual alert")
+        print(f"   🔔 Push Dispatched: \"{anomaly_res.get('push_notification', {}).get('title')}\"")
+        print(f"   📧 Security Email: \"{anomaly_res.get('security_email', {}).get('subject')}\" to {anomaly_res.get('security_email', {}).get('to_email')}")
 
         # 4. [M04_UTILITIES] Outages
         status, outages = get("/v1/m/utilities/outages")

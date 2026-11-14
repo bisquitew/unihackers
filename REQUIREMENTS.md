@@ -146,6 +146,10 @@ All inter-service and frontend-backend interactions are strictly typed via `@hub
 | `GET` | `/v1/core/areas` | 13 pre-configured Timișoara neighbourhoods with GPS centers | Public |
 | `GET` | `/v1/core/flags` | All module feature flags | Public |
 | `GET` | `/v1/core/user/me` | Current resident / admin authenticated context | Bearer Token |
+| `GET` | `/v1/core/auth/me` | Detailed Auth0 security profile (roles, permissions, MFA status, AMR) | Bearer Token |
+| `GET` | `/v1/core/auth/dev-tokens` | Catalog of 7 judge test tokens (resident, organizer, staff MFA, AI agent M2M) | Public |
+| `GET` | `/v1/core/auth/audit-log` | Real-time access control & step-up MFA challenge audit trail | Moderator / Admin |
+| `POST` | `/v1/core/auth/simulate-mfa` | Simulates completing TOTP or FIDO2 WebAuthn step-up challenge | Bearer Token |
 | `GET` | `/v1/core/user/places` | List saved resident places | Bearer Token |
 | `POST` | `/v1/core/user/places` | Save new address (home, work, dorm) | Bearer Token |
 | `POST` | `/v1/core/upload/signed-url` | Generate presigned S3 PUT URL for photo uploads | Bearer Token |
@@ -225,6 +229,19 @@ All inter-service and frontend-backend interactions are strictly typed via `@hub
 | `POST` | `/v1/m/wallet/check-in` | Event entrance QR scan verification & POAP badge issuance | Staff / Admin |
 | `GET` | `/v1/m/wallet/user/:wallet` | Retrieve all tickets and POAP attendance badges for a wallet | Public |
 
+### [AUTH0 SECURITY & MFA] Endpoints (Sponsor Challenge)
+| Method | Path | Description | Access |
+| :--- | :--- | :--- | :--- |
+| `GET` | `/v1/core/auth/me` | Retrieve active bearer profile, AMR methods, and security tier | Bearer Token |
+| `GET` | `/v1/core/auth/dev-tokens` | Catalog of 7 judge personas (Resident, Organizer, Mod, Admin, AI Agent) | Public |
+| `GET` | `/v1/core/auth/audit-log` | Tamper-evident security audit trail queryable in real-time | Moderator / Admin |
+| `POST` | `/v1/core/auth/simulate-mfa` | Simulates completing an RFC 9470 FIDO2/Passkey step-up challenge | Bearer Token |
+| `POST` | `/v1/core/auth/simulate-login` | Evaluates login location anomaly, triggers real-time push and email alerts | Public / Bearer |
+| `GET` | `/v1/core/auth/security-emails` | Outbox of generated transactional security warning emails | Public / Bearer |
+| `POST` | `/v1/core/auth/trust-location` | Adds confirmed location to user's trusted locations list | Public / Bearer |
+| `POST` | `/v1/core/auth/block-session` | Emergency blocks suspicious session and enforces step-up MFA | Public / Bearer |
+| `POST` | `/v1/core/auth/webhook` | Receives Auth0 Post-Login Action events and attack anomaly alerts | Public / Secret |
+
 ### [TIGER DATA / TIMESCALEDB] Endpoints (Sponsor Challenge)
 | Method | Path | Description | Access |
 | :--- | :--- | :--- | :--- |
@@ -293,6 +310,9 @@ All verification tools are included in `scripts/`:
 ```bash
 # Fast Local Verification (Auto-starts API, tests all 7 endpoints, exits 0)
 npm test
+
+# Auth0 Interactive Security & Step-Up MFA Judge Demonstration
+npm run demo:auth0
 
 # Real Solana Devnet Verification (Live slot, blockhash, organizer balance, and broadcast ticket/POAP transactions)
 npm run test:solana

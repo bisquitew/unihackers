@@ -97,7 +97,7 @@ export const NotificationSchema = z.object({
   module_id: z.string(),
   title: z.string(),
   body: z.string(),
-  category: z.enum(['outage', 'transit_detour', 'smell_alert', 'safety', 'system'] as const),
+  category: z.enum(['outage', 'transit_detour', 'smell_alert', 'safety', 'system', 'security'] as const),
   data: z.record(z.any()).optional(),
   read: z.boolean().default(false),
   created_at: z.string().datetime()
@@ -108,7 +108,7 @@ export interface Notification {
   module_id: string;
   title: string;
   body: string;
-  category: 'outage' | 'transit_detour' | 'smell_alert' | 'safety' | 'system';
+  category: 'outage' | 'transit_detour' | 'smell_alert' | 'safety' | 'system' | 'security';
   data?: Record<string, any>;
   read: boolean;
   created_at: string;

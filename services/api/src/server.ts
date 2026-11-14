@@ -3,11 +3,22 @@ import http from 'node:http';
 import { TIMISOARA_AREAS } from './core/areas.ts';
 import { userService } from './core/users.ts';
 import { getAllFlags } from './core/flags.ts';
+import { eventBus } from './core/events.ts';
 import { utilitiesService } from './modules/m04-utilities/service.ts';
 import { transitService } from './modules/m05-transit/service.ts';
 import { parkieService } from './modules/parkie/service.ts';
 import { storageService } from './core/storage.ts';
 import { db } from './core/db.ts';
+import { 
+  resolveAuthUser, 
+  enforceSecurityPolicy, 
+  getDevTokensCatalog, 
+  getAuditLogs,
+  handleLoginLocationCheck,
+  getSecurityEmails,
+  trustLocation,
+  isLocationTrusted
+} from './core/auth.ts';
 import {
   getLiveDevnetStatus,
   broadcastRealTicket,
@@ -69,16 +80,9 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Auth Context check
+  // Auth Context resolution (supports dev tokens, Auth0 RS256 JWTs, and M2M AI agents)
   const authHeader = req.headers.authorization || '';
-  const token = authHeader.replace(/^Bearer\s+/, '').trim();
-  const isDevAdmin = token === 'dev_admin';
-  const currentUser = {
-    sub: isDevAdmin ? 'auth0|dev-admin-01' : 'auth0|dev-resident-01',
-    email: isDevAdmin ? 'admin@timisoara-hub.ro' : 'resident@timisoara-hub.ro',
-    name: isDevAdmin ? 'Admin Primăria TM' : 'Andrei Timișan',
-    role: isDevAdmin ? 'admin' : 'resident'
-  };
+  const currentUser = await resolveAuthUser(authHeader);
 
   try {
     // 1. Health
@@ -96,9 +100,181 @@ const server = http.createServer(async (req, res) => {
       return sendJson(res, 200, TIMISOARA_AREAS);
     }
 
-    // 3. User & Auth
-    if (pathname === '/v1/core/user/me' && method === 'GET') {
+    // 3. User & Auth0 Security (Sponsor Challenge)
+    if ((pathname === '/v1/core/user/me' || pathname === '/v1/core/auth/me') && method === 'GET') {
       return sendJson(res, 200, currentUser);
+    }
+
+    if (pathname === '/v1/core/auth/dev-tokens' && method === 'GET') {
+      return sendJson(res, 200, getDevTokensCatalog());
+    }
+
+    if (pathname === '/v1/core/auth/audit-log' && method === 'GET') {
+      const authCheck = enforceSecurityPolicy(currentUser, 'auth.view_audit', {
+        requiredRoles: ['admin', 'moderator'],
+        ip: req.socket.remoteAddress
+      });
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status, authCheck.body);
+      }
+      return sendJson(res, 200, await getAuditLogs());
+    }
+
+    if (pathname === '/v1/core/auth/simulate-mfa' && method === 'POST') {
+      const body = await parseBody(req);
+      const role = body.role || currentUser.role;
+      const factor = body.factor || 'totp_authenticator';
+      const upgradedToken = role === 'moderator' ? 'dev_moderator_mfa' : 'dev_admin_mfa';
+      return sendJson(res, 200, {
+        ok: true,
+        message: 'MFA Step-Up Challenge verified successfully! Use the upgraded token for high-privilege operations.',
+        factor,
+        upgraded_token: upgradedToken,
+        example_header: `Authorization: Bearer ${upgradedToken}`,
+        amr: ['pwd', 'mfa', factor],
+        security_tier: 'tier_2_mfa_verified'
+      });
+    }
+
+    // Simulate login attempt & test new location anomaly detection
+    if (pathname === '/v1/core/auth/simulate-login' && method === 'POST') {
+      const body = await parseBody(req);
+      const targetUser = body.token ? await resolveAuthUser(`Bearer ${body.token}`) : currentUser;
+      
+      const location = {
+        city: body.city || body.location?.city || 'București',
+        country: body.country || body.location?.country || 'România',
+        area_name: body.area_name || body.location?.area_name,
+        ip: body.ip || body.location?.ip || req.socket.remoteAddress || '86.120.45.12',
+        device: body.device || body.location?.device || 'Chrome / Mobile App',
+        is_trusted: false
+      };
+
+      const checkResult = await handleLoginLocationCheck(targetUser, location);
+      return sendJson(res, 200, {
+        ok: true,
+        user: {
+          sub: targetUser.sub,
+          email: targetUser.email,
+          name: targetUser.name,
+          role: targetUser.role
+        },
+        location_evaluated: location,
+        is_new_location: checkResult.is_new_location,
+        step_up_required: checkResult.step_up_required,
+        push_notification_sent: !!checkResult.push_notification,
+        push_notification: checkResult.push_notification,
+        email_alert_sent: !!checkResult.security_email,
+        security_email: checkResult.security_email,
+        message: checkResult.is_new_location 
+          ? `🚨 New location detected (${location.city}, ${location.country})! Push notification & security warning email dispatched.` 
+          : `✓ Location (${location.city}, ${location.country}) is recognized as trusted.`
+      });
+    }
+
+    // Inspect sent security warning emails
+    if (pathname === '/v1/core/auth/security-emails' && method === 'GET') {
+      const email = url.searchParams.get('email') || undefined;
+      const emails = getSecurityEmails(email);
+      return sendJson(res, 200, {
+        ok: true,
+        count: emails.length,
+        emails
+      });
+    }
+
+    // Trust new location (confirm "Yes, it was me")
+    if (pathname === '/v1/core/auth/trust-location' && (method === 'POST' || method === 'GET')) {
+      let sub = url.searchParams.get('sub') || currentUser.sub;
+      let city = url.searchParams.get('city') || 'București';
+      let country = url.searchParams.get('country') || 'România';
+      let ip = url.searchParams.get('ip') || '86.120.45.12';
+
+      if (method === 'POST') {
+        const body = await parseBody(req);
+        if (body.sub) sub = body.sub;
+        if (body.city) city = body.city;
+        if (body.country) country = body.country;
+        if (body.ip) ip = body.ip;
+      }
+
+      trustLocation(sub, { city, country, ip, is_trusted: true });
+      return sendJson(res, 200, {
+        ok: true,
+        trusted: true,
+        message: `Location "${city}, ${country}" added to trusted locations for user "${sub}".`
+      });
+    }
+
+    // Block session and enforce step-up MFA (confirm "No, it wasn't me")
+    if (pathname === '/v1/core/auth/block-session' && (method === 'POST' || method === 'GET')) {
+      const sub = url.searchParams.get('sub') || currentUser.sub;
+      const alertId = url.searchParams.get('alert_id') || 'manual_block';
+
+      await eventBus.emit('auth.session_blocked', {
+        userSub: sub,
+        alertId,
+        enforceMfa: true,
+        timestamp: new Date().toISOString()
+      });
+
+      return sendJson(res, 200, {
+        ok: true,
+        session_blocked: true,
+        mfa_enforced: true,
+        message: 'Suspicious session blocked! High-privilege actions will require re-authentication with MFA.'
+      });
+    }
+
+    if (pathname === '/v1/core/auth/webhook' && method === 'POST') {
+      const body = await parseBody(req);
+      const eventType = body.event_type || body.type || 'post_login';
+      const userSub = body.user_id || body.sub || 'auth0|webhook-user';
+      const email = body.email || 'user@timisoara-hub.ro';
+
+      console.log(`📡 [AUTH0 WEBHOOK] Event "${eventType}" received for user "${email}"`);
+
+      let locationCheckResult: any = null;
+      if (body.location || body.geoip || body.city) {
+        const location = {
+          city: body.location?.city || body.geoip?.city_name || body.city || 'Timișoara',
+          country: body.location?.country || body.geoip?.country_name || body.country || 'România',
+          area_name: body.location?.area_name || body.area_name,
+          ip: body.ip || body.location?.ip || req.socket.remoteAddress || '127.0.0.1',
+          device: body.device || body.user_agent,
+          is_trusted: false
+        };
+
+        const mockUser: any = {
+          sub: userSub,
+          email,
+          name: body.name || email.split('@')[0],
+          role: body.role || 'resident',
+          mfa_verified: false,
+          amr: ['pwd']
+        };
+
+        locationCheckResult = await handleLoginLocationCheck(mockUser, location);
+      }
+
+      if (eventType.includes('suspicious') || eventType.includes('failed_mfa') || locationCheckResult?.is_new_location) {
+        await eventBus.emit('auth.suspicious_activity', {
+          eventType,
+          userSub,
+          email,
+          ip: body.ip || req.socket.remoteAddress,
+          isNewLocation: locationCheckResult?.is_new_location,
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        received: true,
+        event_type: eventType,
+        location_alert_triggered: locationCheckResult?.is_new_location || false,
+        timestamp: new Date().toISOString()
+      });
     }
 
     if (pathname === '/v1/core/user/places' && method === 'GET') {
@@ -164,6 +340,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if ((pathname === '/v1/m/utilities/outages' || pathname === '/v1/m/m04-utilities/outages') && method === 'POST') {
+      const authCheck = enforceSecurityPolicy(currentUser, 'utilities.outages_create', {
+        requiredRoles: ['admin'],
+        requireMfa: true,
+        ip: req.socket.remoteAddress
+      });
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status, authCheck.body);
+      }
       const body = await parseBody(req);
       const created = await utilitiesService.createOutage(body);
       return sendJson(res, 201, created);
@@ -179,6 +363,14 @@ const server = http.createServer(async (req, res) => {
     }
 
     if ((pathname === '/v1/m/transit/detours' || pathname === '/v1/m/m05-transit/detours') && method === 'POST') {
+      const authCheck = enforceSecurityPolicy(currentUser, 'transit.detours_create', {
+        requiredRoles: ['admin'],
+        requireMfa: true,
+        ip: req.socket.remoteAddress
+      });
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status, authCheck.body);
+      }
       const body = await parseBody(req);
       const created = await transitService.addDetourAlert({
         id: body.id || crypto.randomUUID(),
@@ -393,6 +585,11 @@ function startServer(port: number) {
   server.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Timișoara City Hub API running on http://localhost:${port}`);
     console.log(`   Health: http://localhost:${port}/health`);
+    console.log(`   Auth0 Profile: http://localhost:${port}/v1/core/auth/me`);
+    console.log(`   Auth0 Dev Tokens: http://localhost:${port}/v1/core/auth/dev-tokens`);
+    console.log(`   Auth0 Audit Log: http://localhost:${port}/v1/core/auth/audit-log`);
+    console.log(`   Auth0 Security Emails: http://localhost:${port}/v1/core/auth/security-emails`);
+    console.log(`   Auth0 Location Anomaly: http://localhost:${port}/v1/core/auth/simulate-login`);
     console.log(`   Utilities: http://localhost:${port}/v1/m/utilities/outages`);
     console.log(`   Transit: http://localhost:${port}/v1/m/transit/lines`);
     console.log(`   Parkie: http://localhost:${port}/v1/m/parkie/lots`);

@@ -38,20 +38,31 @@ flowchart TD
 
 ### Task 1: Auth0 Security & MFA Enforcement
 > **Sponsor Prize:** Wireless Headphones (per member)  
-> **Judges Want:** RBAC (resident, organizer, moderator, admin), Social/Passwordless Login, MFA for staff.
+> **Judges Want:** RBAC (resident, organizer, moderator, admin), Social/Passwordless Login, MFA for staff, Auth0 for AI Agents.
 
-- [ ] **1.1. JWT Verification Middleware (`services/api/src/core/auth.ts`)**
-  - Implement real JWKS signature validation using `jose` against `https://<AUTH0_DOMAIN>/.well-known/jwks.json`.
-  - Maintain instant zero-network bypass for development (`Authorization: Bearer dev_admin` / `dev_resident`).
-- [ ] **1.2. Staff MFA Enforcement**
-  - Add middleware rule checking token `amr` (Authentication Methods References) contains `'mfa'`.
-  - Guard sensitive endpoints:
+- [x] **1.1. JWT Verification Middleware (`services/api/src/core/auth.ts`)**
+  - Implemented JWKS signature validation using `jose` against `https://<AUTH0_DOMAIN>/.well-known/jwks.json`.
+  - Maintained instant zero-network bypass for development with 7 pre-configured test profiles (`dev_resident`, `dev_organizer`, `dev_moderator_no_mfa`, `dev_moderator_mfa`, `dev_admin_no_mfa`, `dev_admin_mfa`, `dev_ai_agent`).
+- [x] **1.2. Staff MFA Enforcement & Step-Up Security Challenge (RFC 9470)**
+  - Middleware rule checks token `amr` (Authentication Methods References) for `mfa`, `otp`, or `webauthn`.
+  - Guarded sensitive endpoints:
     - `POST /v1/m/utilities/outages` (Publishing city outages)
     - `POST /v1/m/transit/detours` (Publishing roadwork reroutes)
-    - `POST /v1/m/forum/moderation/:id/approve` and `DELETE /v1/m/forum/moderation/:id`
-  - Return `HTTP 403 Forbidden: {"error": "MFA_REQUIRED", "message": "Admin & Moderator roles require multi-factor authentication"}` if `amr` lacks MFA.
-- [ ] **1.3. Client Auth Bridge (`apps/app/src/core/auth.ts`)**
-  - Implement mobile auth context supporting Auth0 web & native flows with guest fallback.
+  - Returns structured `HTTP 403 Forbidden` (`mfa_required`) with step-up upgrade prompt and supported factors.
+  - Added Auth0 for AI Agents: Autonomous Netrom Gemini Ingestion Agent operating via Machine-to-Machine (M2M) service credentials without human MFA requirements.
+  - Real-time security audit logging at `GET /v1/core/auth/audit-log`.
+- [x] **1.3. Client Auth Bridge & UI Security Card (`apps/app/src/core/`)**
+  - Implemented mobile auth context supporting token switching, MFA step-up simulation (`simulateMfaStepUp`), security tiers, and role identities in [auth.tsx](file:///home/bisquitew/UNIHACK2026/unihackers/apps/app/src/core/auth.tsx).
+  - Built interactive [Auth0SecurityCard.tsx](file:///home/bisquitew/UNIHACK2026/unihackers/apps/app/src/core/Auth0SecurityCard.tsx) visual component for judges to test 1-tap persona switching, live biometric/FIDO2 MFA step-up challenges, and live Tiger Cloud audit logs.
+- [x] **1.4. Production Action Script & Judge Demo (`infra/auth0`, `scripts/demo_auth0.py`)**
+  - Auth0 Post-Login Action script in [step-up-mfa-and-claims.js](file:///home/bisquitew/UNIHACK2026/unihackers/infra/auth0/actions/step-up-mfa-and-claims.js).
+  - Interactive judge demo runner in [demo_auth0.py](file:///home/bisquitew/UNIHACK2026/unihackers/scripts/demo_auth0.py) (`npm run demo:auth0`).
+  - Auth0 specification guide in [infra/auth0/README.md](file:///home/bisquitew/UNIHACK2026/unihackers/infra/auth0/README.md).
+- [x] **1.5. Adaptive Geolocation Shield & Push/Email Alert Engine (`services/api/src/core/auth.ts`, `Auth0SecurityCard.tsx`)**
+  - Anomaly detection comparing incoming login IP/city/country against user's trusted locations.
+  - Dual alert dispatch: real-time mobile push notification + responsive transactional security warning email.
+  - Interactive 1-click links: "Confirm Trusted Location" vs "Emergency Block Session & Enforce MFA".
+  - In-app simulator buttons in [Auth0SecurityCard.tsx](file:///home/bisquitew/UNIHACK2026/unihackers/apps/app/src/core/Auth0SecurityCard.tsx) allowing judges to test login from București vs Timișoara live.
 
 ---
 
