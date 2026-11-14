@@ -6,8 +6,17 @@ import { EventsScreen } from '../../src/modules/m01-events/EventsScreen';
 import { BuddyScreen } from '../../src/modules/m07-buddy/BuddyScreen';
 import { ForumScreen } from '../../src/modules/m08-forum/ForumScreen';
 import { BuddyModal } from '../../src/modules/m07-buddy/BuddyModal';
+import { WebAccessGate } from '../../src/core/WebAccessGate';
 
 export default function CommunityTab() {
+  return (
+    <WebAccessGate featureName="comunitatea, forumul civic și portofelul Solana">
+      <CommunityContent />
+    </WebAccessGate>
+  );
+}
+
+function CommunityContent() {
   const params = useLocalSearchParams<{ tab?: string }>();
   const [subTab, setSubTab] = useState<'events' | 'forum' | 'buddies' | 'wallet'>('events');
   const [buddyModalData, setBuddyModalData] = useState<{ eventId: string; eventTitle: string } | null>(null);

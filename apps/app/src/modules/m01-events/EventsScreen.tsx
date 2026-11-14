@@ -8,16 +8,21 @@ import {
   TextInput,
   Modal,
   Alert,
+  Platform,
 } from 'react-native';
 import { EventCard } from './EventCard';
 import { ticketStore } from '../m09-wallet/ticketStore';
 import { eventsStore, EventItem } from './eventsStore';
+import { useAuth } from '../../core/auth';
 
 interface EventsScreenProps {
   onSelectBuddyForEvent?: (eventId: string, eventTitle: string) => void;
 }
 
 export function EventsScreen({ onSelectBuddyForEvent }: EventsScreenProps) {
+  const { isLoggedIn, loginAsResident } = useAuth();
+  const isGuestWeb = Platform.OS === 'web' && !isLoggedIn;
+
   const [events, setEvents] = useState<EventItem[]>(eventsStore.getEvents());
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedArea, setSelectedArea] = useState<string>('all');
@@ -49,6 +54,8 @@ export function EventsScreen({ onSelectBuddyForEvent }: EventsScreenProps) {
     return matchCat && matchArea && matchAge;
   });
 
+  const displayedEvents = isGuestWeb ? filtered.slice(0, 3) : filtered;
+
   const isEventRsvpd = (eventId: string) => {
     return Boolean(
       rsvps[eventId]?.hasRsvpd ||
@@ -63,6 +70,18 @@ export function EventsScreen({ onSelectBuddyForEvent }: EventsScreenProps) {
   };
 
   const handleRsvp = async (eventId: string) => {
+    if (isGuestWeb) {
+      Alert.alert(
+        'Autentificare Necesară',
+        'Pentru a rezerva un bilet pe blockchain Solana și a primi un POAP, te rugăm să te conectezi ca Cetățean.',
+        [
+          { text: 'Anulează', style: 'cancel' },
+          { text: 'Conectare Cetățean', onPress: () => loginAsResident() }
+        ]
+      );
+      return;
+    }
+
     if (isEventRsvpd(eventId)) {
       Alert.alert(
         'Already Reserved 🎟️',
@@ -302,14 +321,35 @@ export function EventsScreen({ onSelectBuddyForEvent }: EventsScreenProps) {
       {/* Events List */}
       {viewMode === 'list' && (
       <ScrollView style={styles.content}>
-        {filtered.length === 0 ? (
+        {isGuestWeb && (
+          <View style={styles.guestBanner}>
+            <View style={styles.guestBannerHeader}>
+              <Text style={styles.guestBannerTitle}>👀 Mod Vizitator Web</Text>
+              <View style={styles.guestBadge}>
+                <Text style={styles.guestBadgeText}>{displayedEvents.length} DIN {filtered.length} EVENIMENTE</Text>
+              </View>
+            </View>
+            <Text style={styles.guestBannerText}>
+              Afișezi o previzualizare limitată de evenimente din Timișoara. Conectează-te ca Cetățean pentru a vedea lista completă, a rezerva bilete pe Solana și a găsi parteneri de eveniment.
+            </Text>
+            <TouchableOpacity
+              style={styles.guestBannerBtn}
+              activeOpacity={0.8}
+              onPress={() => loginAsResident()}
+            >
+              <Text style={styles.guestBannerBtnText}>👤 Conectare ca Cetățean (Standard) →</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {displayedEvents.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyIcon}>🎭</Text>
             <Text style={styles.emptyTitle}>No events match current filters</Text>
             <Text style={styles.emptySub}>Try selecting "All Types" or "All Areas" to see all events.</Text>
           </View>
         ) : (
-          filtered.map((item) => (
+          displayedEvents.map((item) => (
             <EventCard
               key={item.id}
               id={item.id}
@@ -553,4 +593,51 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   mapActionBtnText: { color: '#ffffff', fontSize: 11, fontWeight: 'bold' },
+  guestBanner: {
+    backgroundColor: '#18181b',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  guestBannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  guestBannerTitle: {
+    color: '#60a5fa',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  guestBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  guestBadgeText: {
+    color: '#93c5fd',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  guestBannerText: {
+    color: '#d4d4d8',
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  guestBannerBtn: {
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  guestBannerBtnText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });

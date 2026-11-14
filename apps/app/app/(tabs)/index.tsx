@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View, Platform, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   AskBar,
@@ -19,6 +19,7 @@ import {
   type ModuleArtId,
 } from '@hub/ui';
 import { alertById, unreadAlerts } from '../../src/core/mock/alerts';
+import { useAuth } from '../../src/core/auth';
 
 // Explore shows only modules that are NOT already visible in a list on this screen (each illustration once per screen).
 const explore: { id: ModuleArtId; label: string; route?: string }[] = [
@@ -34,6 +35,10 @@ const explore: { id: ModuleArtId; label: string; route?: string }[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user, isLoggedIn, loginAsResident } = useAuth();
+  const isGuestWeb = Platform.OS === 'web' && !isLoggedIn;
+  const displayName = user ? user.name.split(' ')[0] : 'Vizitator';
+
   const go = (path: string) => router.push(path as any);
   const openAlert = (id: string) => router.push({ pathname: '/alerts/[id]', params: { id } } as any);
 
@@ -49,10 +54,10 @@ export default function HomeScreen() {
       <View style={styles.topbar}>
         <View style={{ paddingHorizontal: 4 }}>
           <Text variant="body" color="mutedForeground" style={{ fontSize: 15, lineHeight: 20 }}>
-            Good evening
+            {user ? (user.role === 'admin' ? 'Panou Administrație' : 'Bună ziua,') : 'Bine ai venit,'}
           </Text>
           <Text variant="title" accessibilityRole="header" style={{ fontSize: 30, lineHeight: 34 }}>
-            Maria
+            {displayName}
           </Text>
         </View>
         <Pressable
@@ -65,6 +70,20 @@ export default function HomeScreen() {
           {unreadAlerts > 0 ? <View style={styles.bellDot} /> : null}
         </Pressable>
       </View>
+
+      {isGuestWeb && (
+        <View style={styles.webGuestBanner}>
+          <View style={{ flex: 1, paddingRight: 8 }}>
+            <Text style={styles.webGuestBannerTitle}>Mod Vizitator Web (Acces Limitat)</Text>
+            <Text style={styles.webGuestBannerDesc}>
+              Harta și câteva evenimente sunt deschise. Conectează-te pentru acces complet.
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.webGuestLoginBtn} onPress={() => loginAsResident()}>
+            <Text style={styles.webGuestLoginBtnText}>Conectare →</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <AskBar label="Ask hop about Timișoara" onPress={() => go('/m/assistant')} />
 
@@ -201,4 +220,36 @@ const styles = StyleSheet.create({
   strip: { marginRight: -16 },
   stripContent: { gap: 8, paddingRight: 16, paddingTop: 8 },
   pick: { width: 64, alignItems: 'center', gap: 6 },
+  webGuestBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#18181b',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#3b82f6',
+  },
+  webGuestBannerTitle: {
+    color: '#60a5fa',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  webGuestBannerDesc: {
+    color: '#94a3b8',
+    fontSize: 11,
+    marginTop: 2,
+    lineHeight: 15,
+  },
+  webGuestLoginBtn: {
+    backgroundColor: '#10b981',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  webGuestLoginBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });

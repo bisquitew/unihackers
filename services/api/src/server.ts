@@ -25,7 +25,8 @@ import {
   handleLoginLocationCheck,
   getSecurityEmails,
   trustLocation,
-  isLocationTrusted
+  isLocationTrusted,
+  DEV_USERS
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -113,6 +114,80 @@ const server = http.createServer(async (req, res) => {
     // 3. User & Auth0 Security (Sponsor Challenge)
     if ((pathname === '/v1/core/user/me' || pathname === '/v1/core/auth/me') && method === 'GET') {
       return sendJson(res, 200, currentUser);
+    }
+
+    if (pathname === '/v1/core/users' && method === 'GET') {
+      const authCheck = enforceSecurityPolicy(currentUser, 'users.list', {
+        requiredRoles: ['admin'],
+        ip: req.socket.remoteAddress
+      });
+      if (!authCheck.authorized) {
+        return sendJson(res, authCheck.status, authCheck.body);
+      }
+      if (db.isTigerConnected()) {
+        try {
+          const users = await db.query(`
+            SELECT id, auth0_id, email, name, role, neighbourhood, created_at, updated_at 
+            FROM core_users 
+            ORDER BY role, name ASC;
+          `);
+          return sendJson(res, 200, users);
+        } catch (err: any) {
+          console.warn('Error reading core_users:', err.message);
+        }
+      }
+      return sendJson(res, 200, [
+        {
+          id: '5121dd56-e1cc-42af-bd8e-5fe8c5126502',
+          email: 'resident@timisoara-hub.ro',
+          name: 'Andrei Timișan (Cetățean)',
+          role: 'resident',
+          neighbourhood: 'Cetate'
+        },
+        {
+          id: '4002bf66-c6b0-4f8c-9e5e-300018deb27e',
+          email: 'admin@timisoara-hub.ro',
+          name: 'Admin Primăria TM (Administrator)',
+          role: 'admin',
+          neighbourhood: 'Centru - Primărie'
+        }
+      ]);
+    }
+
+    if (pathname === '/v1/core/auth/login' && method === 'POST') {
+      const body = await parseBody(req);
+      const email = (body.email || '').toLowerCase().trim();
+      const role = body.role || (email.includes('admin') ? 'admin' : 'resident');
+
+      let targetUser = null;
+      let token = role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
+
+      if (db.isTigerConnected() && email) {
+        try {
+          const rows = await db.query<any>(`
+            SELECT id, auth0_id, email, name, role, neighbourhood 
+            FROM core_users 
+            WHERE LOWER(email) = $1 LIMIT 1;
+          `, [email]);
+          if (rows && rows.length > 0) {
+            targetUser = rows[0];
+            token = targetUser.role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
+          }
+        } catch (err: any) {
+          console.warn('Login db query error:', err.message);
+        }
+      }
+
+      if (!targetUser) {
+        targetUser = role === 'admin' ? DEV_USERS.dev_admin_mfa : DEV_USERS.dev_resident;
+      }
+
+      return sendJson(res, 200, {
+        ok: true,
+        token,
+        user: targetUser,
+        example_header: `Authorization: Bearer ${token}`
+      });
     }
 
     if (pathname === '/v1/core/auth/dev-tokens' && method === 'GET') {
