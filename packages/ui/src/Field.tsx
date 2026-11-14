@@ -3,7 +3,7 @@ import { StyleSheet, TextInput, View, type TextInputProps } from 'react-native';
 import { colors, fonts, radii } from './tokens';
 import { Text } from './Text';
 
-type FieldProps = Pick<TextInputProps, 'value' | 'onChangeText' | 'placeholder' | 'maxLength' | 'autoFocus' | 'returnKeyType' | 'onSubmitEditing' | 'autoCapitalize'> & {
+type FieldProps = Pick<TextInputProps, 'value' | 'onChangeText' | 'placeholder' | 'maxLength' | 'autoFocus' | 'returnKeyType' | 'onSubmitEditing' | 'autoCapitalize' | 'multiline' | 'keyboardType'> & {
   label: string;
 };
 
@@ -21,7 +21,7 @@ export function Field({ label, ...input }: FieldProps) {
         placeholderTextColor={colors.mutedForeground}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        style={styles.input}
+        style={[styles.input, input.multiline && styles.multiline]}
       />
     </View>
   );
@@ -31,5 +31,6 @@ const styles = StyleSheet.create({
   field: { minHeight: 60, borderRadius: radii.input, backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6, boxShadow: 'inset 0 1px 2px rgba(26,16,51,0.07), 0 0 0 1px rgba(26,16,51,0.05)' } as any,
   focused: { boxShadow: '0 0 0 2.5px #1A1033' } as any,
   label: { fontFamily: fonts.ui600 },
+  multiline: { minHeight: 68, textAlignVertical: 'top' },
   input: { fontFamily: fonts.ui600, fontSize: 16, lineHeight: 22, color: colors.foreground, padding: 0, outlineStyle: 'none' } as any,
 });

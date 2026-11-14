@@ -21,7 +21,10 @@ config.resolver.nodeModulesPaths = [
 // root such as expo-glass-effect) would find those old copies first, and the phone would bundle two engines. Symptoms:
 // "Invariant Violation: PlatformConstants could not be found" and "undefined is not a function" in expo-asset/Asset.fx.js.
 // For these families, resolve as if the import came from inside the app first; fall back to the normal lookup only if the
-// app does not have the package (some Expo packages are nested inside expo itself, so try there too).
+// app does not have the package. Two details matter:
+//  - Look from inside `expo` first: some packages the app needs (expo-modules-core 58) are nested in expo's own node_modules,
+//    and the root node_modules (listed above for resolution) would otherwise win with its old copy.
+//  - Leave imports made from inside apps/app/node_modules alone: that tree already resolves correctly on its own.
 const isPinned = (name) =>
   name === 'react' ||
   name === 'react-dom' ||
@@ -32,13 +35,15 @@ const isPinned = (name) =>
   name.startsWith('@expo/') ||
   name.startsWith('@react-native/') ||
   name.startsWith('@react-native-');
-const appOrigins = [path.join(projectRoot, 'index.js'), path.join(projectRoot, 'node_modules', 'expo', 'index.js')];
+const appNodeModules = path.join(projectRoot, 'node_modules') + path.sep;
+const appOrigins = [path.join(appNodeModules, 'expo', 'index.js'), path.join(projectRoot, 'index.js')];
 const defaultResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
   const resolve = defaultResolveRequest || context.resolveRequest;
   const isBare = !moduleName.startsWith('.') && !path.isAbsolute(moduleName);
   const packageName = moduleName.startsWith('@') ? moduleName.split('/').slice(0, 2).join('/') : moduleName.split('/')[0];
-  if (isBare && isPinned(packageName)) {
+  const fromInsideApp = (context.originModulePath || '').startsWith(appNodeModules);
+  if (isBare && isPinned(packageName) && !fromInsideApp) {
     for (const originModulePath of appOrigins) {
       try {
         return resolve({ ...context, originModulePath }, moduleName, platform);

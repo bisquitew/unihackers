@@ -51,7 +51,7 @@ export function QRCodeView({ value, size = 200 }: QRCodeViewProps) {
           fill="#ffffff"
         />
         {/* Real QR Code vector modules */}
-        <Path d={pathData} fill="#09090b" />
+        <Path d={pathData} fill="#1A1033" />
       </Svg>
     </View>
   );
@@ -65,9 +65,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',
-    shadowColor: '#000000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 4,
+    
+    
+    
+    
   },
 });
