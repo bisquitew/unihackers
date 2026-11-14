@@ -1,5 +1,5 @@
 import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
-import { approveReportedPost, createOutage, fetchAuditLogs, fetchLots, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots, createAreaAlert } from '../api.js';
+import { approveReportedPost, createOutage, fetchAuditLogs, fetchLots, fetchReportedPosts, fetchTigerStatus, fetchDashboardOverview, removeReportedPost, saveLotPlots, createAreaAlert } from '../api.js';
 import { CameraCanvas } from '../components/CameraCanvas.js';
 import { esc } from '../ui.js';
 
@@ -8,7 +8,13 @@ let adminCanvas = null;
 /** The staff dashboard: parking camera calibration, publishing outages, the security log and the database status. */
 export async function render(ctx) {
   const mfa = hasMfa();
-  const [lots, auditLogs, tiger] = await Promise.all([fetchLots(), fetchAuditLogs(8), fetchTigerStatus()]);
+  const [lots, auditLogs, tiger, overview] = await Promise.all([fetchLots(), fetchAuditLogs(8), fetchTigerStatus(), fetchDashboardOverview()]);
+  // the API answers status 'connected' when Tiger Cloud is live, 'mock' when it shows simulated numbers
+  const tigerLive = tiger?.status === 'connected';
+  const tigerKpis = overview?.kpis?.timescale_tiger_cloud;
+  const env = overview?.kpis?.environment;
+  const community = overview?.kpis?.community_reports;
+  const storedIn = (c) => (c?.storage === 'postgres' ? 'stored in a Tiger Cloud hypertable' : 'kept in memory (no database)');
 
   return `<div class="page wide">
     <div style="margin-bottom:28px">
@@ -176,16 +182,31 @@ export async function render(ctx) {
           <h3>Database status</h3>
           <p>The time-series database runs on TimescaleDB. Live aggregates power the city metrics and the parking charts.</p>
         </div>
+        ${tigerLive ? '' : '<p class="muted" style="margin-bottom:16px"><b>Simulated:</b> the API has no database connection, so the numbers below are example values, not live data.</p>'}
         <div class="cols">
           <div>
-            <div class="detail-card"><div class="muted">Version</div><b style="font-size:18px">${esc(tiger?.version || '2.32.0')}</b></div>
-            <div class="detail-card"><div class="muted">Connected</div><b style="font-size:18px">${tiger?.connected ? 'Live' : 'Fallback (offline)'}</b></div>
+            <div class="detail-card"><div class="muted">Version</div><b style="font-size:18px">${esc(tiger?.version || '—')}</b></div>
+            <div class="detail-card"><div class="muted">Connected</div><b style="font-size:18px">${tigerLive ? 'Live on Tiger Cloud' : tiger ? 'Fallback (simulated)' : 'API unreachable'}</b></div>
+            <div class="detail-card"><div class="muted">Compression (chunks)</div><b style="font-size:18px">${esc(tigerKpis?.compression_ratio || '—')}</b></div>
           </div>
           <div>
-            <div class="detail-card"><div class="muted">Active hypertables</div><b style="font-size:18px">${tiger?.hypertables?.length || 3}</b></div>
-            <div class="detail-card"><div class="muted">Continuous aggregates</div><b style="font-size:18px">${tiger?.continuous_aggregates?.length || 2}</b></div>
+            <div class="detail-card"><div class="muted">Active hypertables</div><b style="font-size:18px">${tiger?.hypertables?.length ?? '—'}</b>
+              <div class="muted" style="font-size:13px">${esc((tigerKpis?.hypertable_names || []).join(', '))}</div></div>
+            <div class="detail-card"><div class="muted">Continuous aggregates</div><b style="font-size:18px">${tiger?.continuous_aggregates?.length ?? '—'}</b></div>
           </div>
         </div>
+        ${env ? `<div class="cols even" style="margin-top:16px">
+          <div class="detail-card"><div class="muted">PM2.5, last 24 h</div><b style="font-size:18px">${esc(env.air_quality_avg_pm25)} µg/m³</b>
+            <div class="muted" style="font-size:13px">${env.source === 'tiger' ? `from the hourly continuous aggregate, ${esc(env.sensor_areas)} areas` : 'simulated value'}</div></div>
+          <div class="detail-card"><div class="muted">Noise, last 24 h</div><b style="font-size:18px">${esc(env.avg_noise_db)} dB</b>
+            <div class="muted" style="font-size:13px">${env.source === 'tiger' ? 'from the hourly continuous aggregate' : 'simulated value'}</div></div>
+        </div>` : ''}
+        ${community ? `<div class="cols even" style="margin-top:16px">
+          <div class="detail-card"><div class="muted">Smell reports, 7 days</div><b style="font-size:18px">${esc(community.smell.last_7_days)}</b>
+            <div class="muted" style="font-size:13px">${esc(community.smell.real)} from residents, ${esc(community.smell.demo)} demo · ${storedIn(community.smell)}</div></div>
+          <div class="detail-card"><div class="muted">Safety reports, 7 days</div><b style="font-size:18px">${esc(community.safety.last_7_days)}</b>
+            <div class="muted" style="font-size:13px">${esc(community.safety.real)} from residents, ${esc(community.safety.demo)} demo · ${storedIn(community.safety)}</div></div>
+        </div>` : ''}
       </div>
     </div>
   </div>`;

@@ -76,7 +76,9 @@ def main():
         "db/modules/m04-utilities/migrations/001_utilities_schema.sql",
         "db/modules/m05-transit/migrations/001_transit_schema.sql",
         "db/modules/parkie/migrations/001_parkie_schema.sql",
-        "db/modules/parkie/migrations/002_timescale_hypertables.sql"
+        "db/modules/parkie/migrations/002_timescale_hypertables.sql",
+        "db/modules/m03-safety/migrations/0001_init_safety.sql",
+        "db/modules/m06-smell/migrations/0001_init_smell.sql"
     ]
 
     for file_path in migrations:

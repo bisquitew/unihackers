@@ -53,9 +53,12 @@ def post(path, data, token="dev_resident"):
     except Exception as e:
         return None, str(e)
 
-def put_raw(url, data_bytes, content_type="image/jpeg"):
+def put_raw(url, data_bytes, content_type="image/jpeg", token="dev_resident"):
     req = urllib.request.Request(url, data=data_bytes, method="PUT")
     req.add_header("Content-Type", content_type)
+    # uploads need a signed-in user since 1387d78/f125070
+    if token:
+        req.add_header("Authorization", f"Bearer {token}")
     try:
         with urllib.request.urlopen(req, timeout=3) as response:
             return response.status, response.read().decode()
@@ -210,8 +213,8 @@ def main():
         status, colors = get("/v1/m/parkie/lots/colors")
         print(f"   ✅ /v1/m/parkie/lots/colors -> Streamed {len(colors)} lightweight status colors")
 
-        # Simulate camera detection
-        status, updated = post("/v1/m/parkie/detections", {"lot_id": "lot-unirii-01", "detected_cars": 42})
+        # Simulate camera detection (staff-only since 1387d78)
+        status, updated = post("/v1/m/parkie/detections", {"lot_id": "lot-unirii-01", "detected_cars": 42}, token="dev_admin")
         print(f"   🚗 CV Frame Ingest: Piața Unirii -> {updated.get('available_spots')}/{updated.get('capacity')} free [{updated.get('status_color').upper()}]")
 
         status, nearest = get("/v1/m/parkie/nearest?lat=45.7581&lng=21.2290&limit=3")
