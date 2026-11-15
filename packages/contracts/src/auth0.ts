@@ -12,6 +12,7 @@ export const AuthUserSchema = z.object({
   sub: z.string(),
   email: z.string(),
   name: z.string(),
+  picture: z.string().optional(),
   role: z.enum(['resident', 'organizer', 'moderator', 'admin'] as const),
   permissions: z.array(z.string()),
   mfa_enabled: z.boolean(),
@@ -25,6 +26,7 @@ export interface AuthUser {
   sub: string;
   email: string;
   name: string;
+  picture?: string;
   role: UserRole;
   permissions: string[];
   mfa_enabled: boolean;

@@ -629,6 +629,19 @@ export function inspectAccountType(email: string): {
   };
 }
 
+export const USERINFO_CACHE = new Map<string, { name: string; email: string; picture?: string }>();
+
+export function syncUserProfile(sub: string, profile: { name?: string; email?: string; picture?: string }) {
+  const existing = USERINFO_CACHE.get(sub) || { name: '', email: '' };
+  const updated = {
+    name: profile.name || existing.name,
+    email: profile.email || existing.email,
+    picture: profile.picture || existing.picture
+  };
+  USERINFO_CACHE.set(sub, updated);
+  return updated;
+}
+
 /**
  * Resolves Bearer token into an AuthUser context, then applies the client rule: a staff user on the app is treated as
  * a guest there, so a staff token is useless in the app.
@@ -673,7 +686,7 @@ async function resolveAuthUserRaw(authHeader?: string): Promise<AuthUser> {
 
       const rawAmr = Array.isArray(payload.amr) ? (payload.amr as string[]) : [];
       const hasMfa = rawAmr.includes('mfa') || rawAmr.includes('otp') || rawAmr.includes('webauthn');
-      const email = (payload['https://timisoara-hub.ro/email'] || payload.email || '') as string;
+      let email = (payload['https://timisoara-hub.ro/email'] || payload.email || '') as string;
       const explicitRole = (payload['https://timisoara-hub.ro/role'] || payload.role) as UserRole;
       // a listed staff email only counts when Auth0 says the address is verified: anyone can sign up with any address
       // on a database connection, and an unverified one must not become an admin
@@ -681,11 +694,52 @@ async function resolveAuthUserRaw(authHeader?: string): Promise<AuthUser> {
       const role = explicitRole || (email && emailVerified && isStaffEmail(email) ? 'admin' : 'resident');
       const permissions = (payload.permissions as string[]) || ROLE_PERMISSIONS[role] || [];
       const isM2M = payload.gty === 'client-credentials';
+      let name = (payload['https://timisoara-hub.ro/name'] || payload.name || '') as string;
+      let picture = (payload.picture || '') as string;
+
+      const sub = payload.sub as string;
+      if ((!name || !email) && !isM2M) {
+        const cached = USERINFO_CACHE.get(sub);
+        if (cached) {
+          if (!name) name = cached.name;
+          if (!email) email = cached.email;
+          if (!picture) picture = cached.picture || '';
+        } else {
+          try {
+            const uRes = await fetch(`https://${domain}/userinfo`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            if (uRes.ok) {
+              const uData: any = await uRes.json();
+              if (uData.name) name = uData.name;
+              if (uData.email) email = uData.email;
+              if (uData.picture) picture = uData.picture;
+              USERINFO_CACHE.set(sub, { name, email, picture });
+            }
+          } catch {}
+        }
+      }
+
+      if ((!name || !email) && db.isTigerConnected()) {
+        try {
+          const rows = await db.query(`SELECT name, email FROM core_users WHERE auth0_id = $1 LIMIT 1`, [sub]);
+          if (rows && rows.length > 0) {
+            if (rows[0].name && !name) name = rows[0].name;
+            if (rows[0].email && !email) email = rows[0].email;
+          }
+        } catch {}
+      }
+
+      if (!name) {
+        name = email ? email.split('@')[0].replace(/[._]/g, ' ') : 'Auth0 Resident';
+        name = name.charAt(0).toUpperCase() + name.slice(1);
+      }
 
       return {
-        sub: payload.sub as string,
+        sub,
         email,
-        name: (payload['https://timisoara-hub.ro/name'] || payload.name || 'Auth0 User') as string,
+        name,
+        picture,
         role,
         permissions,
         mfa_enabled: hasMfa || role === 'admin' || role === 'moderator',
