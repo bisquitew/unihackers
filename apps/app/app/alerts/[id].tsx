@@ -31,6 +31,56 @@ export default function AlertDetail() {
   const alert = useAlerts().find((a) => a.id === String(id));
   const nearestSafe = useNearestSafePlace(alert?.zoneType ? alert.coordinate : undefined);
 
+  // "tell me when it's back" and "this affects me too": what this person already did, and the buttons' work
+  const alertId = String(id);
+  const [following, setFollowing] = React.useState(false);
+  const [affected, setAffected] = React.useState(false);
+  const [count, setCount] = React.useState<number | null>(null);
+  const [busy, setBusy] = React.useState<null | 'follow' | 'affects'>(null);
+  const [problem, setProblem] = React.useState('');
+  React.useEffect(() => {
+    let alive = true;
+    api
+      .get<{ following: boolean; affected: boolean }>(`/v1/core/alerts/${encodeURIComponent(alertId)}/me`)
+      .then((r) => {
+        if (!alive) return;
+        setFollowing(r.following);
+        setAffected(r.affected);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [alertId]);
+  const toggleFollow = async () => {
+    if (busy) return;
+    setBusy('follow');
+    setProblem('');
+    try {
+      if (following) await api.del(`/v1/core/alerts/${encodeURIComponent(alertId)}/follow`);
+      else await api.post(`/v1/core/alerts/${encodeURIComponent(alertId)}/follow`);
+      setFollowing(!following);
+    } catch {
+      setProblem('Could not save that. Check your connection and try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+  const sayAffects = async () => {
+    if (busy || affected) return;
+    setBusy('affects');
+    setProblem('');
+    try {
+      const r = await api.post<{ count: number }>(`/v1/core/alerts/${encodeURIComponent(alertId)}/affects`);
+      setAffected(true);
+      setCount(r.count);
+    } catch {
+      setProblem('Could not save that. Check your connection and try again.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
   if (!alert) {
     return (
       <Screen tabBar={false}>
@@ -51,8 +101,18 @@ export default function AlertDetail() {
       tabBar={false}
       footer={
         <>
-          <PrimaryButton label={isUtility ? 'Tell me when it’s back' : 'Tell me about updates'} size="lg" />
-          <TextButton label={isUtility ? 'My building has it too' : 'This affects me too'} size="lg" />
+          {problem ? (
+            <Text variant="rowDetail" color="danger" accessibilityRole="alert" style={{ textAlign: 'center' }}>
+              {problem}
+            </Text>
+          ) : null}
+          <PrimaryButton
+            label={following ? (isUtility ? 'We will tell you when it’s back. Undo' : 'You will get updates. Undo') : isUtility ? 'Tell me when it’s back' : 'Tell me about updates'}
+            size="lg"
+            loading={busy === 'follow'}
+            onPress={toggleFollow}
+          />
+          <TextButton label={affected ? 'Thanks, we counted you' : isUtility ? 'My building has it too' : 'This affects me too'} size="lg" disabled={affected} loading={busy === 'affects'} onPress={sayAffects} />
         </>
       }
     >
@@ -83,11 +143,11 @@ export default function AlertDetail() {
       </View>
       <View style={styles.confirm}>
         <AvatarStack
-          label={`${alert.confirmedBy} neighbours confirmed this`}
+          label={`${count ?? alert.confirmedBy} neighbours confirmed this`}
           people={[{ initials: 'MA', tone: 'apricot' }, { initials: 'DR', tone: 'blue' }, { initials: 'IO', tone: 'mint' }]}
         />
         <Text variant="body" style={{ fontSize: 15, lineHeight: 20 }}>
-          {alert.confirmedBy} neighbours confirmed this
+          {count ?? alert.confirmedBy} neighbours confirmed this
         </Text>
       </View>
     </Screen>

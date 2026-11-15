@@ -30,7 +30,7 @@ registerDictionary('ro', {
   // ---- tabs, titles, sections
   Home: 'Acasă', Map: 'Hartă', Community: 'Comunitate', Profile: 'Profil', Alerts: 'Alerte', Assistant: 'Asistent',
   Overview: 'Prezentare', Settings: 'Setări', 'Profile sections': 'Secțiunile profilului', 'Community sections': 'Secțiunile comunității',
-  Events: 'Evenimente', Forum: 'Forum', Buddies: 'Parteneri', Wallet: 'Portofel', Buddy: 'Partener', Chats: 'Conversații',
+  Events: 'Evenimente', Forum: 'Forum', Buddies: 'Cu cine?', Wallet: 'Portofel', Buddy: 'Companie', Chats: 'Conversații',
   'Right now': 'Chiar acum', 'This week': 'Săptămâna aceasta', Explore: 'Explorează',
   'Your things': 'Ale tale', Help: 'Ajutor', Account: 'Cont', Language: 'Limbă', Appearance: 'Aspect', 'Map look': 'Aspectul hărții',
   Light: 'Luminos', Dark: 'Întunecat', System: 'Sistem', Auto: 'Automat', Day: 'Zi', Golden: 'Apus', Night: 'Noapte',
@@ -42,7 +42,7 @@ registerDictionary('ro', {
   'Good night,': 'Noapte bună,', 'Good morning,': 'Bună dimineața,', 'Good afternoon,': 'Bună ziua,', 'Good evening,': 'Bună seara,', there: 'tu',
   'Ask hop about {}': 'Întreabă hop despre {}', 'All quiet': 'Liniște', 'No outages or transit changes right now.': 'Nicio avarie sau schimbare de transport acum.',
   'Nothing else planned yet': 'Nimic altceva planificat încă', 'Host an event in the Community tab.': 'Organizează un eveniment din fila Comunitate.',
-  '{} free spots, {}': '{} locuri libere, {}', '{} people are going': '{} persoane merg', '{} going': '{} merg', 'Find a buddy': 'Găsește un partener',
+  '{} free spots, {}': '{} locuri libere, {}', '{} people are going': '{} persoane merg', '{} going': '{} merg', 'Find a buddy': 'Găsește companie',
   'Alerts, {} new': 'Alerte, {} noi', 'Alert not found': 'Alerta nu a fost găsită', 'It may have been resolved. Go back to your alerts.': 'Poate a fost rezolvată. Înapoi la alerte.',
   'Alert settings': 'Setările alertelor', 'For your places': 'Pentru locurile tale', 'Around the city': 'În oraș',
   'Tonight at 19:30, Faber. Free. Bring a blanket.': 'Diseară la 19:30, Faber. Gratuit. Adu o pătură.',
@@ -100,11 +100,11 @@ registerDictionary('ro', {
   'Find company': 'Găsește companie', 'Find someone to go with': 'Găsește pe cineva cu care să mergi', 'People to go with': 'Oameni cu care să mergi', 'Go together': 'Mergeți împreună',
   'People going to events who would like company': 'Oameni care merg la evenimente și vor companie', 'People going to': 'Oameni care merg la', 'who would like company.': 'care vor companie.',
   'No one yet': 'Nimeni încă', 'No one has asked yet. Be the first.': 'Nimeni nu a cerut încă. Fii primul.', 'Be the first to ask for company at an event.': 'Fii primul care cere companie la un eveniment.',
-  'Buddy profile': 'Profil partener', 'A good way to start': 'O idee de început', 'Back to the list': 'Înapoi la listă', 'Back to chats': 'Înapoi la conversații', 'Post request': 'Postează cererea',
+  'Buddy profile': 'Profil', 'A good way to start': 'O idee de început', 'Back to the list': 'Înapoi la listă', 'Back to chats': 'Înapoi la conversații', 'Post request': 'Postează cererea',
   'About you': 'Despre tine', 'What do you study or like to talk about?': 'Ce studiezi sau despre ce îți place să vorbești?', 'Interests, separated by commas': 'Interese, separate prin virgulă',
   'cinema, jazz, photography': 'cinema, jazz, fotografie', 'Tell others who you are and which event you are going to. They can start a chat with you.': 'Spune-le celorlalți cine ești și la ce eveniment mergi. Pot începe o conversație cu tine.',
   Message: 'Mesaj', 'Send message': 'Trimite mesajul', 'Write a message': 'Scrie un mesaj', 'No chats yet': 'Nicio conversație încă', 'Open a profile and tap Message. Your conversations live here.': 'Deschide un profil și apasă Mesaj. Conversațiile tale apar aici.',
-  'Buddies sections': 'Secțiunile partenerilor', 'You:': 'Tu:', 'Hey! Glad you reached out about {}.': 'Bună! Mă bucur că ai scris despre {}.', '% match': '% potrivire',
+  'Buddies sections': 'Secțiunile „Cu cine?”', 'You:': 'Tu:', 'Hey! Glad you reached out about {}.': 'Bună! Mă bucur că ai scris despre {}.', '% match': '% potrivire',
 
   // ---- profile
   'Your name': 'Numele tău', 'Edit your name': 'Editează-ți numele', 'This is how you appear to other people. It does not change your account.': 'Așa apari pentru ceilalți. Nu schimbă contul tău.',
@@ -173,6 +173,7 @@ registerDictionary('ro', {
   'Reported {} times': 'Raportat de {} ori', '{} neighbours reported this here. Latest {}.': '{} vecini au raportat asta aici. Cel mai recent {}.', '{} neighbours reported this here. In the last 24 hours.': '{} vecini au raportat asta aici. În ultimele 24 de ore.', '{} reports': '{} sesizări', '{}d ago': 'acum {} zile',
   'Directions to': 'Indicații către', 'Walk': 'Pe jos', 'Bike': 'Cu bicicleta', 'Car': 'Cu mașina', 'Finding the way…': 'Caut drumul…', 'Show steps': 'Arată pașii', 'Hide steps': 'Ascunde pașii', 'Turn on location to get directions from where you are.': 'Pornește locația ca să primești indicații de unde te afli.', 'Turn on location': 'Pornește locația', 'Could not get directions.': 'Nu am putut găsi indicații.', 'No way to get there that way.': 'Nu există drum până acolo în acest fel.', 'The routing service is not answering. Try again in a moment.': 'Serviciul de trasee nu răspunde. Încearcă din nou într-un moment.', 'Goes around {}': 'Ocolește {}', 'Passes through {}, about {}': 'Trece prin {}, circa {}', 'Passes by works: {}, about {}': 'Trece pe lângă lucrări: {}, circa {}', 'Your start or destination is inside {}': 'Punctul de plecare sau destinația este în {}', 'There is no way round the danger zone. Take care.': 'Nu există ocol pentru zona de pericol. Ai grijă.', 'Help close to the way': 'Ajutor aproape de traseu', '{} from the route': '{} de traseu', 'Start on {}': 'Pornește pe {}', 'Start': 'Pornește', 'Arrive at your destination': 'Ai ajuns la destinație', 'Take the roundabout onto {}': 'Intră în sensul giratoriu spre {}', 'Take the roundabout': 'Intră în sensul giratoriu', 'Make a U-turn': 'Fă o întoarcere', 'Turn left onto {}': 'Virează la stânga pe {}', 'Turn left': 'Virează la stânga', 'Turn right onto {}': 'Virează la dreapta pe {}', 'Turn right': 'Virează la dreapta', 'Bear left onto {}': 'Ține stânga pe {}', 'Bear left': 'Ține stânga', 'Bear right onto {}': 'Ține dreapta pe {}', 'Bear right': 'Ține dreapta', 'Make a sharp left onto {}': 'Virează brusc la stânga pe {}', 'Make a sharp left': 'Virează brusc la stânga', 'Make a sharp right onto {}': 'Virează brusc la dreapta pe {}', 'Make a sharp right': 'Virează brusc la dreapta', 'Continue on {}': 'Continuă pe {}', 'Continue straight': 'Continuă înainte',
   'Cancel my place': 'Anulează locul meu', 'Keep my place': 'Păstrează locul', 'Cancel your place?': 'Anulezi locul?', 'You will lose your ticket for {}.': 'Îți vei pierde biletul pentru {}.', 'You already used this ticket': 'Ai folosit deja acest bilet', 'A ticket that was scanned at the door cannot be cancelled.': 'Un bilet scanat la intrare nu poate fi anulat.', 'We could not update your spot. Check your connection and try again.': 'Nu am putut actualiza locul tău. Verifică conexiunea și încearcă din nou.', 'Choose an account': 'Alege un cont', 'Continue as Alex': 'Continuă ca Alex', 'alex.popescu@gmail.com (demo account)': 'alex.popescu@gmail.com (cont demo)',
+  'We will tell you when it’s back. Undo': 'Te anunțăm când revine. Anulează', 'You will get updates. Undo': 'Vei primi noutăți. Anulează', 'Thanks, we counted you': 'Mulțumim, te-am numărat', 'Could not save that. Check your connection and try again.': 'Nu am putut salva. Verifică conexiunea și încearcă din nou.',
   'Reported {}': 'Raportat {}', 'Announced': 'Anunțat',
   'Keep away from the area · {} m around': 'Evită zona · {} m în jur', 'Works in progress · {} m around': 'Lucrări în desfășurare · {} m în jur',
 });

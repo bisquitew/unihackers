@@ -12,6 +12,10 @@ import { getUserNotifications, markNotificationAsRead } from './core/notificatio
 import { getAllFlags } from './core/flags.ts';
 import { geocode, searchPlaces } from './core/geocode.ts';
 import { planRoute, RouteError, type RouteMode } from './core/route.ts';
+import { areaAlertsService } from './core/area-alerts.ts';
+import { follow, followersOf, markAffected, stateFor, unfollow } from './core/alert-follows.ts';
+import { notify } from './core/notifications.ts';
+import { utilitiesService } from './modules/m04-utilities/service.ts';
 import { rateLimit } from './core/rate-limit.ts';
 import { registeredModules } from './modules/index.ts';
 
@@ -133,6 +137,69 @@ core.get('/route', routeLimit, async (c) => {
     if (err instanceof RouteError) return c.json({ error: err.code, error_description: err.message }, err.code === 'no_route' ? 404 : 502);
     throw err;
   }
+});
+
+// Alerts you can follow ("tell me when it's back") and say affect you too. Works for outages and for danger or works zones.
+const alertUser = (c: any) => {
+  const u = c.get('user');
+  return u && u.sub && u.sub !== 'guest|unauthenticated' ? u : null;
+};
+const alertTitle = (id: string): string | null => utilitiesService.getOutageById(id)?.title ?? areaAlertsService.getById(id)?.title ?? null;
+const plain = (t: string) => t.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+
+core.get('/alerts/:id/me', async (c) => {
+  const u = alertUser(c);
+  if (!u) return c.json({ following: false, affected: false });
+  return c.json(await stateFor(c.req.param('id'), u.sub));
+});
+
+core.post('/alerts/:id/follow', async (c) => {
+  const u = alertUser(c);
+  if (!u) return c.json({ error: 'login_required', error_description: 'Sign in to follow an alert.' }, 401);
+  const id = c.req.param('id');
+  const title = alertTitle(id);
+  if (!title) return c.json({ error: 'not_found', error_description: 'That alert does not exist.' }, 404);
+  if (await follow(id, u.sub)) {
+    await notify({ userId: u.sub, moduleId: 'm04-utilities', title: 'You will be told', body: `We will tell you here when "${plain(title)}" is back or changes.`, category: 'system', data: { alertId: id } });
+  }
+  return c.json({ following: true });
+});
+
+core.delete('/alerts/:id/follow', async (c) => {
+  const u = alertUser(c);
+  if (!u) return c.json({ error: 'login_required', error_description: 'Sign in to change this.' }, 401);
+  await unfollow(c.req.param('id'), u.sub);
+  return c.json({ following: false });
+});
+
+// "My building has it too" / "This affects me too": counts once per person
+core.post('/alerts/:id/affects', async (c) => {
+  const u = alertUser(c);
+  if (!u) return c.json({ error: 'login_required', error_description: 'Sign in to say this affects you.' }, 401);
+  const id = c.req.param('id');
+  const outage = utilitiesService.getOutageById(id);
+  if (outage) {
+    const updated = utilitiesService.confirmOutage(id, u.sub);
+    await markAffected(id, u.sub);
+    return c.json({ affected: true, count: updated?.crowd_confirmations_count ?? 0 });
+  }
+  const zone = areaAlertsService.getById(id);
+  if (!zone) return c.json({ error: 'not_found', error_description: 'That alert does not exist.' }, 404);
+  if (await markAffected(id, u.sub)) areaAlertsService.addAffected(id);
+  return c.json({ affected: true, count: zone.affected_residents_count ?? 0 });
+});
+
+// Staff: the outage is over or the zone is lifted. Everyone who followed it is told.
+core.post('/alerts/:id/resolve', async (c) => {
+  const u = alertUser(c);
+  if (!u || u.role !== 'admin') return c.json({ error: 'forbidden', error_description: 'Only city staff can close an alert.' }, 403);
+  const id = c.req.param('id');
+  const title = alertTitle(id);
+  if (!title) return c.json({ error: 'not_found', error_description: 'That alert does not exist.' }, 404);
+  if (!utilitiesService.resolveOutage(id)) areaAlertsService.resolve(id);
+  const who = await followersOf(id);
+  await Promise.all(who.map((sub) => notify({ userId: sub, moduleId: 'm04-utilities', title: 'Good news', body: `"${plain(title)}" is over.`, category: 'system', data: { alertId: id } })));
+  return c.json({ resolved: true, told: who.length });
 });
 
 // User profile & saved places

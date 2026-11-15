@@ -172,7 +172,7 @@ function serveWebApp(req: http.IncomingMessage, res: http.ServerResponse, pathna
 
 // Every /v1/m/* module route is answered by the Hono app in index.ts (same rules, same validation as on port 3001).
 function isModulePath(pathname: string): boolean {
-  return pathname.startsWith('/v1/m/') || pathname.startsWith('/v1/core/notifications') || pathname === '/v1/core/geocode' || pathname === '/v1/core/places/search' || pathname === '/v1/core/route';
+  return pathname.startsWith('/v1/m/') || pathname.startsWith('/v1/core/notifications') || pathname === '/v1/core/geocode' || pathname === '/v1/core/places/search' || pathname === '/v1/core/route' || pathname.startsWith('/v1/core/alerts/');
 }
 
 async function forwardToModules(req: http.IncomingMessage, res: http.ServerResponse, url: URL, method: string): Promise<void> {

@@ -184,6 +184,32 @@ export const areaAlertsService = {
     });
   },
 
+  /** "This affects me too" on a zone: one more resident. */
+  addAffected(id: string): AreaAlert | undefined {
+    const a = areaAlerts.find((x) => x.id === id);
+    if (!a) return undefined;
+    a.affected_residents_count = (a.affected_residents_count || 0) + 1;
+    a.updated_at = new Date().toISOString();
+    this.persist(a);
+    return a;
+  },
+
+  /** Staff: the zone is over. */
+  resolve(id: string): AreaAlert | undefined {
+    const a = areaAlerts.find((x) => x.id === id);
+    if (!a) return undefined;
+    a.status = 'resolved';
+    a.updated_at = new Date().toISOString();
+    this.persist(a);
+    return a;
+  },
+
+  /** Writes a changed alert back (only the ones staff published are in the database; the seed alerts are not). */
+  persist(a: AreaAlert) {
+    if (!db.isTigerConnected()) return;
+    db.query(`UPDATE core_area_alerts SET data = $2 WHERE id = $1`, [a.id, JSON.stringify(a)]).catch((err: any) => console.warn('[area-alerts] could not update:', err.message));
+  },
+
   getById(id: string): AreaAlert | undefined {
     return areaAlerts.find(a => a.id === id);
   },

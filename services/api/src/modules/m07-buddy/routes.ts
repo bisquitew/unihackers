@@ -7,7 +7,9 @@ export const buddyRoutes = new Hono();
 // List buddy requests
 buddyRoutes.get('/', async (c) => {
   const eventId = c.req.query('eventId');
-  const requests = await buddyService.listRequests(eventId);
+  const me = c.get('user' as never) as any;
+  // you are looking for company: your own request is not one for you to answer
+  const requests = (await buddyService.listRequests(eventId)).filter((r: any) => !me?.sub || r.userId !== me.sub);
   return c.json({ buddyRequests: requests });
 });
 

@@ -318,7 +318,11 @@ button.row:hover, .row.link-row:hover { background: var(--tint); border-radius: 
 .dash-nav button:hover { background: var(--tint); }
 .dash-nav button.active { background: var(--nav-active); font-weight: 700; }
 .dash-body .stats { margin-top: 28px; }
-.dash .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+/* the dashboard's content sits beside the side menu, so it is narrower than the window: columns and field pairs fit themselves to the room there is */
+.dash .cols { grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr)); gap: 32px; }
+.dash .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr)); gap: 12px; }
+.dash .cols > *, .dash .two > * { min-width: 0; }
+.dash img { max-width: 100%; height: auto; }
 .dash .between { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 .dash .notice { padding: 12px 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-size: 14px; color: var(--muted); }
 .dash .notice b { color: var(--ink); }
