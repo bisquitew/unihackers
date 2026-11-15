@@ -282,16 +282,6 @@ Real-time aggregates are on, 90-day retention policies are set, and one schema p
 
 ---
 
-## 🅿️ Parkie: our previous winner, now a hop module
-
-<p align="center">
-  <strong>🏆 Parkie won the Community Problem Track Award @ ITfest 2026</strong>
-</p>
-
-[Parkie](https://github.com/bisquitew/Parkie) (FastAPI + Supabase + YOLOv11 + Expo) detects cars in parking-lot camera feeds and shows real-time availability on a map. In hop it is a full module: the same vision pipeline (`services/parkie-vision`) posts occupancy to the hop API, lots are colour-coded 🟢 green / 🟡 yellow / 🔴 red, staff calibrate slots by clicking 4 corners per slot on the **Parking cameras** dashboard, and the history lands in Tiger Cloud hourly aggregates.
-
----
-
 ## 🔐 Security & Privacy
 
 - **Auth0**: Universal Login (Google / passwordless / register), JWTs verified against JWKS, roles `resident · organizer · moderator · admin`.
