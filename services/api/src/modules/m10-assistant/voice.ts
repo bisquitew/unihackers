@@ -4,10 +4,19 @@
 import { createHash } from 'node:crypto';
 
 const API = 'https://api.elevenlabs.io/v1';
-/** Multilingual, stable on long text, speaks Romanian well (https://elevenlabs.io/docs/models). */
-export const DEFAULT_TTS_MODEL = 'eleven_multilingual_v2';
-/** "Sarah": a premade voice every ElevenLabs account has; calm and clear in Romanian and English. */
-export const DEFAULT_VOICE_ID = 'EXAVITQu4vr4xnSDxMaL';
+/** ElevenLabs' most natural and emotive model (90+ languages, Romanian included; https://elevenlabs.io/docs/models). */
+export const DEFAULT_TTS_MODEL = 'eleven_v4';
+/**
+ * One natural voice per language, so Romanian is read by a native speaker and English without a Romanian accent.
+ * Romanian: "Corina Ioana – Clear, Friendly and Calm" from the ElevenLabs voice library (usable by id, no setup).
+ * English: a warm premade voice every account has.
+ */
+export const DEFAULT_VOICE_IDS = {
+  ro: 'gbLy9ep70G3JW53cTzFC',
+  en: 'cgSgspJ2msm6clMCkdW9',
+} as const;
+/** Kept for older callers: the Romanian voice. */
+export const DEFAULT_VOICE_ID = DEFAULT_VOICE_IDS.ro;
 export const DEFAULT_STT_MODEL = 'scribe_v3';
 /** Characters actually spoken per request (protects the monthly quota). */
 export const TTS_MAX_CHARS = 800;
@@ -15,7 +24,8 @@ export const TTS_MAX_CHARS = 800;
 export const TTS_MAX_INPUT = 4000;
 /** About 2–3 minutes of compressed speech. */
 export const STT_MAX_BYTES = 10 * 1024 * 1024;
-const OUTPUT_FORMAT = 'mp3_44100_64';
+/** 128 kbps: clearly less "phone-like" than 64 kbps; the Creator plan allows it. */
+const OUTPUT_FORMAT = 'mp3_44100_128';
 const TIMEOUT_MS = 30_000;
 
 /** Voice is not configured or ElevenLabs refused; routes answer 503 and the app falls back to text. */
@@ -23,16 +33,27 @@ export class VoiceUnavailableError extends Error {}
 
 export type VoiceLang = 'ro' | 'en';
 
-const config = () => ({
-  key: process.env.ELEVENLABS_API_KEY?.trim() || '',
-  ttsModel: process.env.ELEVENLABS_MODEL?.trim() || DEFAULT_TTS_MODEL,
-  voiceId: process.env.ELEVENLABS_VOICE_ID?.trim() || DEFAULT_VOICE_ID,
-  sttModel: process.env.ELEVENLABS_STT_MODEL?.trim() || DEFAULT_STT_MODEL,
-});
+const config = () => {
+  // ELEVENLABS_VOICE_ID (old setting) still sets one voice for both languages; the per-language ones win.
+  const both = process.env.ELEVENLABS_VOICE_ID?.trim();
+  const voiceIds: Record<VoiceLang, string> = {
+    ro: process.env.ELEVENLABS_VOICE_ID_RO?.trim() || both || DEFAULT_VOICE_IDS.ro,
+    en: process.env.ELEVENLABS_VOICE_ID_EN?.trim() || both || DEFAULT_VOICE_IDS.en,
+  };
+  return {
+    key: process.env.ELEVENLABS_API_KEY?.trim() || '',
+    ttsModel: process.env.ELEVENLABS_MODEL?.trim() || DEFAULT_TTS_MODEL,
+    voiceIds,
+    sttModel: process.env.ELEVENLABS_STT_MODEL?.trim() || DEFAULT_STT_MODEL,
+  };
+};
+
+/** Romanian letters (ă â î ș ț) or common Romanian words pick the voice when the app does not say the language. */
+const looksRomanian = (text: string) => /[ăâîșşțţ]/i.test(text) || /\b(și|este|pentru|nu|care|sunt|vă|azi|mâine|strada)\b/i.test(text);
 
 export function voiceStatus() {
   const c = config();
-  return { configured: Boolean(c.key), ttsModel: c.ttsModel, voiceId: c.voiceId, sttModel: c.sttModel, maxChars: TTS_MAX_CHARS };
+  return { configured: Boolean(c.key), ttsModel: c.ttsModel, voiceIds: c.voiceIds, voiceId: c.voiceIds.ro, sttModel: c.sttModel, maxChars: TTS_MAX_CHARS };
 }
 
 function requireKey(): string {
@@ -138,9 +159,12 @@ export interface TtsResult {
 
 export async function textToSpeech(rawText: string, lang: VoiceLang | null): Promise<TtsResult> {
   const key = requireKey();
-  const { ttsModel, voiceId } = config();
+  const { ttsModel, voiceIds } = config();
   const { text, truncated } = speakable(rawText);
   if (!text) throw new RangeError('Nothing to read aloud after removing formatting.');
+  // the native voice for the answer's language
+  const voiceLang: VoiceLang = lang ?? (looksRomanian(text) ? 'ro' : 'en');
+  const voiceId = voiceIds[voiceLang];
 
   const cacheKey = createHash('sha256').update([ttsModel, voiceId, lang ?? '', text].join('\u0000')).digest('hex');
   const hit = ttsCache.get(cacheKey);
@@ -155,7 +179,7 @@ export async function textToSpeech(rawText: string, lang: VoiceLang | null): Pro
   if (!pending) {
     const body: Record<string, unknown> = { text, model_id: ttsModel };
     // multilingual_v2 detects the language itself and rejects language_code; newer models accept it.
-    if (lang && ttsModel !== 'eleven_multilingual_v2') body.language_code = lang;
+    if (ttsModel !== 'eleven_multilingual_v2') body.language_code = voiceLang;
     pending = call(`${API}/text-to-speech/${encodeURIComponent(voiceId)}?output_format=${OUTPUT_FORMAT}`, {
       method: 'POST',
       headers: { 'xi-api-key': key, 'Content-Type': 'application/json', Accept: 'audio/mpeg' },
