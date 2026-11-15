@@ -92,10 +92,6 @@ Every module is an **independent vertical slice** (screens, API routes, DB schem
 </p>
 <p align="center"><sub>Both sample notices are stamped <b>ANUNȚ FICTIV</b> (fictional notice). The full brand board lives in <code>docs/brand/brand-board.html</code>.</sub></p>
 
-### 🎬 The 3-minute demo
-Step-by-step script: [docs/demo/p4-demo-script.md](docs/demo/p4-demo-script.md) ("from a notice on the door to a spoken answer").
-The full pitch / video brief: [pitch presentation.md](pitch%20presentation.md).
-
 ---
 
 ## 🏗️ Architecture
