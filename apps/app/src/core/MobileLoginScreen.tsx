@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Chip, Field, PrimaryButton, SecondaryButton, Segmented, Text, TextButton, colors, radii, useKeyboardHeight } from '@hub/ui';
 import { useAuth } from './auth';
+import { Auth0Modal } from './Auth0Modal';
 
 const NEIGHBOURHOODS = [
   'Cetate',
@@ -33,6 +34,8 @@ export function MobileLoginScreen() {
   const [neighbourhood, setNeighbourhood] = useState('Cetate');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
+  const [auth0ModalVisible, setAuth0ModalVisible] = useState(false);
+  const [auth0Url, setAuth0Url] = useState('');
 
   const resetErrors = () => {
     clearAuthError();
@@ -40,9 +43,29 @@ export function MobileLoginScreen() {
   };
 
   const handleAuth0 = async () => {
+    resetErrors();
+    if (Platform.OS === 'web') {
+      setBusy(true);
+      const result = await loginWithAuth0();
+      if (!result.ok && result.error) setNote(result.error);
+      setBusy(false);
+    } else {
+      const domain = 'dev-77qb7o5o5lzcrtxa.us.auth0.com';
+      const clientId = 'nX2Hf4pmmdeTk73ydXFmg2S632Bh966D';
+      const redirectUri = 'http://localhost:8081';
+      const nonce = Math.random().toString(36).substring(2, 15);
+      const state = Math.random().toString(36).substring(2, 15);
+      const url = `https://${domain}/authorize?client_id=${clientId}&response_type=token%20id_token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email&state=${state}&nonce=${nonce}`;
+      setAuth0Url(url);
+      setAuth0ModalVisible(true);
+    }
+  };
+
+  const handleModalSuccess = async (token: string, hint?: { name?: string; email?: string; picture?: string }) => {
+    setAuth0ModalVisible(false);
     setBusy(true);
     resetErrors();
-    const result = await loginWithAuth0();
+    const result = await loginWithToken(token, hint);
     if (!result.ok && result.error) setNote(result.error);
     setBusy(false);
   };
@@ -255,6 +278,13 @@ export function MobileLoginScreen() {
           </View>
         )}
       </ScrollView>
+
+      <Auth0Modal
+        visible={auth0ModalVisible}
+        authUrl={auth0Url}
+        onSuccess={handleModalSuccess}
+        onClose={() => setAuth0ModalVisible(false)}
+      />
     </View>
   );
 }

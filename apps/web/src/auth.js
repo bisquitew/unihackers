@@ -1,4 +1,4 @@
-import { fetchAuthMe, loginWithGoogle, loginWithEmail, registerUser, fetchAuth0Info } from './api.js';
+import { fetchAuthMe, loginWithGoogle, loginWithEmail, registerUser, fetchAuth0Info, syncUserProfileApi } from './api.js';
 
 // no saved sign-in means a guest: the website then shows the public preview
 let currentToken = localStorage.getItem('hub_auth_token') || '';
@@ -40,6 +40,12 @@ export async function getAuth0Client() {
 }
 
 export async function initAuth() {
+  let initialHint = null;
+  try {
+    const saved = localStorage.getItem('hub_auth_user_hint');
+    if (saved) initialHint = JSON.parse(saved);
+  } catch {}
+
   // Check if returning from an Auth0 redirect
   try {
     const client = await getAuth0Client();
@@ -48,14 +54,16 @@ export async function initAuth() {
         await client.handleRedirectCallback();
         window.history.replaceState({}, document.title, window.location.pathname);
         const token = await client.getTokenSilently().catch(() => null);
+        const auth0User = await client.getUser().catch(() => null);
         if (token) {
-          await switchToken(token);
+          await switchToken(token, auth0User || initialHint);
           return;
         }
       } else if (await client.isAuthenticated().catch(() => false)) {
         const token = await client.getTokenSilently().catch(() => null);
+        const auth0User = await client.getUser().catch(() => null);
         if (token) {
-          await switchToken(token);
+          await switchToken(token, auth0User || initialHint);
           return;
         }
       }
@@ -64,7 +72,7 @@ export async function initAuth() {
     console.warn('[Auth0] Redirect handling skipped:', err);
   }
 
-  await switchToken(currentToken);
+  await switchToken(currentToken, initialHint);
 }
 
 export function getCurrentToken() {
@@ -98,14 +106,60 @@ export function getAccountTypeLabel(user = currentUser) {
   return 'Cetățean Rezident';
 }
 
-export async function switchToken(token) {
+export async function switchToken(token, userHint = null) {
   currentToken = token || '';
   if (token) {
     localStorage.setItem('hub_auth_token', token);
   } else {
     localStorage.removeItem('hub_auth_token');
+    localStorage.removeItem('hub_auth_user_hint');
   }
+
+  // Restore saved hint if none passed
+  if (!userHint) {
+    try {
+      const saved = localStorage.getItem('hub_auth_user_hint');
+      if (saved) userHint = JSON.parse(saved);
+    } catch {}
+  }
+
+  // Persist hint when provided
+  if (userHint && (userHint.name || userHint.email)) {
+    try {
+      localStorage.setItem('hub_auth_user_hint', JSON.stringify({
+        name: userHint.name,
+        email: userHint.email,
+        picture: userHint.picture
+      }));
+    } catch {}
+  }
+
   currentUser = await fetchAuthMe(token);
+
+  if (currentUser) {
+    const isPlaceholder = !currentUser.name || 
+                          currentUser.name.toLowerCase().startsWith('auth0') || 
+                          currentUser.name === 'Auth0 Resident';
+    if (userHint?.name && isPlaceholder) {
+      currentUser.name = userHint.name;
+    }
+    if (userHint?.email && (!currentUser.email || !currentUser.email.includes('@'))) {
+      currentUser.email = userHint.email;
+    }
+    if (userHint?.picture && !currentUser.picture) {
+      currentUser.picture = userHint.picture;
+    }
+
+    // Sync real Google profile with API backend in the background
+    if (token && userHint && (userHint.name || userHint.email)) {
+      syncUserProfileApi({
+        name: currentUser.name,
+        email: currentUser.email,
+        picture: currentUser.picture
+      }, token).catch(() => {});
+    }
+  }
+
   notifyListeners();
   return currentUser;
 }
@@ -120,7 +174,8 @@ export async function loginWithAuth0(options = {}) {
     // Try popup login first for smooth in-page UX
     await client.loginWithPopup(options);
     const token = await client.getTokenSilently();
-    await switchToken(token);
+    const auth0User = await client.getUser().catch(() => null);
+    await switchToken(token, auth0User);
     return currentUser;
   } catch (err) {
     // If popup blocked by browser or closed, and redirect is requested/needed:
@@ -144,8 +199,9 @@ export async function loginGoogleUser({ email, name } = {}) {
         }
       });
       const token = await client.getTokenSilently();
+      const auth0User = await client.getUser().catch(() => null);
       if (token) {
-        await switchToken(token);
+        await switchToken(token, auth0User);
         return currentUser;
       }
     }
@@ -183,6 +239,7 @@ export async function registerAccount({ name, email, password, neighbourhood } =
 export async function logout() {
   currentToken = '';
   localStorage.removeItem('hub_auth_token');
+  localStorage.removeItem('hub_auth_user_hint');
   try {
     const client = await getAuth0Client();
     if (client && await client.isAuthenticated().catch(() => false)) {

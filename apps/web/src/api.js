@@ -88,6 +88,19 @@ export async function fetchAuthMe(token = 'dev_resident') {
   }
 }
 
+export async function syncUserProfileApi(profile, token) {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/auth/sync-profile`, {
+      method: 'POST',
+      headers: getHeaders(token),
+      body: JSON.stringify(profile)
+    });
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 
 export async function fetchAuditLogs(limit = 10) {
   try {

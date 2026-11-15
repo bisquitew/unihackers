@@ -32,6 +32,8 @@ interface AuthContextType {
   signIn: (method: 'google' | 'email', email?: string, password?: string) => Promise<{ ok: boolean; error?: string }>;
   /** Signs in through real Auth0 Universal Login (Google, Email, Passkey). */
   loginWithAuth0: () => Promise<{ ok: boolean; error?: string }>;
+  /** Direct login with an already acquired Auth0 token (e.g. from in-app WebView). */
+  loginWithToken: (token: string, hint?: { name?: string; email?: string; picture?: string }) => Promise<{ ok: boolean; error?: string }>;
   /** Registers a new resident account in the database through the API. */
   register: (data: { name: string; email: string; password?: string; neighbourhood?: string }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
@@ -96,6 +98,7 @@ const AuthContext = createContext<AuthContextType>({
   loginAsResident: async () => {},
   signIn: async () => ({ ok: false }),
   loginWithAuth0: async () => ({ ok: false }),
+  loginWithToken: async () => ({ ok: false }),
   register: async () => ({ ok: false }),
   logout: () => {},
   isLoading: true,
@@ -386,6 +389,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithToken = async (
+    authToken: string,
+    userHint?: { name?: string; email?: string; picture?: string }
+  ): Promise<{ ok: boolean; error?: string }> => {
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      setSessionToken(authToken);
+      const me = await api.get<any>('/v1/core/auth/me');
+      if (me && me.sub && me.sub !== 'guest|unauthenticated') {
+        if (STAFF_ROLES.includes(me.role)) {
+          setSessionToken(null);
+          setAuthError(STAFF_MESSAGE);
+          return { ok: false, error: STAFF_MESSAGE };
+        }
+        const resolvedName = (userHint?.name && (!me.name || me.name.startsWith('Auth0'))) 
+          ? userHint.name 
+          : me.name;
+        const resolvedEmail = (userHint?.email && (!me.email || !me.email.includes('@'))) 
+          ? userHint.email 
+          : me.email;
+        const resolvedPicture = userHint?.picture || me.picture;
+
+        setUser({ ...me, id: me.id ?? me.sub, name: resolvedName, email: resolvedEmail, picture: resolvedPicture });
+        setToken(authToken);
+        try {
+          await AsyncStorage.setItem(STORAGE_KEY, authToken);
+        } catch {}
+
+        // Sync Google profile with backend
+        if (userHint && (userHint.name || userHint.email)) {
+          api.post('/v1/core/auth/sync-profile', {
+            name: resolvedName,
+            email: resolvedEmail,
+            picture: resolvedPicture
+          }).catch(() => {});
+        }
+
+        return { ok: true };
+      }
+      throw new Error('Could not verify Auth0 identity.');
+    } catch (err: any) {
+      setSessionToken(null);
+      const msg = err.message || 'Auth0 token verification failed.';
+      setAuthError(msg);
+      return { ok: false, error: msg };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const loginAsResident = async () => {
     await login('dev_resident');
   };
@@ -413,6 +467,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loginAsResident,
         signIn,
         loginWithAuth0,
+        loginWithToken,
         register,
         logout,
         isLoading,

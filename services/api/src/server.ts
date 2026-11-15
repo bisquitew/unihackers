@@ -38,7 +38,8 @@ import {
   hubClientOf,
   roleAllowedOnClient,
   wrongClientBody,
-  inspectAccountType
+  inspectAccountType,
+  syncUserProfile
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -512,6 +513,31 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         security_tier: role === 'admin' ? 'tier_2_mfa_verified' : 'tier_1_standard',
         example_header: `Authorization: Bearer ${registered.token}`
       });
+    }
+
+    if (pathname === '/v1/core/auth/sync-profile' && method === 'POST') {
+      const body = await parseBody(req);
+      if (currentUser && currentUser.sub !== GUEST_SUB) {
+        const updated = syncUserProfile(currentUser.sub, {
+          name: body.name ? String(body.name).slice(0, 100) : undefined,
+          email: body.email ? String(body.email).slice(0, 200) : undefined,
+          picture: body.picture ? String(body.picture).slice(0, 500) : undefined
+        });
+        if (db.isTigerConnected()) {
+          try {
+            await db.query(`
+              INSERT INTO core_users (id, auth0_id, email, name, role, neighbourhood, created_at, updated_at)
+              VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+              ON CONFLICT (email) DO UPDATE 
+              SET name = EXCLUDED.name, updated_at = NOW();
+            `, [crypto.randomUUID(), currentUser.sub, body.email || currentUser.email || `${currentUser.sub}@hub.local`, body.name || currentUser.name, currentUser.role || 'resident', 'Cetate']);
+          } catch (err: any) {
+            console.warn('Could not sync user to DB:', err.message);
+          }
+        }
+        return sendJson(res, 200, { success: true, user: { ...currentUser, ...updated } });
+      }
+      return sendJson(res, 401, { error: 'unauthenticated' });
     }
 
     if (pathname === '/v1/core/auth/google-login' && method === 'POST') {
