@@ -505,6 +505,38 @@ export const GUEST_USER: AuthUser = {
  * Demo sign-in (DEMO_AUTH only). The role is decided here from the email, never from what the caller asks for:
  * staff mail addresses become admins, everyone else a resident. Real accounts come from Auth0 tokens.
  */
+// Demo sessions (DEMO_AUTH only) are kept in the database too, so signing in survives a restart of the API: before this, every
+// restart made each phone's saved sign-in invalid and the wallet, chats and tickets "could not load" until the person signed in again.
+const DEMO_SESSIONS_SCHEMA = `CREATE TABLE IF NOT EXISTS core_demo_sessions (
+  token VARCHAR(128) PRIMARY KEY, sub VARCHAR(255) NOT NULL, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+
+function saveDemoSession(token: string, user: AuthUser) {
+  if (!db.isTigerConnected()) return;
+  db.query(DEMO_SESSIONS_SCHEMA)
+    .then(() => db.query(`INSERT INTO core_demo_sessions (token, sub, data) VALUES ($1, $2, $3) ON CONFLICT (token) DO UPDATE SET data = EXCLUDED.data`, [token, user.sub, JSON.stringify(user)]))
+    .catch((err: any) => console.warn('[auth] could not save the demo session:', err.message));
+}
+
+/** Brings the saved demo sessions back at start. Returns how many. */
+export async function loadDemoSessions(): Promise<number> {
+  if (!db.isTigerConnected()) return 0;
+  try {
+    await db.query(DEMO_SESSIONS_SCHEMA);
+    const rows = await db.query<any>(`SELECT token, data FROM core_demo_sessions`);
+    for (const r of rows) {
+      const user = r.data as AuthUser;
+      // staff accounts are never restored from here: they sign in again, with their second check
+      if (!user?.sub || STAFF_ROLES.includes(user.role)) continue;
+      DEV_USERS[r.token] = user;
+      DEV_USERS[user.sub] = user;
+    }
+    return rows.length;
+  } catch (err: any) {
+    console.warn('[auth] could not load demo sessions:', err.message);
+    return 0;
+  }
+}
+
 export function registerGoogleUser(googlePayload: {
   email: string;
   name: string;
@@ -530,6 +562,7 @@ export function registerGoogleUser(googlePayload: {
 
   DEV_USERS[token] = user;
   DEV_USERS[sub] = user;
+  if (role === 'resident') saveDemoSession(token, user);
   recordAudit(user, 'auth.google_login', 'ALLOW');
   return { token, user };
 }
@@ -561,6 +594,7 @@ export function registerLocalUser(payload: {
 
   DEV_USERS[token] = user;
   DEV_USERS[sub] = user;
+  if (role === 'resident') saveDemoSession(token, user);
   recordAudit(user, 'auth.register', 'ALLOW');
   return { token, user };
 }

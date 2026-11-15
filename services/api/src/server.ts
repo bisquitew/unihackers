@@ -39,7 +39,8 @@ import {
   roleAllowedOnClient,
   wrongClientBody,
   inspectAccountType,
-  syncUserProfile
+  syncUserProfile,
+  loadDemoSessions
 } from './core/auth.ts';
 import {
   getLiveDevnetStatus,
@@ -1271,6 +1272,8 @@ async function bootParkie(port: number) {
   for (let i = 0; i < 30 && !db.isTigerConnected(); i++) await new Promise((r) => setTimeout(r, 500));
   const alerts = await areaAlertsService.loadFromDb();
   if (alerts) console.log(`[AREA ALERTS] ${alerts} published alerts loaded from the database`);
+  const sessions = DEMO_AUTH ? await loadDemoSessions() : 0;
+  if (sessions) console.log(`[AUTH] ${sessions} demo sessions restored from the database`);
   const items = await loadWallets();
   if (items) console.log(`[WALLET] ${items} tickets and badges loaded from the database`);
   const n = await parkieService.loadLotsFromDb();
