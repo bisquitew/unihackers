@@ -1,293 +1,364 @@
-# &#91;PRODUCT\_NAME\] — UniHack Brief & Team Build Plan
+<p align="center">
+  <img src="https://img.shields.io/badge/UNIHACK-2026-FF3D7F?style=for-the-badge&labelColor=1A1033" alt="UNIHACK 2026" />
+  <img src="https://img.shields.io/badge/Team-UniHackers-12C99B?style=for-the-badge&labelColor=1A1033" alt="UniHackers" />
+</p>
 
-Nov 13, 2026 · @Zaq
+<p align="center">
+  <img src="docs/brand/logo.svg" alt="hop logo" width="96" />
+</p>
 
-## 1. Project brief
+<h1 align="center">hop</h1>
+<h3 align="center">One App for Timișoara · Live City Alerts · Ask It Out Loud</h3>
 
-We are building \[PRODUCT\_NAME\]: one community hub for Timișoara, Romania, that solves real city problems, absorbs our previous winning project \[PARKIE\_MODULE\], and targets as many UniHack sponsor challenges as possible in 48 hours.
+<p align="center">
+  <strong>🏛️ Built in 48 hours at UNIHACK 2026 · 13 modules · iOS · Android · Web</strong><br>
+  <em>Everything in Timișoara, one tap away. · Tot Timișoara-ul, la un tap distanță.</em>
+</p>
 
-**What the product is**
+<p align="center">
+  <img src="https://img.shields.io/badge/Expo_SDK_58-000020?style=flat-square&logo=expo&logoColor=white" />
+  <img src="https://img.shields.io/badge/React_Native-61DAFB?style=flat-square&logo=react&logoColor=black" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/Node.js-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white" />
+  <img src="https://img.shields.io/badge/Hono-E36002?style=flat-square&logo=hono&logoColor=white" />
+  <img src="https://img.shields.io/badge/Gemini-8E75B2?style=flat-square&logo=googlegemini&logoColor=white" />
+  <img src="https://img.shields.io/badge/ElevenLabs-000000?style=flat-square&logo=elevenlabs&logoColor=white" />
+  <img src="https://img.shields.io/badge/Auth0-EB5424?style=flat-square&logo=auth0&logoColor=white" />
+  <img src="https://img.shields.io/badge/Solana-9945FF?style=flat-square&logo=solana&logoColor=white" />
+  <img src="https://img.shields.io/badge/Tiger_Data-FDB515?style=flat-square&logo=timescale&logoColor=black" />
+  <img src="https://img.shields.io/badge/YOLO11-FF6F00?style=flat-square&logo=pytorch&logoColor=white" />
+  <img src="https://img.shields.io/badge/OpenCV-5C3EE8?style=flat-square&logo=opencv&logoColor=white" />
+  <img src="https://img.shields.io/badge/MapLibre-396CB2?style=flat-square&logo=maplibre&logoColor=white" />
+</p>
 
-- A single city hub for residents, students, newcomers and tourists in Timișoara. Everything is built around this one city.
-- A native phone app for iOS and Android, plus a web app usable on any other device (laptop, tablet).
-- A set of feature modules, each solving one community problem (section 2), plus a Facebook-style community forum with groups (e.g. "my cat is missing").
-- &#91;PARKIE\_MODULE\], our previous hackathon-winning project, fully ported in as one of the modules.
+---
 
-**How we build it (team requirements)**
+## ✨ What is hop?
 
-- Team of 4, 48 hours. Do as much of the scope as possible, not necessarily all of it.
-- Strictly modular: every feature is built independently. If one breaks or we drop it, it stays as a draft and does not affect the rest of the app.
-- Each member owns their own components and can finish their tasks without waiting on anyone else.
-- Scalable: new features can be added later without conflicts.
-- One member owns the visual identity and the frontend shell. This is ideally the person porting \[PARKIE\_MODULE\], since it is a large part of the app.
-- Deliverable right now is the structure, not the code: full architecture, team split, tech stack, then a list of extra ideas.
-
-**Open item:** the \[PARKIE\_MODULE\] file was mentioned as attached but was not included in either upload. Its section in this plan uses placeholders until we have it.
-
-## 2. Community problems and their modules
-
-Each problem becomes one independent module with a placeholder name. Swap the placeholders for real names once you pick a brand.
-
-| Module | Problem in Timișoara | What the module does |
-| --- | --- | --- |
-| \[M01\_EVENTS\] | The cultural scene is mostly formal museums and big annual festivals, with little in between. People asked for micro-festivals, open-air cinema, pop-up events, creative workshops, mixed-discipline nights, small showcases for local artists, and social gatherings for specific age groups. | Discover, create and RSVP to small events. Organizers post; residents filter by type, area, date and age group. |
-| \[M02\_VISITOR\_INFO\] | Visitors can't find practical information when they need it. The review of the 2023 European Capital of Culture year criticised the city's communication with international visitors as slow and poorly targeted. | Multilingual practical info (transport, tickets, pharmacies, ATMs, opening hours) plus an AI assistant that answers questions. |
-| \[M03\_SAFETY\] | People don't feel safe in parts of the city, especially at night. In August 2025, residents near Gara de Nord protested over threats, night-time noise and buildings taken over by squatters, saying repeated complaints produced no concrete response. | Map-based safety reports (noise, lighting, abandoned buildings), area heatmap, and an aggregated, exportable report for city hall. |
-| \[M04\_UTILITIES\] | Many apartments get heat and hot water from Colterm. In October 2021 its gas was cut, leaving about 50,000 households plus hospitals and schools without heat or hot water; months later it considered cutting hot water at night. Notices for water, heat and power cuts are scattered across utility websites, social media and notes taped to doors, so residents rarely know if their building is affected or when service returns. | One feed of planned and unplanned outages, matched to the user's saved address, with push alerts and estimated restore time. |
-| \[M05\_TRANSIT\] | Roadworks from August to the end of 2026 suspended tram line 5 and detoured lines 1 and 2. Lines 6a and 6b were already suspended, and a temporary bus line 5C was added. Changes come out as press releases, so people wait at stops no tram serves any more. | Live list of suspended, detoured and temporary lines, "is my stop still served?" check, and alerts for saved lines. |
-| \[M06\_SMELL\] | The city keeps having bad-smell episodes. In early 2022 residents reported a burnt-rubber smell almost every morning, with no source named. Sensors measure particles, but when thousands notice a smell, nothing is recorded. | One-tap smell reports (type, intensity, time, location) aggregated into a live map and time series, combined with wind data to suggest a likely source direction. |
-| \[M07\_BUDDY\] | Many people skip a concert or play because they have no one to go with: first-year and international students, newcomers, people whose friends like different things. | Opt-in "looking for company" on any event, interest-based matching, and small group chats. |
-| \[M08\_FORUM\] | No central place for neighbourhood and community help. | Facebook-style groups and posts (lost pets, neighbourhood, buy/sell, help needed), with comments, photos and moderation. |
-| \[PARKIE\_MODULE\] | From our previous winning project (details pending the file). | Full port of the existing project as a self-contained module. |
-
-The list stays open: "and community problems like these" in the brief means more modules can be added later through the same module contract (section 4).
-
-## 3. Sponsor side-challenges
-
-We target nine side-challenges; each maps to specific modules and one owner (owners P1–P4 are defined in section 6). Tiger Data was marked optional in one file; it is kept here because it fits our data naturally.
-
-| Challenge | Prize | What judges want | How we target it | Owner |
-| --- | --- | --- | --- | --- |
-| Netrom Software — Glue It Together | — | Combine APIs, cloud services, AI and tools into something greater than its parts: multi-API mashups (AI + serverless + public data), workflow automation across tools, hybrid solutions linking existing platforms with custom logic. | Serverless ingestion jobs pull utility notices, transit press releases and weather; Gemini turns them into structured alerts; the API matches them to users and pushes notifications. | P2 |
-| Solana — Best Use of Solana | Unruggable hardware wallets (per member) | A fast, scalable app using Solana's speed and near-zero fees: games or social apps with many transactions; trading, lending or DEX; supply chain, identity or payments prototypes able to handle real-world volume. | Payments prototype: event tickets and proof-of-attendance on devnet, and micro-payments for \[PARKIE\_MODULE\] if it involves payments. | P3 |
-| Vest Ventures — Living Labs Award | — | The most interactive development process: validate with real users (surveys, interviews, live tests, in person or online), iterate quickly on feedback, show measurable crowd-sourced improvements during the hackathon. | In-app feedback module plus an external survey from hour 2; a public changelog showing each change and the feedback that caused it. | P4 |
-| ElevenLabs — Best Use of ElevenLabs | Wireless earbuds | Natural, expressive AI voice: AI companions you talk to, narrated or interactive stories, voice-enabled assistants or apps. | Voice city assistant for visitors, narrated walking tours, spoken outage and transit alerts. | P4 |
-| Google Gemini — Best Use of Gemini API | MLH swag kits | An AI app that makes people say "whoa": personalised-advice chatbots, summarisers of complex material, generators for code, scripts or music. | City assistant with function calling over every module; photo of a notice taped to a door → structured outage; report clustering and summaries for city hall. | P4 (assistant), P2 (ingestion) |
-| Auth0 — Best Use of Auth0 | Wireless headphones (per member) | Secure the app with social sign-in, MFA, passwordless login, role-based access, or Auth0 for AI Agents. Free tier: no card, up to 7,000 active users. | Passwordless and Google sign-in, roles (resident, organizer, moderator, admin), MFA for moderators and admins. | P2 |
-| Tiger Data — Best Use of Tiger Data (optional) | Stream Deck Mini | PostgreSQL extended for real-time and time-series data: plain SQL, relational and metric data together, live dashboards from continuous aggregates, 90%+ compression. Ideas: IoT or sensor monitoring, real-time analytics dashboards, prediction engines. | Our main Postgres runs on Tiger Cloud. Smell, safety and outage reports and parking data become hypertables with continuous aggregates powering a live city dashboard. | P2 (DB), P4 (dashboard) |
-| Entire — Best Use of Entire | Mini portable projector | Smarter AI coding workflows using Entire's Git forge: Sessions (shared agent memory), Graph (codebase map, up to 71% fewer tokens), Brain (persistent project knowledge), Trails (agent task + review in place of PRs). Judged on human-AI collaboration, clean history and measurable token savings. | Every member's AI coding sessions run through Entire; module work is assigned as Trails; we report token savings from Graph in the pitch. | All, coordinated by P2 |
-| Vultr — Best Use of Vultr | Assorted prizes | High-performance projects on Vultr: one-click deploys, scalable compute, cloud GPUs for AI. Free credits on sign-up. | API, workers and object storage (photos) hosted on Vultr. | P2 |
-
-Three challenges are process or tooling rather than features (Living Labs, Entire, Vultr), so start them in the first hours; they cannot be added at the end.
-
-## 4. Architecture
-
-The app is a small frozen core plus independent vertical-slice modules; a module can crash, be unfinished or be switched off and the rest of the app does not notice.
-
-&#91;embedded content: system architecture · app, API, data, external services\]
-
-Requests flow top-down from the app to the API to Postgres; workers push city data in from the side, and every module appears once in the app and once in the API.
-
-**Rules that keep modules independent**
-
-1. **A module is a vertical slice.** Its screens, API routes, database schema, background jobs and mock data all live in that module's own folders, owned by one person.
-2. **The core is small and frozen after hour 3.** Core = auth, users, saved places/areas, notifications, feature flags, module registry, UI kit, shared types. Changes after hour 3 only in agreed sync windows.
-3. **Modules never import each other.** They talk only through core events, each other's public read endpoints, or deep links.
-4. **Feature flags per module:** `draft` (hidden in production, visible in dev menu), `beta`, `live`. A broken module is set to `draft` and disappears.
-5. **Mock-first.** Every module ships seed data and a mock adapter for each external API, so it works without the real source and without other modules.
-6. **One Postgres schema per module**, with its own migrations folder. Only references into core (`core.users`, `core.areas`) by id; never foreign keys between modules.
-7. **Pre-registered stubs.** In hour 1 we create every module folder, manifest and registry line at once. After that nobody edits shared index files, which removes the most common merge conflict.
-8. **Fault isolation at runtime.** The API loader wraps each module's start-up in try/catch and disables it on failure; the app wraps each module in its own error boundary.
-
-**Repository layout (monorepo)**
+hop is **one community hub for Timișoara, Romania**. The city already has the information residents need (utility cuts, tram detours, parking, safety, events), but it is scattered across press releases, door notices, Facebook groups and sensors that don't talk to each other. hop **ingests** those signals, **understands** them with AI, **protects** them with real identity and privacy rules, and **delivers** them in plain words, on a map, or **out loud in Romanian**.
 
 ```text
-[repo-name]/
-  apps/
-    app/                       Expo app: iOS, Android and web from one codebase
-      app/                     Expo Router (file-based routes)
-        _layout.tsx            shell, providers, auth gate            P1
-        (tabs)/                Home, Map, Alerts, Community, Profile  P1
-        m/<module>/            each module's own routes               module owner
-      src/modules/<module>/    screens, hooks, components, manifest.ts
-      src/modules/index.ts     registry, pre-filled in hour 1, then frozen
-  services/
-    api/                       Node + Hono API
-      src/core/                auth, users, areas, notifications, flags, events   P2
-      src/modules/<module>/    routes.ts, service.ts, db.ts, assistant-tools.ts, seed.ts
-      src/modules/index.ts     pre-filled, frozen
-    workers/                   scheduled ingestion jobs (serverless)  P2 / P4
-  packages/
-    ui/                        design system and shared components    P1
-    contracts/                 shared zod schemas and core types      P2, frozen hour 3
-    api-client/                typed fetch client, one file per module
-    config/                    tsconfig, eslint, prettier
-  db/
-    core/migrations/
-    modules/<module>/migrations/
-  docs/                        decisions, Living Labs log, pitch notes
+📄 Notice photo / 📷 Camera / 🌬️ Sensors / 🗣️ Resident reports
+        →  🤖 AI (Gemini · YOLO11 · embeddings)
+        →  🔐 Auth0 (roles + step-up MFA)  →  ⚡ City Hub API  →  🗄️ Tiger Cloud
+                                                                 →  📱 Resident app
+                                                                 →  🖥️ Staff website
+                                                                 →  🔊 Voice assistant
 ```
 
-**The module contract (frontend)** — each module exports one manifest; the shell builds navigation, home cards and map layers from it:
+### How it works
 
-```ts
-export const manifest: ModuleManifest = {
-  id: 'm04-utilities',
-  title: '[M04_UTILITIES]',
-  owner: 'P2',
-  status: 'beta',               // draft | beta | live
-  icon: 'droplet',
-  entryRoute: '/m/utilities',
-  homeCard?: UtilitiesCard,     // optional tile on Home
-  mapLayer?: OutageLayer,       // optional layer on the shared map
-  settings?: UtilitiesSettings, // optional block in Profile
-};
+1. **City staff** (on the **website**) photograph a utility notice. **Gemini** reads it in about 2 seconds into a structured draft, with warnings for anything it cannot read.
+2. A staff member with a **second check (Auth0 step-up MFA)** confirms and publishes the alert. Residents can never publish city-wide alerts.
+3. **Residents** (in the **app**) see it instantly in plain words: *"Hot water is off until about 18:00."*
+4. They can **ask out loud**: *„Am apă miercuri pe strada Văcărescu?"* and hop answers in a native Romanian voice (**ElevenLabs**).
+5. Everything residents report (smells, unsafe places, forum posts) flows into **Tiger Cloud** time-series storage, where staff see it grouped into incidents by Gemini embeddings and can ask questions of the data.
+
+> *"O poză devine o alertă oficială în 10 secunde, iar orice locuitor o poate afla vorbind cu aplicația."*
+
+---
+
+## 🧩 The 13 Modules
+
+Every module is an **independent vertical slice** (screens, API routes, DB schema, seed data, AI tools). A broken module is flipped to `draft` and disappears; the rest keeps running.
+
+| | Module | What it does |
+|---|--------|--------------|
+| 🎭 | **M01 Events** | Discover, create and RSVP to micro-events. RSVP mints a **Solana devnet ticket**. |
+| ℹ️ | **M02 Visitor Info** | Bilingual practical info (112, tickets, airport, money) with a "check before you travel" badge. |
+| 🛡️ | **M03 Safety** | Privacy-safe resident reports about *places*, safe places (hospital / police / fire), danger and works zones, Gemini area summaries. |
+| 💧 | **M04 Utilities** | Heat, water and power outages matched to your street, with crowd confirmations. |
+| 🚋 | **M05 Transit** | Suspended and detoured lines, "is my stop served?" check (tram 5 → bus 5C). |
+| 👃 | **M06 Smell** | One-tap smell reports, live map, 24 h chart and **wind-based source hint**. |
+| 🤝 | **M07 Buddy "Cu Cine?"** | Find someone to go to an event with: interest matching, icebreakers, group chat. |
+| 💬 | **M08 Forum** | Neighbourhood board (lost pets, help, buy/sell) with upvotes, reports and a moderator queue. |
+| 🎟️ | **M09 Wallet** | Per-user Solana wallet: QR tickets, door check-in, on-chain **POAP** badges. |
+| 🗣️ | **M10 Assistant** | Gemini chat with function calling over every module, voice in/out, notice scanner, staff analyst, audio tour. |
+| 💗 | **M11 Feedback** | In-app feedback, live survey sync, public changelog, analytics by app version. |
+| 📊 | **M12 Dashboard** | Staff overview from continuous aggregates and open-data export. |
+| 🅿️ | **Parkie** | Our previous award-winning smart-parking project, ported in as a module (see below). |
+
+---
+
+## 📸 Showcase
+
+### 🖼️ Brand & Demo Material
+<p align="center">
+  <img src="docs/brand/logo.svg" alt="hop logo" width="120" />
+</p>
+<p align="center">
+  <img src="docs/demo/notice-aquatim.png" alt="Sample (fictional) Aquatim notice used in the demo" width="320" />
+  <img src="docs/demo/notice-electrica.png" alt="Sample (fictional) electricity notice used in the demo" width="320" />
+</p>
+<p align="center"><sub>Both sample notices are stamped <b>ANUNȚ FICTIV</b> (fictional notice). The full brand board lives in <code>docs/brand/brand-board.html</code>.</sub></p>
+
+### 🎬 The 3-minute demo
+Step-by-step script: [docs/demo/p4-demo-script.md](docs/demo/p4-demo-script.md) ("from a notice on the door to a spoken answer").
+The full pitch / video brief: [pitch presentation.md](pitch%20presentation.md).
+
+---
+
+## 🏗️ Architecture
+
+```text
+┌──────────────────────────────────────────────────────────────────────┐
+│                           hop · UNIHACK 2026                         │
+├───────────────┬───────────────────┬──────────────────────────────────┤
+│  📱 App        │  🖥️ Staff Website  │  🤖 AI Services                  │
+│  Expo SDK 58  │  Vanilla ES SPA   │  Gemini 3.5 Flash-Lite (+Flash)  │
+│  iOS·Android  │  Dashboard · MFA  │  gemini-embedding-001            │
+│  Web          │  Parking cameras  │  ElevenLabs eleven_v4 · Scribe   │
+│  Shared map   │  Scan a notice    │  YOLO11m + OpenCV (Parkie)       │
+├───────────────┴───────────────────┴──────────────────────────────────┤
+│  ⚡ City Hub API  (Node 22 · type-stripping · Hono + http)            │
+│  /v1/core/*  ·  /v1/m/<module>/*  ·  per-module fault isolation      │
+│  Auth0 JWT (jose/JWKS) · RBAC · step-up MFA · rate limits · flags    │
+├──────────────────────────────────────────────────────────────────────┤
+│  🗄️ Tiger Cloud (TimescaleDB 2.32 · PostgreSQL 16 · PostGIS)         │
+│  5 hypertables · 4 continuous aggregates · compression · retention   │
+├────────────────────────────┬─────────────────────────────────────────┤
+│  ⛓️ Solana devnet           │  🌍 Open services                       │
+│  SPL Memo tickets · POAP   │  OpenStreetMap · OSRM · Nominatim       │
+│  Explorer + Developer MCP  │  Open-Meteo wind · Google Forms/Sheets  │
+└────────────────────────────┴─────────────────────────────────────────┘
 ```
 
-**The module contract (backend)** — each module exports one object; the API mounts it at `/v1/m/<module>`:
+**Principles:** vertical-slice modules · frozen core · contracts first (`@hub/contracts`) · mock-first adapters (everything works with no database or API key and labels itself "simulated") · feature flags (`draft` / `beta` / `live`) · extension points via module manifests (Home cards, Map layers, assistant tools).
 
-```ts
-export const apiModule: ApiModule = {
-  id: 'm04-utilities',
-  routes,           // Hono router
-  jobs?,            // scheduled jobs
-  assistantTools?,  // Gemini function declarations + handlers
-  onEvent?: { 'place.saved': handler },
-};
+---
+
+## 📂 Project Structure
+
+```text
+unihackers/
+├── apps/
+│   ├── app/                  # Expo app: iOS · Android · Web (Expo Router)
+│   │   ├── app/              # Routes: (tabs)/, alerts/, m/<module>/
+│   │   └── src/
+│   │       ├── core/         # auth, API client, map layers, alerts, i18n
+│   │       └── modules/      # m01-events … m12-dashboard, parkie
+│   └── web/                  # Staff + resident website (vanilla ES modules)
+│       └── src/views/        # Home, Map, Alerts, Community, Parking, Assistant, Admin …
+│
+├── services/
+│   ├── api/                  # City Hub API
+│   │   └── src/
+│   │       ├── core/         # auth, db, flags, geocode, routing, safe places, MCP client …
+│   │       └── modules/      # m01 … m12, parkie (routes · service · seed · assistant-tools)
+│   ├── workers/              # Netrom "glue" ingestion (Colterm / STPT / sensors)
+│   ├── parkie-vision/        # Python CV agent (YOLO11 + live feed server)
+│   └── vision/               # Earlier Parkie vision copy (capture / slot selection)
+│
+├── packages/
+│   ├── contracts/            # Shared zod schemas, types and seed data
+│   ├── ui/                   # hop design system (components, tokens, illustrations)
+│   ├── map/                  # Map engine (MapLibre) + layer API + pin registry
+│   ├── solana/               # Ticket / POAP logic, Explorer links
+│   ├── api-client/           # Typed fetch client
+│   └── config/
+│
+├── db/
+│   ├── core/migrations/      # users, areas, places, flags, audit, avatars
+│   └── modules/<module>/     # one schema + migrations per module
+│
+├── docs/                     # brand · demo script · living labs · voice tour · visitor info
+├── infra/auth0/              # Post-Login Action + Auth0 guide
+├── scripts/                  # dev launchers, migrators, seeders, test harnesses
+└── .github/                  # CI + CODEOWNERS
 ```
 
-**Shared extension points** — how a module appears in shared screens without anyone editing those screens: Home cards, Map layers, Alert types (via core notifications), assistant tools, search providers, Profile settings.
+---
 
-**Git workflow** — one branch per module; `CODEOWNERS` maps each folder to its owner; a change outside your folders needs a second person's OK and happens only in a sync window.
+## 🚀 Quick Start
 
-## 5. Tech stack
+### Prerequisites
 
-TypeScript everywhere, one codebase for iOS, Android and web, and one Postgres database; this keeps four people productive in 48 hours and lets anyone read anyone's code.
+- **Node.js 22+** (the API runs TypeScript natively with `--experimental-strip-types`)
+- **Python 3.10+** (tests, Tiger migration scripts, the Parkie vision agent)
+- A `.env` in the repo root (see below). **Without `DATABASE_URL`, everything still works in memory** and dashboards say "simulated".
 
-| Layer | Choice | Why | Challenge |
-| --- | --- | --- | --- |
-| App (iOS, Android, web) | Expo (React Native) + Expo Router, TypeScript | One codebase ships to both stores and the browser; file-based routes give each module its own folder. Demo on phones via Expo Go. | — |
-| Styling and UI kit | NativeWind (Tailwind for React Native) + own tokens in `packages/ui` | Fast to style, same classes on web and native, design tokens in one place. | — |
-| Maps | `react-native-maps` on native, MapLibre GL (or Leaflet) on web, behind one `<Map>` component with `.native.tsx` / `.web.tsx` files | The native map library does not run on web; one wrapper hides that from every module. OpenStreetMap tiles. | — |
-| Data and state | TanStack Query (server data), Zustand (local state), react-hook-form + zod (forms) | Caching and offline-friendly lists with little code; zod schemas shared with the API. | — |
-| Languages | i18next with Romanian and English (add Hungarian, German, Serbian later) | Visitors and international students are core users. | — |
-| Push notifications | Expo Notifications | One API for iOS and Android push. | — |
-| API | Node.js + Hono, zod validation | Tiny, fast, runs in containers or serverless; each module is a sub-router. | Netrom |
-| ORM and migrations | Drizzle ORM, one Postgres schema per module | Typed SQL, schema namespaces map directly to modules. | — |
-| Database | PostgreSQL with PostGIS on Tiger Cloud (TimescaleDB); local Docker image of the same for dev | Relational data, geo queries and time-series reports in one database; continuous aggregates for dashboards. | Tiger Data |
-| Auth | Auth0: passwordless email, Google sign-in, RBAC roles, MFA for staff roles; `react-native-auth0` on native, Auth0 SPA SDK on web | Login, roles and MFA without building them. | Auth0 |
-| Hosting | Vultr compute (Docker) for the API, Vultr Object Storage (S3-compatible) for photos | Free credits; one place for compute and files. | Vultr |
-| Scheduled ingestion | Serverless cron functions (e.g. Cloudflare Workers Cron or Google Cloud Run functions) calling the API | Pulls utility notices, transit updates and weather on a schedule; the "glue" layer. | Netrom |
-| AI | Gemini API via the `@google/genai` SDK: function calling, structured JSON output, image input | Assistant over all modules, extract outages from press releases and photographed notices, cluster and summarise reports. | Gemini, Netrom |
-| Voice | ElevenLabs text-to-speech and conversational agents | Voice assistant, narrated tours, spoken alerts. | ElevenLabs |
-| Blockchain | Solana devnet, `@solana/web3.js`, Solana Pay; wallet adapter on web, Mobile Wallet Adapter on Android | Tickets, proof-of-attendance and micro-payments with near-zero fees. | Solana |
-| Realtime (optional) | Postgres LISTEN/NOTIFY or Server-Sent Events | Live forum and alert updates; polling is an acceptable fallback. | — |
-| Repo and tooling | pnpm workspaces + Turborepo, GitHub Actions, Entire for agent sessions, Graph and Trails | Fast installs, per-package builds, shared AI context across the team. | Entire |
-| Feedback | Tally or Google Forms survey + in-app feedback widget; events table in Postgres | Measurable before/after numbers for the pitch. | Living Labs |
+### Setup & run
 
-**Timișoara data sources to check on day 1 (P2):** the city's open data portal ([data.primariatm.ro](https://www.opengovpartnership.org/documents/action-plan-timisoara-romania-2022-2024/), launched 2021, though [an OGP review notes it has not been updated recently](https://www.opengovpartnership.org/?p=97232)); STPT timetables on [stpt.ro](https://stpt.ro/EN/payment.html) (no open GTFS feed found, so plan on parsing press releases and timetables); Colterm, Aquatim and the power distributor's outage pages; Open-Meteo for wind direction. Assume every source may fail, which is why every module ships mock data.
+```bash
+npm install                     # installs all workspaces
 
-## 6. Team split
+npm start                       # API on http://localhost:8000
+npm run dev:web                 # staff website on http://localhost:3000
+npm run dev:workers             # ingestion workers (Gemini + Colterm/STPT/sensors)
 
-Four owners, each with their own folders, modules and challenges; after the hour-3 contract freeze nobody waits on anyone, because every dependency has a mock.
+# resident app (PowerShell on Windows, not Git Bash)
+cd apps/app
+npx expo start --web            # http://localhost:8081
+```
 
-| Owner | Role | Owns (folders) | Modules | Challenges |
-| --- | --- | --- | --- | --- |
-| P1 | Design, app shell and \[PARKIE\_MODULE\] port | `packages/ui`, `apps/app/app/_layout.tsx`, `apps/app/app/(tabs)/`, all \[PARKIE\_MODULE\] folders | \[PARKIE\_MODULE\] | Pitch visuals; Solana payments in \[PARKIE\_MODULE\] if relevant (using P3's wallet package) |
-| P2 | Platform, data and city alerts | repo scaffold, `packages/contracts`, `services/api/src/core`, `apps/app/src/core`, `services/workers`, `db/core`, infra | \[M04\_UTILITIES\], \[M05\_TRANSIT\] | Auth0, Vultr, Tiger Data, Netrom, Entire (coordination) |
-| P3 | Community and social | M01, M07, M08, M09 folders, `packages/solana` | \[M08\_FORUM\], \[M01\_EVENTS\], \[M07\_BUDDY\], \[M09\_WALLET\] | Solana |
-| P4 | AI, voice and civic reports | M02, M03, M06, M10, M11, M12 folders | \[M10\_ASSISTANT\], \[M02\_VISITOR\_INFO\], \[M06\_SMELL\], \[M03\_SAFETY\], \[M11\_FEEDBACK\], \[M12\_DASHBOARD\] | Gemini, ElevenLabs, Living Labs, Tiger Data dashboard |
+On a phone: `npm run dev:app:tunnel` (ngrok) or `npm run dev:app:wifi`.
 
-New placeholders: \[M09\_WALLET\] is the Solana wallet, ticket and payment module, kept separate so a blockchain failure never touches events. \[M10\_ASSISTANT\] is the Gemini + ElevenLabs assistant. \[M11\_FEEDBACK\] is the in-app feedback and changelog. \[M12\_DASHBOARD\] is the web-only city dashboard for officials.
+### Environment variables
 
-**How each person stays unblocked**
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | Tiger Cloud (TimescaleDB) connection string |
+| `GEMINI_API_KEY` | Gemini: assistant, notice scanner, analyst, incident radar |
+| `ELEVENLABS_API_KEY` | Text-to-speech and speech-to-text |
+| `AUTH0_DOMAIN` · `AUTH0_AUDIENCE` · `AUTH0_CLIENT_ID` · `AUTH0_WEB_CLIENT_ID` | Auth0 login and JWT verification |
+| `SOLANA_ORGANIZER_SECRET_KEY` · `SOLANA_ORGANIZER_PUBLIC_KEY` | Devnet organizer wallet (signs tickets and POAPs) |
+| `FEEDBACK_INGEST_TOKEN` · `SURVEY_SYNC_URL` | Living Labs survey ingest and sync |
+| `PARKIE_VIDEO` | Demo video the Parkie vision agent loops as a camera |
+| `DEMO_AUTH` · `STAFF_EMAILS` | Demo sign-in switch (off in production) and staff allow-list |
 
-- Auth: until Auth0 is wired, the API accepts a dev token that maps to fixed test users per role.
-- UI kit: until P1 ships components, use plain React Native views; restyle in the polish phase.
-- Notifications: `notify()` exists from hour 3 and logs to console until push is live.
-- Data: every module has `seed.ts` and mock adapters, so no module needs another module's data or a real external source.
+Never commit `.env`. It is git-ignored.
 
-### P1 — Design, app shell and \[PARKIE\_MODULE\]
+### Test & verify
 
-Must (by hour 24)
+```bash
+npm test                  # boots-and-checks the core API suite (scripts/test_p2.py)
+npm run test:modules      # all modules
+npm run test:auth         # Auth0 / roles end to end
+npm run test:solana       # live Solana devnet mint check
+npm run test:workers      # ingestion workers
+npm run demo:auth0        # interactive Auth0 judge demo
+npm run verify:all        # full master verification
+```
 
-- [ ] Visual identity: placeholder name, logo mark, colour palette, type scale, icon set, tone of voice
-- [ ] Design tokens and core components in `packages/ui`: Button, Card, ListItem, Chip, Avatar, Sheet, Tabs, Empty / Loading / Error states
-- [ ] `<Map>` wrapper (native + web) with a layer API modules can plug into
-- [ ] App shell: tabs (Home, Map, Alerts, Community, Profile), Home built from module home cards, Map built from module layers
-- [ ] Responsive web layout (sidebar on desktop, tabs on phone)
-- [ ] &#91;PARKIE\_MODULE\] core flow ported as a module (frontend, API module, schema, seed)
+---
 
-Should
+## 📡 API Endpoints (highlights)
 
-- [ ] Onboarding: language, neighbourhood, interests, home address (feeds P2's saved places)
-- [ ] Dark mode and accessibility pass (contrast, font scaling, screen reader labels)
-- [ ] &#91;PARKIE\_MODULE\] secondary features
+Everything lives under `/v1/core/*` (platform) and `/v1/m/<module>/*` (modules). Full reference: [REQUIREMENTS.md](REQUIREMENTS.md).
 
-Could
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Health + version |
+| `GET` | `/v1/core/areas` | The 13 Timișoara neighbourhoods |
+| `GET` | `/v1/core/auth/me` | Roles, permissions, MFA status |
+| `GET` | `/v1/core/auth/audit-log` | Security audit trail (moderator / admin) |
+| `GET` | `/v1/core/route` | Directions that avoid danger zones and list help nearby |
+| `GET` | `/v1/core/tiger/status` | Live hypertables, aggregates, compression |
+| `GET` | `/v1/core/open-data/export` | Anonymised aggregates (JSON / CSV) |
+| `GET` | `/v1/m/utilities/outages` | Active outages |
+| `POST` | `/v1/m/utilities/check-address` | Is my address affected? |
+| `POST` | `/v1/m/transit/check-stop` | Is my stop served? |
+| `GET` | `/v1/m/parkie/lots` | Parking lots with live occupancy and colour |
+| `POST` | `/v1/m/parkie/detections` | Camera agent reports cars (staff / agent) |
+| `POST` | `/v1/m/events/:id/rsvp` | RSVP and mint a Solana ticket |
+| `POST` | `/v1/m/buddy/match` | Interest-based buddy matching |
+| `POST` | `/v1/m/forum/:id/report` | Report a post for moderation |
+| `POST` | `/v1/m/wallet/check-in` | Door scan, verify, issue POAP |
+| `POST` | `/v1/m/smell/reports` · `/v1/m/safety/reports` | One-tap resident reports (rate-limited) |
+| `POST` | `/v1/m/assistant/chat` | Gemini assistant with tools |
+| `POST` | `/v1/m/assistant/tts` · `/stt` | ElevenLabs speech out / in |
+| `POST` | `/v1/m/assistant/notice/parse` | Photo → structured outage draft (Gemini vision) |
+| `POST` | `/v1/m/assistant/notice/confirm` | Publish (staff + MFA) |
+| `POST` | `/v1/m/assistant/analyst` | "Ask the data" (Gemini code execution, staff) |
+| `GET` | `/v1/m/assistant/incidents` | Incident radar (Gemini embeddings, staff) |
 
-- [ ] App icon, splash screen, store screenshots, pitch deck visuals
+---
 
-### P2 — Platform, data and city alerts
+## 🗄️ Database (Tiger Cloud)
 
-Must (by hour 3, then by hour 24)
+| Hypertable | Continuous aggregate | Notes |
+|------------|----------------------|-------|
+| `parking_detection_events` | `parking_hourly_stats` | Camera detections, 15 min refresh |
+| `city_metric_events` | `city_metrics_hourly_stats` | PM2.5, noise, smell per neighbourhood |
+| `utility_outage_metrics` | none | Outage metrics |
+| `m03_safety.reports` | `m03_safety.reports_hourly` | Safety reports, 7 day compression |
+| `m06_smell.reports` | `m06_smell.reports_hourly` | Smell reports, 7 day compression |
 
-- [ ] Hour 0–3: monorepo, Expo app and API skeletons, `packages/contracts`, all module stubs and registry lines, CODEOWNERS, CI, Entire set up for the team
-- [ ] Core API: users, saved places and areas (PostGIS), feature flags, events outbox, `notify()`
-- [ ] Auth0: passwordless + Google login, roles (resident, organizer, moderator, admin), API middleware, app auth provider in `apps/app/src/core`
-- [ ] Database on Tiger Cloud, migrations per schema, deployment on Vultr
-- [ ] &#91;M04\_UTILITIES\]: outage model, address matching, ingestion job with Gemini extraction, alerts
-- [ ] &#91;M05\_TRANSIT\]: line status model, "is my stop served" check, ingestion from press releases, alerts
+Real-time aggregates are on, 90-day retention policies are set, and one schema per module has its own migrations in `db/modules/`. Time buckets use `Europe/Bucharest`. Also stored: users, wallets, forum, buddy chats, events, personal pins, survey answers and the **Auth0 audit trail**.
 
-Should
+---
 
-- [ ] Expo push notifications end to end
-- [ ] Photo upload service (Vultr Object Storage, signed URLs) used by forum and reports
-- [ ] MFA for moderators and admins
+## 🤖 AI Pipeline
 
-Could
+| Feature | How it works |
+|---------|--------------|
+| **City assistant** | Gemini **function calling** over every module's tools; replies in the user's language; never invents outages; times converted to Timișoara local time; knows whose wallet to read |
+| **Notice scanner** | Gemini **vision + structured JSON** → draft outage; unreadable fields become warnings; human confirms |
+| **Ask the data** | Gemini **code execution** + our data tools; runs Python on Google's side and returns a chart with its sources |
+| **Incident radar** | `gemini-embedding-001` links forum posts and outages to report groups; structured output writes RO/EN incident cards |
+| **Solana MCP** | A from-scratch MCP client lets the assistant verify tickets via Solana's **Explorer MCP** and answer from the **Developer docs MCP** |
+| **Voice** | ElevenLabs **eleven_v4** (Romanian "Corina Ioana", English "Jessica") and **Scribe v3**; narrated 5-stop audio tour |
+| **Parkie vision** | **YOLO11m** every 5 s, polygon matching, 5-frame majority vote, report every 15 s |
 
-- [ ] Realtime updates (SSE), rate limiting, audit log
+---
 
-### P3 — Community and social
+## 🅿️ Parkie: our previous winner, now a hop module
 
-Must (by hour 24)
+<p align="center">
+  <strong>🏆 Parkie won the Community Problem Track Award @ ITfest 2026</strong>
+</p>
 
-- [ ] &#91;M08\_FORUM\]: groups, posts with photos, comments, categories (lost pets, neighbourhood, help), report-a-post
-- [ ] &#91;M01\_EVENTS\]: create, list, filter (type, area, date, age group), RSVP, map layer, home card
-- [ ] &#91;M07\_BUDDY\]: "looking for company" on an event, interest matching, small group chat
+[Parkie](https://github.com/bisquitew/Parkie) (FastAPI + Supabase + YOLOv11 + Expo) detects cars in parking-lot camera feeds and shows real-time availability on a map. In hop it is a full module: the same vision pipeline (`services/parkie-vision`) posts occupancy to the hop API, lots are colour-coded 🟢 green / 🟡 yellow / 🔴 red, staff calibrate slots by clicking 4 corners per slot on the **Parking cameras** dashboard, and the history lands in Tiger Cloud hourly aggregates.
 
-Should
+---
 
-- [ ] Moderation tools for the moderator role
-- [ ] &#91;M09\_WALLET\] on Solana devnet: ticket mint on RSVP, QR check-in, proof-of-attendance
+## 🔐 Security & Privacy
 
-Could
+- **Auth0**: Universal Login (Google / passwordless / register), JWTs verified against JWKS, roles `resident · organizer · moderator · admin`.
+- **Step-up MFA** for staff actions that affect the whole city; **Auth0 for AI Agents** (M2M) for ingestion; **adaptive location shield** with push + email; **audit log** persisted to Tiger Cloud.
+- **Staff use the website, residents use the app**, enforced by the API.
+- Shared pins snap to a 30–100 m grid; contact details and plates are stripped from safety notes; safety summaries use counts, not notes; routing sends only coordinates; API keys stay server-side; demo sign-in is disabled when `NODE_ENV=production`.
 
-- [ ] Micro-payments for paid events or \[PARKIE\_MODULE\]; reputation points for helpful posts
+---
 
-### P4 — AI, voice and civic reports
+## 🧪 Living Labs (real users)
 
-Must (by hour 24)
+Survey (RO/EN, Google Forms → Sheets → our API → Tiger Cloud): **39 answers at v0**, average install intent **4.26 / 5**, and **parking was the #1 pick (14 of 39)**. Details, feedback → change log and numbers per app version: [docs/living-labs/](docs/living-labs/living-labs-log.md). Live figures: staff dashboard → **Analytics**.
 
-- [ ] &#91;M11\_FEEDBACK\] live by hour 4: in-app feedback, external survey, changelog page (Living Labs needs the whole 48 hours)
-- [ ] &#91;M10\_ASSISTANT\]: Gemini chat with function calling into each module's `assistantTools` (disabled modules simply contribute no tools)
-- [ ] &#91;M02\_VISITOR\_INFO\]: curated practical info in RO/EN, answered through the assistant
-- [ ] &#91;M06\_SMELL\]: one-tap report, map heatmap, time series as a Tiger Data hypertable, wind overlay
+---
 
-Should
+## 🎨 Design System
 
-- [ ] ElevenLabs voice: talk to the assistant, spoken alerts, one narrated walking tour
-- [ ] &#91;M03\_SAFETY\]: same report pattern as smell, plus Gemini summary per area
+hop is **friendly, calm and text-first**: white pages, hairline lists, flat illustrations, **one pink button per screen**. Spec: [docs/brand/identity.md](docs/brand/identity.md) · tokens: [docs/brand/design-tokens.json](docs/brand/design-tokens.json) · board: [docs/brand/brand-board.html](docs/brand/brand-board.html).
 
-Could
+| Token | Value | Usage |
+|-------|-------|-------|
+| Background | `#F8F6FB` | Page / board |
+| Ink | `#1A1033` | Text, icons, **every button label** |
+| Pink | `#FF3D7F` | Logo and the single primary button |
+| Blue | `#3D5BFF` | Getting around and info (transit, parking, assistant) |
+| Mint | `#12C99B` | Home and services (utilities, wallet, feedback) |
+| Apricot | `#FF7A2F` | Safety and warnings (safety, smell) |
 
-- [ ] &#91;M12\_DASHBOARD\]: web dashboard for officials from continuous aggregates, exportable report
+Typography: **Nunito** (headlines) and **Figtree** (interface). Squircle corners, glass only on floating controls, 44 px touch targets, reduced-motion and reduced-transparency support.
 
-## 8. Open questions and new ideas
+---
 
-**Open questions to settle in hour 0**
+## 🏆 Sponsor Challenges
 
-- [ ] Share the \[PARKIE\_MODULE\] file so P1 can size the port and we can see if Solana payments fit it.
-- [ ] Check UniHack's rules on reusing a previous project. Many hackathons require new code; if so, rebuild \[PARKIE\_MODULE\] during the event and say so in the pitch.
-- [ ] Pick the product name and replace the placeholders.
-- [ ] Confirm which phones (iOS and Android) and laptop run the live demo.
-- [ ] Decide the 3 modules we demo end to end if time runs short (suggestion: \[M04\_UTILITIES\], \[M10\_ASSISTANT\], \[PARKIE\_MODULE\]).
+| Challenge | How hop answers it |
+|-----------|--------------------|
+| **Netrom: Glue It Together** | Ingestion workers glue Gemini, utility press releases, transit notices, sensors, Auth0 M2M and Tiger Cloud; plus the photo → Gemini → MFA → publish → spoken-answer chain |
+| **Solana** | Devnet tickets with SPL Memo, QR door check-in, on-chain POAP, MCP-verified by the assistant |
+| **Vest Ventures: Living Labs** | In-app feedback, live survey, changelog, analytics by version |
+| **ElevenLabs** | Spoken Romanian assistant, speech-to-text, narrated tour |
+| **Google Gemini** | Function calling, vision, embeddings, code execution, structured output |
+| **Auth0** | Universal Login, RBAC, step-up MFA, AI-agent M2M, audit trail |
+| **Tiger Data** | 5 hypertables, 4 continuous aggregates, compression, retention, open-data export |
 
-**More things the app could do**
+---
 
-| Idea | What it does | Builds on |
-| --- | --- | --- |
-| "My building" page | One screen per saved address: heat, water and power status, nearest working stops, nearby events and reports. | M04, M05, M01, M03 |
-| Walk-me-home | Share a live route with a friend, suggest better-lit routes from safety reports, voice check-ins at night. | M03, M10 (voice) |
-| Outage helpers | During heating or water cuts, list where to shower or warm up and let neighbours volunteer to check on elderly residents. | M04, M08 |
-| Civic issue tracker | Report potholes, broken street lights or overflowing bins with photo and location; track status; export to city hall. | M03 pattern |
-| Accessibility map | Step-free routes, ramps, broken lifts on trams and in buildings, reported by users. | Map layers |
-| Neighbourhood audio digest | A 2-minute AI-written, ElevenLabs-voiced summary of what happened in your area this week. | M10, all modules |
-| Live translation | Forum posts and event descriptions translated on the fly for international students and visitors. | M08, M01, Gemini |
-| Lost-pet photo matching | Gemini compares a "found" photo with "lost" posts and suggests matches. | M08 |
-| Newcomer guides | Step-by-step guides for new residents and students: transport card, doctors, registering, SIM cards. | M02 |
-| Neighbourhood polls | Quick polls and petitions per area, with results shared with local officials. | M08, Auth0 roles |
-| Civic rewards | Points for useful reports and volunteering, redeemable at local businesses, optionally as Solana tokens. | M09 |
-| Bike and micromobility | Bike-sharing station availability next to transit status. | M05 |
-| Open data back to the city | Publish anonymised aggregates (smell, safety, outages) as open datasets the city can reuse. | M12, Tiger Data |
+## 🤝 Contributing & Conventions
+
+- All PRs merge into `main`; `.github/CODEOWNERS` maps each folder to its owner; CI runs the API test suite.
+- Modules never import each other; they talk through core events, public read endpoints or deep links.
+- Strip-types rule for any file the API loads: `.ts` on relative imports, `import type` for types, no `enum`s or constructor parameter properties.
+- Every commit that adds routes, contracts or architecture updates [REQUIREMENTS.md](REQUIREMENTS.md).
+- Commit messages are short and end with `:3`.
+
+More docs: [REQUIREMENTS.md](REQUIREMENTS.md) · [docs/p4-progress.md](docs/p4-progress.md) · [infra/auth0/README.md](infra/auth0/README.md) · [services/parkie-vision/README.md](services/parkie-vision/README.md).
+
+---
+
+## 👥 Team UniHackers
+
+Four builders, four lanes: **P1** design and app shell (plus the Parkie port), **P2** platform, data and city alerts, **P3** community and Solana, **P4** AI, voice and civic reports.
+
+Built with ☕ and 🍜 at **UNIHACK 2026**.
+:3
+
+---
+
+<p align="center">
+  <sub>Made for UNIHACK 2026 · Timișoara, Romania 🇷🇴</sub>
+</p>
