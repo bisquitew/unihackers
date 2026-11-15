@@ -12,13 +12,47 @@ function rowToBuddy(row: any): BuddyRequest {
     bio: row.bio || '',
     university: row.university || 'Resident Timișoara',
     interests: Array.isArray(row.interests) ? row.interests : [],
-    icebreakerPrompt: row.icebreaker_prompt || row.icebreakerPrompt || "Ce te entuziasmează la acest eveniment?",
+    icebreakerPrompt: row.icebreaker_prompt || row.icebreakerPrompt || "What are you most looking forward to at this event?",
     status: row.status || 'open',
     createdAt: new Date(row.created_at || row.createdAt).toISOString(),
   };
 }
 
+// Chats are kept in m07_buddy_chats (one row per chat, messages included) and loaded once, so they survive a restart.
+const CHATS_SCHEMA = `CREATE TABLE IF NOT EXISTS m07_buddy_chats (
+  id VARCHAR(128) PRIMARY KEY, data JSONB NOT NULL, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
+
 export class BuddyService {
+  private chatsLoaded: Promise<void> | null = null;
+
+  private loadChats(): Promise<void> {
+    this.chatsLoaded ??= (async () => {
+      if (!db.isTigerConnected()) return;
+      try {
+        await db.query(CHATS_SCHEMA);
+        const rows = await db.query<any>(`SELECT data FROM m07_buddy_chats`);
+        for (const r of rows) if (!this.chats.some((c) => c.id === r.data.id)) this.chats.push(r.data);
+      } catch (err: any) {
+        console.warn('[m07-buddy] could not load chats:', err.message);
+      }
+    })();
+    return this.chatsLoaded;
+  }
+
+  /** saves run one after another per chat, and each writes the chat as it is when its turn comes */
+  private saving = new Map<string, Promise<void>>();
+
+  private saveChat(chat: BuddyGroupChat) {
+    if (!db.isTigerConnected()) return;
+    const prev = this.saving.get(chat.id) ?? Promise.resolve();
+    const next = prev.then(() =>
+      db.query(`INSERT INTO m07_buddy_chats (id, data, updated_at) VALUES ($1, $2, NOW())
+                ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data, updated_at = NOW()`, [chat.id, JSON.stringify(chat)])
+        .then(() => {})
+        .catch((err: any) => console.warn('[m07-buddy] could not save chat:', err.message)));
+    this.saving.set(chat.id, next);
+  }
+
   private requests: BuddyRequest[] = [...seedBuddyRequests];
   private chats: BuddyGroupChat[] = [...seedGroupChats];
 
@@ -55,7 +89,7 @@ export class BuddyService {
       bio: input.bio,
       university: input.university || 'Student / Resident',
       interests: input.interests || [],
-      icebreakerPrompt: input.icebreakerPrompt || "Ce te entuziasmează la acest eveniment?",
+      icebreakerPrompt: input.icebreakerPrompt || "What are you most looking forward to at this event?",
       status: 'open',
       createdAt: new Date().toISOString(),
     };
@@ -98,7 +132,17 @@ export class BuddyService {
   }
 
   async getOrCreateChat(eventId: string, eventTitle: string, participantIds: string[], participantNames: string[]): Promise<BuddyGroupChat> {
+    await this.loadChats();
     let chat = this.chats.find((c) => c.eventId === eventId);
+    if (chat) {
+      // whoever opens an existing chat joins it (participantIds[0] is the signed-in person)
+      const [me, myName] = [participantIds[0], participantNames[0]];
+      if (me && !chat.participantIds.includes(me)) {
+        chat.participantIds.push(me);
+        chat.participantNames.push(myName ?? 'Resident');
+        this.saveChat(chat);
+      }
+    }
     if (!chat) {
       chat = {
         id: `chat-${Date.now().toString(36)}`,
@@ -110,15 +154,25 @@ export class BuddyService {
         createdAt: new Date().toISOString()
       };
       this.chats.push(chat);
+      this.saveChat(chat);
     }
     return chat;
   }
 
+  /** The chats a person takes part in, most recent first. */
+  async getChatsFor(sub: string): Promise<BuddyGroupChat[]> {
+    await this.loadChats();
+    const last = (c: BuddyGroupChat) => c.messages[c.messages.length - 1]?.sentAt ?? c.createdAt;
+    return this.chats.filter((c) => c.participantIds.includes(sub)).sort((a, b) => last(b).localeCompare(last(a)));
+  }
+
   async getChatsForEvent(eventId: string): Promise<BuddyGroupChat[]> {
+    await this.loadChats();
     return this.chats.filter((c) => c.eventId === eventId);
   }
 
   async getChat(chatId: string): Promise<BuddyGroupChat | null> {
+    await this.loadChats();
     return this.chats.find((c) => c.id === chatId) || null;
   }
 
@@ -127,7 +181,7 @@ export class BuddyService {
     if (!chat) return null;
 
     const message: BuddyChatMessage = {
-      id: `msg-${Date.now().toString(36)}`,
+      id: `msg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       chatId,
       senderId,
       senderName,
@@ -136,6 +190,7 @@ export class BuddyService {
     };
 
     chat.messages.push(message);
+    this.saveChat(chat);
     return message;
   }
 }

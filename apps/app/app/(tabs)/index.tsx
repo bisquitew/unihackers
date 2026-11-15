@@ -232,27 +232,6 @@ const styles = StyleSheet.create({
   strip: { marginRight: -16 },
   stripContent: { gap: 8, paddingRight: 16, paddingTop: 8 },
   pick: { width: 64, alignItems: 'center', gap: 6 },
-  webGuestBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#18181b',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#3b82f6',
-  },
-  webGuestBannerTitle: {
-    color: '#60a5fa',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  webGuestBannerDesc: {
-    color: '#94a3b8',
-    fontSize: 11,
-    marginTop: 2,
-    lineHeight: 15,
-  },
   webGuestLoginBtn: {
     backgroundColor: '#10b981',
     borderRadius: 8,

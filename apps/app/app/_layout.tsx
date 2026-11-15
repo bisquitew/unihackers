@@ -7,9 +7,18 @@ import { colors, isDark, returnTo, themeStore, useThemeVersion } from '@hub/ui';
 import { AuthProvider } from '../src/core/auth';
 import { AuthGate } from '../src/core/AuthGate';
 import { installHubClientHeader } from '../src/core/hubClient';
+import { registerPinsSync, type MapPin } from '@hub/map';
+import { api, getSessionToken } from '../src/core/api';
 import '../src/core/i18n/ro'; // registers the Romanian dictionary before the first screen is drawn
 
 installHubClientHeader();
+// a person's map pins follow their account (the map package stays free of API code)
+registerPinsSync({
+  load: async () => (getSessionToken() ? (await api.get<{ pins: MapPin[] }>('/v1/core/user/pins')).pins : null),
+  save: async (pins) => {
+    if (getSessionToken()) await api.put('/v1/core/user/pins', { pins });
+  },
+});
 
 export default function RootLayout() {
   const [loaded] = useNunito({

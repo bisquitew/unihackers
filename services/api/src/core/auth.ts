@@ -289,8 +289,8 @@ export async function handleLoginLocationCheck(
   const pushNotification = await notify({
     userId: user.sub,
     moduleId: 'core_security',
-    title: '🚨 Alertă de Securitate: Autentificare dintr-o zonă nouă',
-    body: `Conectare nouă detectată din "${location.city}, ${location.country}" (IP: ${location.ip}). Dacă nu ai fost tu, securizează contul.`,
+    title: 'Sign-in from a new place',
+    body: `Someone signed in to your account from ${location.city}, ${location.country} (IP ${location.ip}). If it was not you, secure your account.`,
     category: 'security',
     data: {
       location,
@@ -553,7 +553,7 @@ export function wrongClientBody(role: UserRole, client: HubClient) {
   if (client === 'app') {
     return {
       error: 'access_denied',
-      error_description: 'Conectarea nu este permisă din aplicația mobilă pentru acest cont. Folosiți portalul web securizat.'
+      error_description: 'This account cannot sign in to the mobile app. Use the website.'
     };
   }
   return { error: 'use_web_dashboard', error_description: 'Staff accounts sign in on the web dashboard, not in the app.', role };
@@ -574,21 +574,21 @@ export function inspectAccountType(email: string): {
     return {
       email,
       account_type: 'admin',
-      role_label: 'Administrator Municipal (Primăria Timișoara)',
+      role_label: 'City staff',
       security_tier: 'tier_2_mfa_verified',
       requires_password: true,
       requires_mfa: true,
-      description: 'Cont oficial de administrație publică. Acces la gestionarea avariilor, devierilor STPT și zonelor de parcare.'
+      description: 'City staff account: outages, transit detours, parking and moderation.'
     };
   }
   return {
     email,
     account_type: 'resident',
-    role_label: 'Cetățean Rezident (Timișoara)',
+    role_label: 'Resident',
     security_tier: 'tier_1_standard',
     requires_password: false,
     requires_mfa: false,
-    description: 'Cont de cetățean rezident. Acces la transport în comun, parcări, forum comunitar și evenimente culturale.'
+    description: 'Resident account: transit, parking, the community forum and events.'
   };
 }
 

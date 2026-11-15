@@ -65,5 +65,6 @@ export const RO_WEB = {
   'Capture a frame to start drawing.': 'Capturează un cadru ca să începi să desenezi.', 'Undo last point': 'Anulează ultimul punct', 'Clear all': 'Șterge tot', 'Save spots': 'Salvează locurile',
   'Occupied': 'Ocupate', 'Spots': 'Locuri', 'The camera is not running. Start the API with PARKIE_VIDEO set.': 'Camera nu rulează. Pornește API-ul cu PARKIE_VIDEO setat.',
   'Please define at least one complete slot (4 points per slot).': 'Definește cel puțin un loc complet (4 puncte pe loc).',
+  'Sign-in failed': 'Autentificarea a eșuat', 'The assistant is not available right now.': 'Asistentul nu este disponibil momentan.',
   'Switch language': 'Schimbă limba',
 };

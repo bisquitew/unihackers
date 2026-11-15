@@ -20,6 +20,10 @@ export type AlertItem = {
   confirmedBy: number;
   radiusMeters?: number;
   zoneType?: 'danger' | 'construction';
+  /** true when it came from the API (the sample alerts below are not live) */
+  live?: boolean;
+  /** when it started, for the map pin */
+  startedAt?: string;
 };
 
 export const alerts: AlertItem[] = [

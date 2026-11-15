@@ -3,7 +3,7 @@ import { safetyMapLayer } from './mapLayer';
 
 export const manifest: ModuleManifest = {
   id: 'm03-safety',
-  title: 'Siguranță Urbană',
+  title: 'Safety',
   owner: 'P4',
   status: 'beta',
   icon: 'shield',

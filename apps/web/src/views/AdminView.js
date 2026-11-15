@@ -1,13 +1,11 @@
 import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
 import {
   approveReportedPost, createAreaAlert, createOutage, fetchAreaAlerts, fetchAuditLogs, fetchDashboardOverview, fetchLots,
-  captureCameraFrame, fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
+  fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
   parseNoticePhoto, confirmNotice, hubGet,
 } from '../api.js';
 import { createLotEditor } from '../components/ParkieLotEditor.js';
 import { art, cap, esc, row, statusText } from '../ui.js';
-
-let adminCanvas = null;
 
 // The staff dashboard is one page with a side menu. Each entry is a section; only the open one is on screen.
 const SECTIONS = [
@@ -57,7 +55,6 @@ export function mount(ctx, { showToast } = {}) {
     sectionCleanup = () => {};
     nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
     body.innerHTML = '<p class="muted">Loading…</p>';
-    adminCanvas = null;
     const section = { overview, alerts, notice, parking, moderation, security, database }[open];
     let html;
     try {
@@ -73,7 +70,7 @@ export function mount(ctx, { showToast } = {}) {
   };
   nav.forEach((b) => b.addEventListener('click', () => { open = b.dataset.section; draw(); }));
   draw();
-  return () => { token += 1; adminCanvas = null; sectionCleanup(); };
+  return () => { token += 1; sectionCleanup(); };
 }
 
 /* ---------------------------------------------------------------- Overview */
@@ -139,7 +136,7 @@ const alerts = {
                 <label class="field"><span>Centred on</span><select id="aArea">${AREAS.map(([n, lat, lng]) => `<option value="${esc(n)}" data-lat="${lat}" data-lng="${lng}">${esc(n)}</option>`).join('')}</select></label>
                 <label class="field"><span>How serious</span><select id="aSeverity"><option value="critical">Critical: keep away now</option><option value="high" selected>High: big impact</option><option value="medium">Medium: some impact</option></select></label>
               </div>
-              <div class="field"><div class="between"><span>Radius</span><b id="aRadiusLabel">700 m</b></div><input type="range" id="aRadius" min="150" max="2500" step="50" value="700" style="width:100%"><span id="aRadiusHint"></span></div>
+              <div class="field"><div class="between"><span>Radius</span><b id="aRadiusLabel">700 m</b></div><input type="range" id="aRadius" aria-label="Radius in metres" min="150" max="2500" step="50" value="700" style="width:100%"><span id="aRadiusHint"></span></div>
               <div class="notice" id="aWho"></div>
             </div>
 
@@ -262,7 +259,7 @@ const notice = {
       <p class="page-sub">Take or pick a photo of a printed notice from a utility company. Gemini reads it and fills in a draft; you check it and publish it as an outage.</p>
       <div class="cols section">
         <div class="stack">
-          <label class="btn btn-primary" for="nFile" style="align-self:flex-start;cursor:pointer">Take or choose a photo</label>
+          <label class="btn btn-primary" for="nFile" tabindex="0" role="button" id="nFileBtn" style="align-self:flex-start;cursor:pointer">Take or choose a photo</label>
           <input type="file" id="nFile" accept="image/jpeg,image/png,image/webp,image/heic,image/heif" capture="environment" hidden>
           <img id="nPreview" alt="The notice photo" hidden style="max-width:100%;max-height:420px;border-radius:18px;box-shadow:var(--ring)">
           <div class="result" id="nStatus" hidden></div>
@@ -312,6 +309,8 @@ const notice = {
       $('nEnd').value = toLocalInput(d.estimated_restore_time);
     };
 
+    // the picker is a label so it opens the camera on phones; Enter and Space open it from the keyboard too
+    $('nFileBtn')?.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('nFile').click(); } });
     $('nFile').addEventListener('change', async () => {
       const file = $('nFile').files?.[0];
       if (!file) return;

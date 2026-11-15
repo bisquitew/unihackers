@@ -7,9 +7,9 @@
 // the mouse is dragged a few pixels. Distances are in screen pixels, so it feels the same at any zoom.
 const HIT_RADIUS = 7;   // screen px around a corner
 const DRAG_START = 4;   // screen px of movement before a press becomes a drag
-const COLOR_SLOT = '#1A1033';     // hop ink (Parkie: #aa3bff)
-const COLOR_DRAG = '#3D5BFF';     // hop blue (Parkie: #ff00ff)
-const COLOR_OPEN = '#E2711D';     // hop apricot, the slot being drawn (Parkie: #ff3b3b)
+// hop colours, read from the page theme so they follow light and dark mode (Parkie: #aa3bff, #ff00ff, #ff3b3b)
+const themeColor = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+const colors = () => ({ slot: themeColor('--ink', '#1A1033'), drag: themeColor('--blue', '#3D5BFF'), open: themeColor('--apricot', '#E2711D') });
 
 /**
  * @param {object} o
@@ -38,6 +38,7 @@ export function createLotEditor({ canvas, slots = [], onSave }) {
 
   function draw() {
     if (!img) return;
+    const { slot: COLOR_SLOT, drag: COLOR_DRAG, open: COLOR_OPEN } = colors();
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
     // lines and dots scale with the frame so they stay visible on a 1920 px frame shown smaller

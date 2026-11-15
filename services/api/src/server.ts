@@ -19,6 +19,8 @@ import honoApp from './index.ts';
 import { DEMO_AUTH, HttpError, isStaffEmail } from './core/config.ts';
 import { areaAlertsService } from './core/area-alerts.ts';
 import { avatarSvg } from './core/avatars.ts';
+import { addBadge, addTicket, loadWallets, walletOf } from './core/wallets.ts';
+import { loadUserPins, saveUserPins } from './core/user-pins.ts';
 import { PARKIE_FEED_PORT, parkieAgentStatus, startParkieAgent } from './core/parkie-agent.ts';
 import { 
   resolveAuthUser, 
@@ -47,13 +49,6 @@ import {
   broadcastRealPoap,
 } from '../../../packages/solana/src/real-solana.ts';
 
-// what each signed-in person holds: tickets and badges (so the website and the app show the same wallet)
-const wallets = new Map<string, { tickets: any[]; poaps: any[] }>();
-const walletOf = (sub: string) => {
-  let w = wallets.get(sub);
-  if (!w) wallets.set(sub, (w = { tickets: [], poaps: [] }));
-  return w;
-};
 
 const PORT = parseInt(process.env.PORT || '8000', 10);
 
@@ -417,7 +412,7 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         token,
         user: targetUser,
         account_type: role,
-        role_label: role === 'admin' ? 'Administrator Municipal' : 'Cetățean Rezident',
+        role_label: role === 'admin' ? 'City staff' : 'Resident',
         security_tier: role === 'admin' ? 'tier_2_mfa_verified' : 'tier_1_standard',
         example_header: `Authorization: Bearer ${token}`
       });
@@ -566,6 +561,7 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
     if (pathname === '/v1/core/auth/webhook' && method === 'POST') {
       // when AUTH0_WEBHOOK_SECRET is set, only Auth0 (which knows it) may call this
       const secret = process.env.AUTH0_WEBHOOK_SECRET;
+      if (!secret && !DEMO_AUTH) return sendJson(res, 503, { error: 'webhook_not_configured', error_description: 'Set AUTH0_WEBHOOK_SECRET to receive Auth0 webhooks.' });
       if (secret && req.headers['x-webhook-secret'] !== secret) return sendJson(res, 401, { error: 'invalid_webhook_secret' });
       const body = await parseBody(req);
       const eventType = body.event_type || body.type || 'post_login';
@@ -628,6 +624,17 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
       const body = await parseBody(req);
       const saved = userService.addSavedPlace(currentUser.sub, body);
       return sendJson(res, 201, saved);
+    }
+
+    // a person's own map pins (Home, Work, notes...), so they follow the account from device to device
+    if (pathname === '/v1/core/user/pins' && (method === 'GET' || method === 'PUT')) {
+      if (!requireLogin(res, currentUser)) return;
+      if (method === 'GET') return sendJson(res, 200, { pins: await loadUserPins(currentUser.sub) });
+      const body = await parseBody(req);
+      const pins = Array.isArray(body.pins) ? body.pins.slice(0, 200) : null;
+      if (!pins) return sendJson(res, 400, { error: 'invalid_pins', error_description: 'Send { pins: [...] }.' });
+      await saveUserPins(currentUser.sub, pins);
+      return sendJson(res, 200, { saved: pins.length });
     }
 
     // 4. Feature Flags
@@ -991,7 +998,7 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         eventId,
         eventTitle,
         ownerWallet: attendeeWallet || ORGANIZER_WALLET_ADDRESS,
-        attendeeName: attendeeName || 'Cetățean Timișoara',
+        attendeeName: attendeeName || currentUser.name || 'Resident',
         txSignature: realTx.signature || `pending-${Date.now().toString(36)}`,
         explorerUrl: realTx.explorerUrl,
         isCheckedIn: false,
@@ -1007,7 +1014,7 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
           sig: (realTx.signature || 'pending').slice(0, 16),
         }),
       };
-      walletOf(currentUser.sub).tickets.unshift(minted);
+      addTicket(currentUser.sub, minted);
       return sendJson(res, 200, minted);
     }
 
@@ -1018,10 +1025,19 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
       if (!eventId) {
         return sendJson(res, 400, { error: 'Missing required field: eventId' });
       }
+      // a badge proves attendance: it needs a ticket for this event that is yours, unless staff or an event host scans it
+      const host = ['admin', 'moderator', 'organizer'].includes(currentUser.role);
+      const owned = walletOf(currentUser.sub).tickets.find((t: any) => t.eventId === eventId && (!ticketId || t.ticketId === ticketId));
+      if (!host && !owned) {
+        return sendJson(res, 403, { error: 'no_ticket', error_description: 'A badge needs your ticket for this event.' });
+      }
+      if (owned?.isCheckedIn && !host) {
+        return sendJson(res, 409, { error: 'already_checked_in', error_description: 'This ticket was already used at the door.' });
+      }
 
       const realTx = await broadcastRealPoap(
         eventId,
-        eventTitle || 'Eveniment Cultural Timișoara',
+        eventTitle || 'City event',
         attendeeWallet || ORGANIZER_WALLET_ADDRESS,
         ticketId || 'tkt-scan'
       );
@@ -1029,9 +1045,9 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
       const badge = {
         poapId: `poap-${eventId}-${Date.now().toString(36)}`,
         eventId,
-        eventTitle: eventTitle || 'Eveniment Cultural Timișoara',
+        eventTitle: eventTitle || 'City event',
         attendeeWallet: attendeeWallet || ORGANIZER_WALLET_ADDRESS,
-        badgeName: `Timișoara Culture Explorer: ${eventTitle || 'Eveniment'}`,
+        badgeName: `Culture Explorer: ${eventTitle || 'City event'}`,
         txSignature: realTx.signature,
         explorerUrl: realTx.explorerUrl,
         onChainConfirmed: realTx.onChainConfirmed,
@@ -1039,10 +1055,7 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         issuedAt: new Date().toISOString(),
         message: realTx.message || realTx.error,
       };
-      const w = walletOf(currentUser.sub);
-      w.poaps.unshift(badge);
-      const t = w.tickets.find((x: any) => x.ticketId === ticketId);
-      if (t) t.isCheckedIn = true;
+      addBadge(currentUser.sub, badge, owned?.ticketId ?? ticketId);
       return sendJson(res, 200, badge);
     }
 
@@ -1116,6 +1129,10 @@ export function startServer(port: number) {
 // Parking: lots drawn by staff come back from the database, then Parkie's agent starts on the demo camera
 async function bootParkie(port: number) {
   for (let i = 0; i < 30 && !db.isTigerConnected(); i++) await new Promise((r) => setTimeout(r, 500));
+  const alerts = await areaAlertsService.loadFromDb();
+  if (alerts) console.log(`[AREA ALERTS] ${alerts} published alerts loaded from the database`);
+  const items = await loadWallets();
+  if (items) console.log(`[WALLET] ${items} tickets and badges loaded from the database`);
   const n = await parkieService.loadLotsFromDb();
   if (n) console.log(`[PARKIE] ${n} lots loaded from the database`);
   startParkieAgent(port);

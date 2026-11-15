@@ -21,8 +21,8 @@ function toMapPin(p: SmellPin): MapPin {
     kind: 'smell',
     layerId: LAYER_ID,
     coordinate: { latitude: p.lat, longitude: p.lng },
-    title: `Miros: ${t.label.toLowerCase()}`,
-    subtitle: `${t.label}, intensitate ${p.intensity}/5`,
+    title: t.label,
+    subtitle: `Strength ${p.intensity}/5`,
     visibility: 'public',
     owner: 'community',
     href: '/m/smell',
@@ -52,7 +52,7 @@ export function refreshSmellPins(): Promise<void> {
 /** What manifest.mapLayer returns: synchronous, from the cache. */
 export function smellMapLayer(): MapLayer {
   if (Date.now() - fetchedAt > MAX_AGE_MS) void refreshSmellPins();
-  return { id: LAYER_ID, title: 'Mirosuri', moduleId: 'm06-smell', pins, defaultVisible: true };
+  return { id: LAYER_ID, title: 'Smell reports', moduleId: 'm06-smell', pins, defaultVisible: true };
 }
 
 // Start loading as soon as the app starts (not during web static rendering, where there is no window).

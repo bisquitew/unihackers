@@ -28,6 +28,9 @@ function rowToOutage(row: any): Outage {
 
 let inMemoryOutages: Outage[] = [...UTILITIES_SEED_DATA];
 
+/** outage id -> who confirmed it */
+const confirmedBy = new Map<string, Set<string>>();
+
 export const utilitiesService = {
   getAllOutages(filter?: { provider?: string; status?: string; area?: string }): Outage[] {
     // If we have sync caller, we provide cached or in-memory, but when async we populate from DB
@@ -63,9 +66,16 @@ export const utilitiesService = {
     return inMemoryOutages;
   },
 
-  confirmOutage(id: string): Outage | undefined {
+  confirmOutage(id: string, userSub?: string): Outage | undefined {
     const outage = inMemoryOutages.find((o) => o.id === id);
     if (!outage) return undefined;
+    // each person counts once
+    if (userSub) {
+      let who = confirmedBy.get(id);
+      if (!who) confirmedBy.set(id, (who = new Set()));
+      if (who.has(userSub)) return outage;
+      who.add(userSub);
+    }
     outage.crowd_confirmations_count = (outage.crowd_confirmations_count || 0) + 1;
     if (db.isTigerConnected()) {
       db.query('UPDATE m04_utilities_outages SET crowd_confirmations_count = crowd_confirmations_count + 1 WHERE id = $1;', [id]).catch(() => {});
@@ -120,8 +130,8 @@ export const utilitiesService = {
     await notify({
       userId: 'all-affected-residents',
       moduleId: 'm04-utilities',
-      title: `Avarie nouă: ${newOutage.title}`,
-      body: `Afectează: ${newOutage.affected_areas.join(', ')}. Estimare remediere: ${newOutage.estimated_restore_time || 'în curs de evaluare'}`,
+      title: `New outage: ${newOutage.title}`,
+      body: `Affects ${newOutage.affected_areas.join(', ')}. ${newOutage.estimated_restore_time ? `Expected back ${new Date(newOutage.estimated_restore_time).toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}.` : 'Restore time to be confirmed.'}`,
       category: 'outage',
       data: { outageId: newOutage.id, provider: newOutage.provider }
     });
@@ -144,11 +154,11 @@ export const utilitiesService = {
     });
 
     const isAffected = matchedOutages.length > 0;
-    let summary = `Nu există avarii active raportate pentru adresa/zona "${queryAddress}". Toate utilitățile funcționează normal.`;
+    let summary = `No active outages reported for "${queryAddress}". Heating, hot water and water are running.`;
 
     if (isAffected) {
       const providers = Array.from(new Set(matchedOutages.map((o) => o.provider))).join(', ');
-      summary = `Atenție! Adresa/zona "${queryAddress}" este afectată de ${matchedOutages.length} avarii active (${providers}).`;
+      summary = `"${queryAddress}" is affected by ${matchedOutages.length} active ${matchedOutages.length === 1 ? 'outage' : 'outages'} (${providers}).`;
     }
 
     return {

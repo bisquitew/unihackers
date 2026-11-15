@@ -1,7 +1,7 @@
 import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEmailUser, logout, onAuthChange, switchToken } from './auth.js';
 import { renderNavbar, renderMenu } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
-import { applyTheme, toggleTheme } from './ui.js';
+import { applyTheme, syncTabState, toggleTheme, trapDialog } from './ui.js';
 import { setLang, startI18n } from './i18n.js';
 import { fetchLots, saveLotPlots } from './api.js';
 import * as home from './views/HomeView.js';
@@ -39,6 +39,7 @@ export async function initApp() {
   });
   await show(tabFromHash(), false);
   startI18n();
+  syncTabState();
 }
 
 const tabFromHash = () => {
@@ -63,8 +64,10 @@ function renderHeader() {
 
 function toggleMenu() {
   const host = document.getElementById('menuHost');
-  if (host.innerHTML) { host.innerHTML = ''; return; }
+  const btn = document.getElementById('userBtn');
+  if (host.innerHTML) { host.innerHTML = ''; btn?.setAttribute('aria-expanded', 'false'); return; }
   host.innerHTML = renderMenu();
+  btn?.setAttribute('aria-expanded', 'true');
   host.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => { host.innerHTML = ''; go(b.dataset.tab); }));
   document.getElementById('logoutBtn')?.addEventListener('click', async () => {
     host.innerHTML = '';
@@ -118,11 +121,12 @@ async function show(tab, scrollTop = true, soft = false) {
 
 function openAuthModal(error = '') {
   const host = document.getElementById('modalContainer');
-  const close = () => { host.innerHTML = ''; };
+  let release = () => {};
+  const close = () => { release(); host.innerHTML = ''; };
   host.innerHTML = renderAuthModal({ error: typeof error === 'string' ? error : '' });
+  release = trapDialog(host.querySelector('.dialog'), close);
   document.getElementById('closeAuthBtn')?.addEventListener('click', close);
   document.getElementById('authBackdrop')?.addEventListener('click', (e) => { if (e.target.id === 'authBackdrop') close(); });
-  document.addEventListener('keydown', function esc(e) { if (e.key === 'Escape') { close(); document.removeEventListener('keydown', esc); } });
 
   const signIn = async (fn) => {
     try {
@@ -148,7 +152,6 @@ function openAuthModal(error = '') {
     if (preview) preview.textContent = isStaff ? 'City staff account. Enter your staff password.' : '';
     if (passwordContainer) {
       passwordContainer.style.display = isStaff ? 'block' : 'none';
-      if (isStaff && passwordInput && !passwordInput.value) passwordInput.value = 'timisoara2026!admin';
     }
   };
 

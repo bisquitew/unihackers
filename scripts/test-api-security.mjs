@@ -101,6 +101,45 @@ check('a resident cannot publish an area alert', r.status === 403, r.status);
 r = await call('POST', '/v1/core/area-alerts', { token: 'dev_admin_mfa', client: 'web', body: { title: 'Test works', type: 'construction', latitude: 45.7, longitude: 21.2, radius_meters: 100 } });
 check('an admin can', r.status === 201, r.status);
 
+// --- outages: confirming needs an account and counts once; publishing is for staff ---
+const outageId = (await call('GET', '/v1/m/utilities/outages')).json?.[0]?.id;
+r = await call('POST', `/v1/m/utilities/confirm/${outageId}`);
+check('confirming an outage without signing in is refused', r.status === 401, r.status);
+r = await call('POST', `/v1/m/utilities/confirm/${outageId}`, { token: residentToken });
+const firstCount = r.json?.confirmations_count;
+r = await call('POST', `/v1/m/utilities/confirm/${outageId}`, { token: residentToken });
+check('confirming twice counts once', r.status === 200 && r.json?.confirmations_count === firstCount, JSON.stringify([firstCount, r.json?.confirmations_count]));
+r = await call('POST', '/v1/m/utilities/outages', { token: residentToken, body: { title: 'x' } });
+check('a resident cannot publish an outage', r.status === 403, r.status);
+r = await call('POST', '/v1/m/transit/detours', { token: residentToken, body: { line_number: '1' } });
+check('a resident cannot publish a detour', r.status === 403, r.status);
+
+// --- notifications: only the owner can mark one read ---
+r = await call('PATCH', '/v1/core/notifications/some-id/read');
+check('marking a notification read needs a sign-in', r.status === 401, r.status);
+r = await call('PATCH', '/v1/core/notifications/not-mine/read', { token: residentToken });
+check('a notification that is not yours is not found', r.status === 404, r.status);
+
+// --- events: an RSVP is always for the signed-in person ---
+const anyEvent = (await call('GET', '/v1/m/events')).json?.events?.[0]?.id || (await call('GET', '/v1/m/events')).json?.[0]?.id;
+r = await call('POST', `/v1/m/events/${anyEvent}/rsvp`, { token: residentToken, body: { userId: 'someone-else', userName: 'Someone Else' } });
+check('an RSVP cannot be made in someone else\'s name', r.status === 201 && r.json?.rsvp?.userId === me.sub && r.json?.rsvp?.userName === me.name, JSON.stringify([r.status, r.json?.rsvp?.userId, r.json?.rsvp?.userName]));
+
+// --- buddy chats: you are always in a chat you open, and only participants can write ---
+r = await call('POST', '/v1/m/buddy/chats', { token: residentToken, body: { eventId: 'evt-sec', eventTitle: 'Sec', participantIds: ['other-user'], participantNames: ['Other'] } });
+const chatId = r.json?.chat?.id;
+check('opening a chat puts you in it', (r.json?.chat?.participantIds || []).includes(me.sub), JSON.stringify(r.json?.chat?.participantIds));
+r = await call('POST', `/v1/m/buddy/chats/${chatId}/messages`, { token: residentToken, body: { senderId: 'other-user', senderName: 'Other', content: 'hi' } });
+check('a message is sent as you, not as the name in the body', r.status === 201 && r.json?.message?.senderId === me.sub, JSON.stringify([r.status, r.json?.message?.senderId]));
+r = await call('POST', `/v1/m/buddy/chats/${chatId}/messages`, { token: 'dev_resident', body: { content: 'let me in' } });
+check('someone outside the chat cannot write in it', r.status === 403, r.status);
+
+// --- wallet: door check-in is for hosts; a badge needs your own ticket ---
+r = await call('POST', '/v1/m/wallet/check-in', { token: residentToken, body: { ticketId: 'x' } });
+check('a resident cannot check in tickets at the door', r.status === 403, r.status);
+r = await call('POST', '/v1/m/solana/poap/mint', { token: residentToken, body: { eventId: 'evt-no-ticket', eventTitle: 'x' } });
+check('a badge without a ticket is refused', r.status === 403, r.status);
+
 // --- bad input ---
 r = await call('POST', '/v1/core/auth/google-login', { raw: '{not json' });
 check('invalid JSON is a 400, not a silent empty body', r.status === 400, r.status);

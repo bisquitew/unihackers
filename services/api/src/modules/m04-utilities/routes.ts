@@ -50,7 +50,7 @@ utilitiesRouter.post('/check-address', async (c) => {
 // Crowd confirm ("My building is affected too")
 utilitiesRouter.post('/confirm/:id', (c) => {
   const id = c.req.param('id');
-  const updated = utilitiesService.confirmOutage(id);
+  const updated = utilitiesService.confirmOutage(id, (c.get('user' as never) as any)?.sub);
   if (!updated) {
     return c.json({ error: 'Outage not found' }, 404);
   }

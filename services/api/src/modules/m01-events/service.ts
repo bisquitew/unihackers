@@ -157,42 +157,59 @@ export class EventsService {
     return newEvent;
   }
 
+  private rsvpsLoaded: Promise<void> | null = null;
+
+  /** RSVPs are kept in m01_event_rsvps and loaded once, so who is going survives a restart. */
+  private loadRsvps(): Promise<void> {
+    this.rsvpsLoaded ??= (async () => {
+      if (!db.isTigerConnected()) return;
+      try {
+        await db.query(`CREATE TABLE IF NOT EXISTS m01_event_rsvps (
+          event_id VARCHAR(64) NOT NULL, user_id VARCHAR(255) NOT NULL, data JSONB NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (event_id, user_id))`);
+        const rows = await db.query<any>(`SELECT data FROM m01_event_rsvps ORDER BY created_at`);
+        for (const r of rows) if (!this.rsvps.some((x) => x.eventId === r.data.eventId && x.userId === r.data.userId)) this.rsvps.push(r.data);
+      } catch (err: any) {
+        console.warn('[m01-events] could not load RSVPs:', err.message);
+      }
+    })();
+    return this.rsvpsLoaded;
+  }
+
   async rsvp(input: RSVPInput): Promise<RSVPRecord> {
+    await this.loadRsvps();
     const event = await this.getEventById(input.eventId);
     if (!event) throw new Error('Event not found');
 
-    if (db.isTigerConnected()) {
-      try {
-        await db.query(`UPDATE m01_events SET attendee_count = attendee_count + 1 WHERE id = $1;`, [input.eventId]);
-      } catch {}
-    }
+    // one RSVP per person and event
+    const existing = this.rsvps.find((r) => r.eventId === input.eventId && r.userId === input.userId);
+    if (existing) return existing;
 
-    event.attendeeCount += 1;
-
-    // Generate simulated/real Solana ticket signature
-    const chars = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-    let sig = '';
-    for (let i = 0; i < 88; i++) {
-      sig += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-
+    // the Solana ticket itself is minted by /v1/m/solana/tickets/mint; this record is who is going
     const rsvpRecord: RSVPRecord = {
-      id: `rsvp-${Date.now().toString(36)}`,
+      id: `rsvp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       eventId: input.eventId,
       userId: input.userId,
       userName: input.userName,
       userWallet: input.userWallet,
-      solanaTicketSignature: sig,
-      solanaExplorerUrl: `https://explorer.solana.com/tx/${sig}?cluster=devnet`,
       lookingForBuddy: Boolean(input.lookingForBuddy),
       createdAt: new Date().toISOString(),
     };
-
     this.rsvps.push(rsvpRecord);
+    event.attendeeCount += 1;
+
+    if (db.isTigerConnected()) {
+      try {
+        await db.query(`INSERT INTO m01_event_rsvps (event_id, user_id, data) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING;`,
+          [input.eventId, input.userId, JSON.stringify(rsvpRecord)]);
+        await db.query(`UPDATE m01_events SET attendee_count = attendee_count + 1 WHERE id = $1;`, [input.eventId]);
+      } catch {}
+    }
     return rsvpRecord;
   }
 
   async getEventRSVPs(eventId: string): Promise<RSVPRecord[]> {
+    await this.loadRsvps();
     return this.rsvps.filter((r) => r.eventId === eventId);
   }
 }

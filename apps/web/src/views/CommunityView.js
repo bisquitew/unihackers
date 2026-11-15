@@ -1,5 +1,5 @@
 import { fetchBuddyRequests, fetchEvents, fetchForumPosts, hubGet, hubPost } from '../api.js';
-import { art, esc, row, when } from '../ui.js';
+import { trapDialog, art, esc, row, when } from '../ui.js';
 import { CITY } from '../city.js';
 
 // the neighbourhoods an event or post can belong to, with the middle of each (used when a venue cannot be found on the map)
@@ -89,7 +89,8 @@ const input = (id, label, attrs = '') => `<label class="field"><span>${label}</s
 /** A form in a dialog. `onSubmit` returns after the work is done; throwing shows the message inside the dialog. */
 function openForm({ title, lead, body, submitLabel, onSubmit }) {
   const host = document.getElementById('modalContainer');
-  const close = () => { host.innerHTML = ''; };
+  let release = () => {};
+  const close = () => { release(); host.innerHTML = ''; };
   host.innerHTML = `<div class="scrim" id="formBackdrop"><div class="dialog" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <h2>${esc(title)}</h2>${lead ? `<p class="lead">${esc(lead)}</p>` : '<div style="height:14px"></div>'}
     <form class="stack" id="dialogForm">${body}<p class="error" id="formError" role="alert" hidden></p>
@@ -112,6 +113,7 @@ function openForm({ title, lead, body, submitLabel, onSubmit }) {
     }
   });
   document.querySelector('#dialogForm input, #dialogForm select')?.focus();
+  release = trapDialog(host.querySelector('.dialog'), close);
 }
 
 const refresh = () => window.dispatchEvent(new Event('hop-refresh'));

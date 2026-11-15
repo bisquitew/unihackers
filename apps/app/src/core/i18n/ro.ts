@@ -159,6 +159,10 @@ registerDictionary('ro', {
   '{} · {} m around': '{} · {} m în jur', 'until {}': 'până la {}', 'Until Dec': 'Până în decembrie', 'Severity: {}': 'Gravitate: {}', 'Expected to end {}': 'Se estimează că se termină {}', 'End date to be confirmed': 'Data de final va fi confirmată',
   'Free spots, counted from each lot’s camera.': 'Locuri libere, numărate de camera fiecărei parcări.', 'Unirii, Iulius, Gara…': 'Unirii, Iulius, Gara…', 'Directions': 'Navighează', 'Busy': 'Aglomerat', 'Full': 'Plin', 'Available': 'Disponibil', 'Nothing matches.': 'Nimic nu se potrivește.', 'Lots, {}% free': 'Parcări, {}% libere', '{} of {} spots free': '{} din {} locuri libere',
   'This account cannot sign in to the mobile app.': 'Acest cont nu se poate autentifica în aplicația mobilă.', 'Sign-in is simulated in this demo build.': 'Autentificarea este simulată în această versiune demo.',
+  'Strength {}/5': 'Intensitate {}/5', 'Reported by a resident': 'Raportat de un locuitor', 'Safety reports': 'Sesizări de siguranță', 'Line {} is {}': 'Linia {} este {}',
+  Outages: 'Avarii', 'What are you most looking forward to at this event?': 'Ce aștepți cel mai mult de la acest eveniment?',
+  'This ticket is not in your wallet.': 'Acest bilet nu este în portofelul tău.', 'This ticket was already used at the door.': 'Acest bilet a fost deja folosit la intrare.',
+  'We could not check this ticket. Try again.': 'Nu am putut verifica acest bilet. Încearcă din nou.',
   'Reported {}': 'Raportat {}', 'Announced': 'Anunțat',
   'Keep away from the area · {} m around': 'Evită zona · {} m în jur', 'Works in progress · {} m around': 'Lucrări în desfășurare · {} m în jur',
 });

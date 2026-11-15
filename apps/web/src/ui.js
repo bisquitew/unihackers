@@ -69,3 +69,42 @@ export function row({ art: artHtml, num, numTone = '', title, detail, side, mete
 export const cap = (s = '') => String(s).charAt(0).toUpperCase() + String(s).slice(1);
 /** "unplanned_breakdown" -> "Unplanned breakdown" */
 export const statusText = (s = '') => cap(String(s).replace(/_/g, ' '));
+
+/**
+ * Makes a dialog behave like one: focus moves into it, Tab stays inside, Escape closes it, and focus goes back to
+ * where it was when the dialog closes. Returns a cleanup to call when the dialog is removed.
+ */
+export function trapDialog(dialog, close) {
+  const before = document.activeElement;
+  const focusables = () => [...dialog.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter((el) => !el.hidden && el.offsetParent !== null);
+  const onKey = (e) => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    } else if (e.key === 'Tab') {
+      const list = focusables();
+      if (!list.length) return;
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  };
+  document.addEventListener('keydown', onKey);
+  if (!dialog.contains(document.activeElement)) focusables()[0]?.focus();
+  return () => {
+    document.removeEventListener('keydown', onKey);
+    if (before && typeof before.focus === 'function' && document.contains(before)) before.focus();
+  };
+}
+
+/** Keeps aria-selected in step with the "on"/"active" look of every tab, wherever tabs are drawn. */
+export function syncTabState(root = document.body) {
+  const sync = () => root.querySelectorAll('[role="tab"]').forEach((b) => {
+    const on = String(b.classList.contains('on') || b.classList.contains('active'));
+    if (b.getAttribute('aria-selected') !== on) b.setAttribute('aria-selected', on);
+  });
+  sync();
+  new MutationObserver(sync).observe(root, { subtree: true, childList: true, attributes: true, attributeFilter: ['class'] });
+}

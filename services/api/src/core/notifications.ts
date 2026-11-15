@@ -41,8 +41,8 @@ export function getUserNotifications(userId: string): Notification[] {
   return NOTIFICATIONS_STORE.filter((n) => n.user_id === userId);
 }
 
-export function markNotificationAsRead(notificationId: string): boolean {
-  const notif = NOTIFICATIONS_STORE.find((n) => n.id === notificationId);
+export function markNotificationAsRead(notificationId: string, userId?: string): boolean {
+  const notif = NOTIFICATIONS_STORE.find((n) => n.id === notificationId && (userId === undefined || n.user_id === userId));
   if (notif) {
     notif.read = true;
     return true;

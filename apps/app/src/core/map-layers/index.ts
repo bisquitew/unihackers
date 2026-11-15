@@ -29,8 +29,8 @@ export function alertsLayer(): MapLayer {
     visibility: 'public',
     owner: 'official',
     href: `/alerts/${a.id}`,
-    createdAt: '2026-11-13T15:05:00Z',
-    demo: true,
+    createdAt: a.startedAt ?? new Date().toISOString(),
+    demo: !a.live,
     radiusMeters: a.radiusMeters,
     zoneType: a.zoneType,
   }));
