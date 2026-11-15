@@ -6,11 +6,13 @@ import {
 } from '../api.js';
 import { getLang } from '../i18n.js';
 import { createLotEditor } from '../components/ParkieLotEditor.js';
+import { bars, columns, donut, hueOf, moduleLabel } from '../components/charts.js';
+import { EXAMPLE_ANALYTICS } from '../components/analyticsExample.js';
 import { art, cap, esc, row, statusText } from '../ui.js';
 
 // The staff dashboard is one page with a side menu. Each entry is a section; only the open one is on screen.
 const SECTIONS = [
-  { group: 'City', items: [['overview', 'Overview'], ['alerts', 'Alerts'], ['notice', 'Scan a notice'], ['analyst', 'Ask the data']] },
+  { group: 'City', items: [['overview', 'Overview'], ['analytics', 'Analytics'], ['analyst', 'Ask the data'], ['alerts', 'Alerts'], ['notice', 'Scan a notice']] },
   { group: 'Services', items: [['parking', 'Parking cameras']] },
   { group: 'Community', items: [['moderation', 'Moderation']] },
   { group: 'System', items: [['security', 'Security log'], ['database', 'Database']] },
@@ -56,7 +58,7 @@ export function mount(ctx, { showToast } = {}) {
     sectionCleanup = () => {};
     nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
     body.innerHTML = '<p class="muted">Loading…</p>';
-    const section = { overview, alerts, notice, analyst, parking, moderation, security, database }[open];
+    const section = { overview, analytics, analyst, alerts, notice, parking, moderation, security, database }[open];
     let html;
     try {
       html = await section.render(ctx);
@@ -608,6 +610,79 @@ const parking = {
       clearInterval(timer);
       editor?.destroy();
     };
+  },
+};
+
+/* --------------------------------------------------------------- Analytics */
+// The feedback summed up: averages and shares, drawn as charts. Nothing here says how many people answered.
+let showExample = false;
+const oneDecimal = (n) => Number(n).toFixed(1);
+const shortDate = (iso) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
+
+const analytics = {
+  async render() {
+    let a = null;
+    if (showExample) a = EXAMPLE_ANALYTICS;
+    else {
+      try { a = (await hubGet('/v1/m/feedback/analytics')).analytics; } catch { a = null; }
+    }
+    const head = `<h1 class="page-title">Analytics</h1>
+      <p class="page-sub">What people tell us about hop, summed up as averages and shares.</p>`;
+    if (!a) return `${head}<div class="empty">The analytics are not available right now.</div>`;
+    if (!a.hasData) {
+      return `${head}<div class="empty section"><b>No feedback yet</b><br>The charts appear here once people send feedback in the app or fill in the survey.
+        <br><button class="btn btn-secondary btn-md" id="anExample" style="margin-top:16px">Show example charts</button></div>`;
+    }
+    const h = a.headline;
+    const stat = (value, label, text) => `<div class="stat"><b class="${text ? 'stat-text' : ''}">${esc(value)}</b><span>${esc(label)}</span></div>`;
+    const feature = (r) => ({ label: moduleLabel(r.id), value: r.share, hue: hueOf(r.id) });
+    return `${head}
+      <div class="example-note" ${showExample ? '' : 'hidden'}>Example data, not real feedback. <button class="link" id="anReal">Show the real figures</button></div>
+      <div class="stats">
+        ${stat(h.avgAppRating == null ? '–' : oneDecimal(h.avgAppRating), 'Average app rating, out of 5')}
+        ${stat(h.avgInstallLikelihood == null ? '–' : oneDecimal(h.avgInstallLikelihood), 'Likelihood to install, out of 5')}
+        ${stat(h.mostWantedFeature ? moduleLabel(h.mostWantedFeature.id) : '–', 'Feature people want most', true)}
+        ${stat(h.biggestProblem ? moduleLabel(h.biggestProblem.id) : '–', 'Problem that affects people most', true)}
+      </div>
+
+      <div class="cols even section">
+        ${a.topPick.length ? `<div><div class="section-head"><h2>What they would use most</h2></div>
+          ${donut(a.topPick.map(feature), { title: 'What they would use most', centre: { big: moduleLabel(a.topPick[0].id), small: 'is the top pick' } })}</div>` : ''}
+        ${a.wanted.length ? `<div><div class="section-head"><h2>Features people want</h2></div>
+          ${bars(a.wanted.map(feature), { title: 'Features people want' })}</div>` : ''}
+      </div>
+
+      <div class="cols even section">
+        ${a.problems.length ? `<div><div class="section-head"><h2>How much each problem affects them</h2></div>
+          <p class="muted chart-note">Average, from 1 (not at all) to 5 (a lot).</p>
+          ${bars(a.problems.map((r) => ({ label: moduleLabel(r.id), value: r.avg, hue: hueOf(r.id) })), { max: 5, format: oneDecimal, title: 'How much each problem affects them' })}</div>` : ''}
+        <div><div class="section-head"><h2>How the app is rated</h2></div>
+          <p class="muted chart-note">Share of ratings by number of stars.</p>
+          ${columns(a.ratingSpread.map((r) => ({ label: `${r.stars} stars`, value: r.share, hue: r.stars >= 4 ? 'mint' : r.stars === 3 ? 'blue' : 'apricot' })), { max: Math.max(40, ...a.ratingSpread.map((r) => r.share)), title: 'How the app is rated' })}
+          ${a.ratingByModule.length ? `<p class="muted chart-note" style="margin-top:22px">Average rating by part of the app.</p>
+          ${bars(a.ratingByModule.map((r) => ({ label: moduleLabel(r.id), value: r.avg, hue: hueOf(r.id) })), { max: 5, format: oneDecimal, title: 'Average rating by part of the app' })}` : ''}
+        </div>
+      </div>
+
+      ${a.versions.some((v) => v.avgAppRating != null) ? `<div class="section"><div class="section-head"><h2>Rating by version</h2></div>
+        <p class="muted chart-note">Average app rating after each update.</p>
+        ${columns(a.versions.filter((v) => v.avgAppRating != null).map((v) => ({ label: v.appVersion, value: v.avgAppRating, hue: 'blue' })), { max: 5, format: oneDecimal, title: 'Rating by version' })}</div>` : ''}
+
+      ${a.roles.length || a.ages.length ? `<div class="cols even section">
+        ${a.roles.length ? `<div><div class="section-head"><h2>Who is answering</h2></div>${donut(a.roles.map((r) => ({ label: r.id, value: r.share })), { title: 'Who is answering' })}</div>` : ''}
+        ${a.ages.length ? `<div><div class="section-head"><h2>Age</h2></div>${donut(a.ages.map((r) => ({ label: r.id, value: r.share })), { title: 'Age' })}</div>` : ''}
+      </div>` : ''}
+
+      ${a.comments.length ? `<div class="section"><div class="section-head"><h2>In their words</h2></div>
+        <div class="list">${a.comments.map((c) => row({
+          art: art('feedback', 44),
+          title: esc(c.text),
+          detail: `${c.kind === 'in-app' ? (c.moduleId ? `About ${esc(moduleLabel(c.moduleId))}` : 'About the app') : c.kind === 'confusing' ? 'Found confusing' : 'Is missing'} · ${esc(shortDate(c.at))}`,
+        })).join('')}</div></div>` : ''}`;
+  },
+  mount(ctx, showToast, redraw) {
+    document.getElementById('anExample')?.addEventListener('click', () => { showExample = true; redraw(); });
+    document.getElementById('anReal')?.addEventListener('click', () => { showExample = false; redraw(); });
   },
 };
 

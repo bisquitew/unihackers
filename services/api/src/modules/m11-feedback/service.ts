@@ -10,7 +10,7 @@ import type {
 } from './types.ts';
 import { seedChangelog, seedFeedback } from './seed.ts';
 import { db } from '../../core/db.ts';
-import { storeSurveyAnswer } from './survey-sync.ts';
+import { buildAnalytics, type FeedbackAnalytics } from './analytics.ts';
 
 const newId = () => `fb-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
 
@@ -31,8 +31,39 @@ function stats(entries: FeedbackEntry[]): RatingStats {
 export class FeedbackService {
   private entries: FeedbackEntry[] = [...seedFeedback];
   private changelog: ChangelogEntry[] = [...seedChangelog];
+  private loaded: Promise<void> | null = null;
+
+  /**
+   * Reads what was saved before a restart: in-app feedback from m11_feedback and survey answers from
+   * m11_survey_entries (created when missing). Runs once, on first use.
+   */
+  private load(): Promise<void> {
+    this.loaded ??= (async () => {
+      if (!db.isTigerConnected()) return;
+      try {
+        await db.query(`CREATE TABLE IF NOT EXISTS m11_survey_entries (
+          external_id VARCHAR(100) PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
+        const inApp = await db.query<any>(`SELECT id, rating, text, app_version, module_id, created_at FROM m11_feedback ORDER BY created_at`);
+        for (const r of inApp) {
+          if (this.entries.some((e) => e.id === r.id)) continue;
+          const at = new Date(r.created_at).toISOString();
+          this.entries.push({
+            id: r.id, source: 'in-app', externalId: null, submittedAt: at, receivedAt: at, appVersion: r.app_version ?? 'unknown',
+            appRating: r.rating ?? null, installLikelihood: null, moduleId: r.module_id ?? null, text: r.text ?? '',
+            role: null, ageRange: null, topFeature: null, wantedFeatures: [], triedApp: null, triedParts: [], problemScores: {}, surveyComments: null,
+          });
+        }
+        const surveys = await db.query<any>(`SELECT data FROM m11_survey_entries ORDER BY created_at`);
+        for (const r of surveys) if (!this.entries.some((e) => e.id === r.data.id)) this.entries.push(r.data);
+      } catch (err: any) {
+        console.warn('[m11-feedback] could not load saved feedback:', err.message);
+      }
+    })();
+    return this.loaded;
+  }
 
   async addInApp(input: InAppFeedbackInput): Promise<FeedbackEntry> {
+    await this.load();
     const now = new Date().toISOString();
     const entry: FeedbackEntry = {
       id: newId(),
@@ -72,6 +103,7 @@ export class FeedbackService {
 
   /** Idempotent on externalId: a retry from the sheet returns the existing entry. */
   async ingestSurvey(p: SurveyPayload): Promise<{ entry: FeedbackEntry; duplicate: boolean }> {
+    await this.load();
     const existing = this.entries.find((e) => e.source === 'survey' && e.externalId === p.externalId);
     if (existing) return { entry: existing, duplicate: true };
 
@@ -96,38 +128,24 @@ export class FeedbackService {
       surveyComments: { confusing: p.text.confusing, missing: p.text.missing },
     };
     this.entries.push(entry);
-    // kept in Tiger Cloud so a restart does not forget it (no-op without a database)
-    await storeSurveyAnswer(p).catch((err) => console.warn('[m11-feedback] could not store a survey answer:', err?.message));
+    if (db.isTigerConnected()) {
+      try {
+        await db.query(`INSERT INTO m11_survey_entries (external_id, data) VALUES ($1, $2) ON CONFLICT DO NOTHING;`, [p.externalId, JSON.stringify(entry)]);
+      } catch (err: any) {
+        console.warn('FeedbackService survey save error:', err.message);
+      }
+    }
     return { entry, duplicate: false };
   }
 
-  /** Puts back an in-app feedback row saved in m11_feedback (by addInApp) after a restart. */
-  restoreInApp(row: { id: string; rating: number | null; text: string | null; app_version: string | null; module_id: string | null; created_at: Date | string }): void {
-    if (this.entries.some((e) => e.id === row.id)) return;
-    const at = typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString();
-    this.entries.push({
-      id: row.id,
-      source: 'in-app',
-      externalId: null,
-      submittedAt: at,
-      receivedAt: at,
-      appVersion: row.app_version ?? 'unknown',
-      appRating: row.rating === null ? null : Number(row.rating),
-      installLikelihood: null,
-      moduleId: row.module_id,
-      text: row.text ?? '',
-      role: null,
-      ageRange: null,
-      topFeature: null,
-      wantedFeatures: [],
-      triedApp: null,
-      triedParts: [],
-      problemScores: {},
-      surveyComments: null,
-    });
+  /** The feedback summed up for the staff dashboard: averages and shares, never how many people answered. */
+  async getAnalytics(): Promise<FeedbackAnalytics> {
+    await this.load();
+    return buildAnalytics(this.entries);
   }
 
   async getSummary(): Promise<FeedbackSummary> {
+    await this.load();
     const all = this.entries;
     const bySource = (list: FeedbackEntry[], s: FeedbackSource) => list.filter((e) => e.source === s);
 
