@@ -25,7 +25,7 @@ type AuthTab = (typeof TABS)[number]['id'];
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
-  const { signIn, register, loginWithAuth0, authError, clearAuthError } = useAuth();
+  const { signIn, register, loginWithAuth0, loginWithToken, authError, clearAuthError } = useAuth();
 
   const [tab, setTab] = useState<AuthTab>('login');
   const [email, setEmail] = useState('');
