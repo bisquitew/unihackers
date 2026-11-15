@@ -6,7 +6,7 @@ import { ANALYST_MAX_QUESTION, askAnalyst } from './analyst.ts';
 import { incidentRadar } from './incidents.ts';
 import { NOTICE_IMAGE_TYPES, NOTICE_MAX_BYTES, NoticeUnavailableError, parseConfirmedDraft, parseNoticePhoto } from './notice.ts';
 import { assistantService, AssistantUnavailableError } from './service.ts';
-import { loadTour } from './tour.ts';
+import { loadTour, tourWalk, type TourLang } from './tour.ts';
 import { parseChatInput } from './validation.ts';
 import { STT_MAX_BYTES, TTS_MAX_INPUT, VoiceUnavailableError, speechToText, textToSpeech, voiceStatus, type VoiceLang } from './voice.ts';
 
@@ -124,6 +124,27 @@ assistantRoutes.post('/stt', sttLimit, async (c) => {
 
 // Narrated walking tour, read from docs/voice/tour.md.
 assistantRoutes.get('/tour', (c) => c.json(loadTour()));
+
+// The exact walk from stop to stop (and from where you stand to the first stop, when `from=lat,lng` is given): time, distance,
+// the steps and one spoken passage per leg, in the tour's language. The route avoids active danger zones.
+const walkLimit = rateLimit({ windowMs: 10 * 60_000, max: 30, message: 'Too many tour route requests. Please wait a few minutes.' });
+assistantRoutes.get('/tour/walk', walkLimit, async (c) => {
+  const lang: TourLang = c.req.query('lang') === 'en' ? 'en' : 'ro';
+  let start: { lat: number; lng: number } | undefined;
+  const raw = c.req.query('from');
+  if (raw) {
+    const [lat, lng] = raw.split(',').map(Number);
+    if (!(Number.isFinite(lat) && Number.isFinite(lng) && lat > 45.6 && lat < 45.9 && lng > 21.0 && lng < 21.5)) {
+      return c.json({ error: 'bad_from', error_description: 'from must be "lat,lng" inside Timișoara.' }, 400);
+    }
+    start = { lat, lng };
+  }
+  try {
+    return c.json(await tourWalk(lang, start));
+  } catch {
+    return c.json({ error: 'routing_failed', error_description: 'The walking directions are not available right now.' }, 502);
+  }
+});
 
 // --- Photo of a utility notice -> draft outage -> (admin with MFA) publish through m04's createOutage.
 

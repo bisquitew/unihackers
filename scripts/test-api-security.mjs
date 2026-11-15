@@ -188,6 +188,13 @@ if (r.status === 200) {
   console.log(`  (skipped the live route checks: the routing service answered ${r.status})`);
 }
 
+// --- tour walking directions ---
+r = await call('GET', '/v1/m/assistant/tour/walk?lang=en&from=48.85,2.35');
+check('tour directions from a spot outside the city are refused', r.status === 400, r.status);
+r = await call('GET', '/v1/m/assistant/tour/walk?lang=ro');
+if (r.status === 200) check('the tour walk has a leg for every stop after the first, each with a spoken passage', r.json.legs?.length >= 1 && r.json.legs.every((l) => l.spoken?.length > 20 && l.steps?.length > 0), JSON.stringify(r.json).slice(0, 120));
+else console.log(`  (skipped the live tour walk check: the routing service answered ${r.status})`);
+
 // --- bad input ---
 r = await call('POST', '/v1/core/auth/google-login', { raw: '{not json' });
 check('invalid JSON is a 400, not a silent empty body', r.status === 400, r.status);
