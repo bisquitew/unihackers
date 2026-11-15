@@ -176,6 +176,8 @@ registerDictionary('ro', {
   'We will tell you when it’s back. Undo': 'Te anunțăm când revine. Anulează', 'You will get updates. Undo': 'Vei primi noutăți. Anulează', 'Thanks, we counted you': 'Mulțumim, te-am numărat', 'Could not save that. Check your connection and try again.': 'Nu am putut salva. Verifică conexiunea și încearcă din nou.',
   'Environment': 'Mediu', 'Transport': 'Transport', 'General': 'General',
   'No connection. Check your internet and try again.': 'Fără conexiune. Verifică internetul și încearcă din nou.', 'Please sign in again.': 'Te rugăm să te autentifici din nou.', 'You do not have access to this.': 'Nu ai acces la aceasta.', 'We could not find that.': 'Nu am găsit asta.', 'Too many tries. Wait a moment and try again.': 'Prea multe încercări. Așteaptă puțin și încearcă din nou.', 'Something went wrong on our side. Try again in a moment.': 'A apărut o problemă la noi. Încearcă din nou într-un moment.', 'Something went wrong. Try again.': 'Ceva nu a mers. Încearcă din nou.', 'Something went wrong': 'Ceva nu a mers', 'This screen could not open. Nothing you did was lost. Try again, and if it keeps happening, go back to Home.': 'Acest ecran nu s-a putut deschide. Nu s-a pierdut nimic din ce ai făcut. Încearcă din nou, iar dacă se repetă, mergi la Acasă.', 'Go to Home': 'Mergi la Acasă', 'This page is not here': 'Pagina nu există', 'The link may be old, or the page may have moved.': 'Linkul poate fi vechi sau pagina a fost mutată.',
+  'Demo account': 'Cont demo',
+  'Resident': 'Locuitor',
   'Reported {}': 'Raportat {}', 'Announced': 'Anunțat',
   'Keep away from the area · {} m around': 'Evită zona · {} m în jur', 'Works in progress · {} m around': 'Lucrări în desfășurare · {} m în jur',
 });

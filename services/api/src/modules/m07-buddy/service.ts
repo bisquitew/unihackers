@@ -83,7 +83,8 @@ export class BuddyService {
     const newRequest: BuddyRequest = {
       id,
       eventId: input.eventId,
-      eventTitle: input.eventTitle,
+      // the database needs a title; a request sent without one still goes through
+      eventTitle: String(input.eventTitle || '').trim().slice(0, 140) || 'An event',
       userId: input.userId || `usr-${Date.now()}`,
       userName: input.userName,
       bio: input.bio,

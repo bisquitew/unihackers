@@ -25,7 +25,7 @@ type AuthTab = (typeof TABS)[number]['id'];
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
-  const { signIn, register, loginWithAuth0, loginWithToken, authError, clearAuthError } = useAuth();
+  const { signIn, register, loginWithAuth0, loginWithToken, loginAsResident, authError, clearAuthError } = useAuth();
 
   const [tab, setTab] = useState<AuthTab>('login');
   const [email, setEmail] = useState('');
@@ -117,6 +117,14 @@ export function MobileLoginScreen() {
             }}
             accessibilityLabel="Login or Register tabs"
           />
+        </View>
+
+        {/* the same demo account the website offers; city staff sign in on the website, not here */}
+        <View style={styles.switchRow}>
+          <Text variant="caption" color="mutedForeground">
+            Demo account
+          </Text>
+          <TextButton label="Resident" size="md" onPress={() => { resetErrors(); void loginAsResident(); }} />
         </View>
 
         {message ? (
