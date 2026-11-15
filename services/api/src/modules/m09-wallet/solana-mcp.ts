@@ -68,12 +68,18 @@ function walletItems(ctx?: ToolContext): WalletItem[] {
 function findWalletItem(items: WalletItem[], query: string): WalletItem | null {
   const raw = query.trim().toLowerCase();
   const q = normalizePlace(query);
+  const byEvent = items.filter((i) => q && (normalizePlace(i.event).includes(q) || q.split(' ').every((w) => normalizePlace(i.event).includes(w))));
   return (
     items.find((i) => i.id.toLowerCase() === raw || i.signature === query.trim()) ??
-    items.find((i) => q && (normalizePlace(i.event).includes(q) || q.split(' ').every((w) => normalizePlace(i.event).includes(w)))) ??
+    // several tickets for the same event: check the one that really reached Solana
+    byEvent.find((i) => !isUnminted(i.signature)) ??
+    byEvent[0] ??
     null
   );
 }
+
+/** "pending-…" is what the API stores when the mint transaction never reached Solana (e.g. no organizer key). */
+export const isUnminted = (signature: string | undefined | null) => !signature || signature.startsWith('pending-');
 
 function summariseTransaction(entity: any, item: WalletItem | null) {
   const memos: string[] = (entity.instructions ?? [])
@@ -171,6 +177,14 @@ export const solanaMcpTools = [
             found: false,
             reason: `No ticket or badge in the wallet matches "${args.ticket}".`,
             walletHas: items.map((i) => `${i.kind}: ${i.event} (${i.id})`),
+          };
+        }
+        if (isUnminted(item.signature)) {
+          return {
+            found: false,
+            neverMinted: true,
+            appRecord: { kind: item.kind, id: item.id, event: item.event },
+            note: 'This ticket is in the app, but it was never written to Solana (the mint did not go through), so there is nothing on-chain to check. Say so plainly; do not say devnet is down.',
           };
         }
         identifier = item.signature;
