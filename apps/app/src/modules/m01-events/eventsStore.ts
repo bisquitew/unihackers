@@ -230,6 +230,18 @@ class EventsStore {
       });
   }
 
+  /** Takes your place back. The count drops at once and the server's list replaces it. */
+  cancelRsvp(eventId: string): void {
+    this.events = this.events.map((e) => (e.id === eventId ? { ...e, attendeeCount: Math.max(0, e.attendeeCount - 1) } : e));
+    this.saveToStorage();
+    api
+      .del(`/v1/m/events/${encodeURIComponent(eventId)}/rsvp`)
+      .then(() => this.refresh())
+      .catch(() => {
+        /* offline or not signed in: the count stays local */
+      });
+  }
+
   /** Finds the venue on the map (by name and neighbourhood) and moves the event there. Keeps the neighbourhood's middle if it is not found. */
   private async placeOnMap(evt: EventItem): Promise<EventItem> {
     try {

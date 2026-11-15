@@ -67,6 +67,14 @@ eventsRoutes.post('/:id/rsvp', async (c) => {
   }
 });
 
+// Cancel your own place at an event
+eventsRoutes.delete('/:id/rsvp', async (c) => {
+  const me = c.get('user' as never) as any;
+  if (!me?.sub || me.sub === 'guest|unauthenticated') return c.json({ error: 'login_required', error_description: 'Sign in to cancel your place.' }, 401);
+  const removed = await eventsService.cancelRsvp(c.req.param('id'), me.sub);
+  return c.json({ cancelled: removed });
+});
+
 // List RSVPs for an event
 eventsRoutes.get('/:id/rsvps', async (c) => {
   const id = c.req.param('id');

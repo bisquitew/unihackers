@@ -48,6 +48,18 @@ export function addBadge(sub: string, badge: any, ticketId?: string) {
   }
 }
 
+/** Takes a ticket out of a wallet (cancelling a place). Returns false when it is not there or was already used at the door. */
+export function removeTicket(sub: string, ticketId: string): boolean {
+  const w = walletOf(sub);
+  const t = w.tickets.find((x) => x.ticketId === ticketId);
+  if (!t || t.isCheckedIn) return false;
+  w.tickets = w.tickets.filter((x) => x.ticketId !== ticketId);
+  if (db.isTigerConnected()) {
+    db.query(`DELETE FROM m09_wallet_items WHERE item_id = $1 AND user_sub = $2`, [ticketId, sub]).catch((err: any) => console.warn('[wallet] could not remove:', err.message));
+  }
+  return true;
+}
+
 /** Loads every wallet from the database. Run once at start. */
 export async function loadWallets(): Promise<number> {
   if (!db.isTigerConnected()) return 0;

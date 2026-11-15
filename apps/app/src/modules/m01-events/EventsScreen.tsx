@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
+import { Alert, Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { mapHref } from '@hub/map';
 import { AvatarStack, Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, radii, tr } from '@hub/ui';
@@ -113,6 +113,31 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
     } finally {
       setMinting(false);
     }
+  };
+  // giving the place back: asks first, then drops the ticket from the wallet and the count at the event
+  const cancelSpot = (event: EventItem) => {
+    const ticket = ticketStore.getState().tickets.find((t) => t.eventId === event.id);
+    if (!ticket) return;
+    if (ticket.isCheckedIn) {
+      Alert.alert(tr('You already used this ticket'), tr('A ticket that was scanned at the door cannot be cancelled.'));
+      return;
+    }
+    Alert.alert(tr('Cancel your place?'), tr(`You will lose your ticket for ${event.title}.`), [
+      { text: tr('Keep my place'), style: 'cancel' },
+      {
+        text: tr('Cancel my place'),
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await ticketStore.cancelTicket(ticket.ticketId);
+            eventsStore.cancelRsvp(event.id);
+            closeEvent();
+          } catch {
+            setMintError(true);
+          }
+        },
+      },
+    ]);
   };
   const findBuddy = (event: EventItem) => {
     closeEvent();
@@ -274,6 +299,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
                 )}
                 <SecondaryButton label="Find a buddy" size="lg" onPress={() => findBuddy(open)} />
                 {eventCoordinate(open) ? <TextButton label="Show on the map" size="lg" onPress={() => showOnMap(open)} /> : null}
+                {heldIds.includes(open.id) ? <TextButton label="Cancel my place" size="lg" onPress={() => cancelSpot(open)} /> : null}
               </View>
             </ScrollView>
           )

@@ -19,7 +19,7 @@ import honoApp from './index.ts';
 import { DEMO_AUTH, HttpError, isStaffEmail } from './core/config.ts';
 import { areaAlertsService } from './core/area-alerts.ts';
 import { avatarSvg } from './core/avatars.ts';
-import { addBadge, addTicket, loadWallets, walletOf } from './core/wallets.ts';
+import { addBadge, addTicket, loadWallets, removeTicket, walletOf } from './core/wallets.ts';
 import { loadUserPins, saveUserPins } from './core/user-pins.ts';
 import { PARKIE_FEED_PORT, parkieAgentStatus, startParkieAgent } from './core/parkie-agent.ts';
 import { 
@@ -1062,6 +1062,14 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
     if (pathname === '/v1/m/solana/tickets/mine' && method === 'GET') {
       if (!requireLogin(res, currentUser)) return;
       return sendJson(res, 200, walletOf(currentUser.sub));
+    }
+
+    // cancelling a place: the ticket leaves the signed-in person's wallet (not one already used at the door)
+    if (pathname.startsWith('/v1/m/solana/tickets/') && method === 'DELETE') {
+      if (!requireLogin(res, currentUser)) return;
+      const ticketId = decodeURIComponent(pathname.slice('/v1/m/solana/tickets/'.length));
+      if (!removeTicket(currentUser.sub, ticketId)) return sendJson(res, 404, { error: 'ticket_not_found', error_description: 'That ticket is not in your wallet, or was already used.' });
+      return sendJson(res, 200, { removed: true });
     }
 
     if (pathname === '/v1/m/solana/status' && method === 'GET') {

@@ -24,9 +24,9 @@ type AuthTab = (typeof TABS)[number]['id'];
 export function MobileLoginScreen() {
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardHeight();
-  const { signIn, register, loginWithAuth0, authError, clearAuthError } = useAuth();
-
-  const [tab, setTab] = useState<AuthTab>('login');
+  const { signIn, authError, clearAuthError } = useAuth();
+  const [emailOpen, setEmailOpen] = useState(false);
+  const [googleOpen, setGoogleOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -95,62 +95,37 @@ export function MobileLoginScreen() {
             accessibilityLabel="Login or Register tabs"
           />
         </View>
+      </ScrollView>
 
-        {message ? (
-          <View style={styles.errorBox}>
-            <Text variant="label" color="danger" accessibilityRole="alert">
-              {message}
+      <View style={styles.actions}>
+        {googleOpen ? (
+          <View style={{ gap: 12 }}>
+            <Text variant="subheading" accessibilityRole="header">
+              Choose an account
             </Text>
-          </View>
-        ) : null}
-
-        {tab === 'login' ? (
-          <View style={styles.form}>
-            <PrimaryButton
-              label="Continue with Auth0"
-              size="lg"
-              loading={busy}
-              onPress={handleAuth0}
-            />
-            <Text variant="caption" color="mutedForeground" style={{ textAlign: 'center', marginTop: -4 }}>
-              Google, Email & Passkey unified
+            <Text variant="body">Alex Popescu</Text>
+            <Text variant="rowDetail" color="mutedForeground" style={{ marginTop: -8 }}>
+              alex.popescu@gmail.com (demo account)
             </Text>
-
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text variant="caption" color="mutedForeground" style={{ paddingHorizontal: 10 }}>
-                or with email
+            {message ? (
+              <Text variant="label" color="danger" accessibilityRole="alert">
+                {message}
               </Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <Field
-              label="Email"
-              value={email}
-              onChangeText={(v) => { setEmail(v); resetErrors(); }}
-              placeholder="you@example.com"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              returnKeyType="next"
-            />
-
-            <Field
-              label="Password"
-              value={password}
-              onChangeText={(v) => { setPassword(v); resetErrors(); }}
-              placeholder="••••••••"
-              secureTextEntry
-              returnKeyType="go"
-              onSubmitEditing={handleLogin}
-            />
-
-            <PrimaryButton
-              label="Log in"
-              size="lg"
-              loading={busy}
-              disabled={!email.trim()}
-              onPress={handleLogin}
-              style={{ marginTop: 4 }}
+            ) : null}
+            <PrimaryButton label="Continue as Alex" size="lg" loading={busy} onPress={() => go('google')} />
+            <TextButton label="Cancel" size="md" onPress={() => { setGoogleOpen(false); setNote(''); clearAuthError(); }} />
+          </View>
+        ) : emailOpen ? (
+          <View style={{ gap: 12 }}>
+            <Field 
+              label="Email" 
+              value={email} 
+              onChangeText={(v) => { setEmail(v); setNote(''); clearAuthError(); }} 
+              placeholder="you@example.com" 
+              autoCapitalize="none" 
+              keyboardType="email-address" 
+              returnKeyType="go" 
+              onSubmitEditing={submitEmail} 
             />
 
             <View style={styles.switchRow}>
@@ -245,15 +220,9 @@ export function MobileLoginScreen() {
               <Text variant="body" color="mutedForeground">
                 Already have an account?
               </Text>
-              <TextButton
-                label="Log in"
-                size="md"
-                onPress={() => {
-                  setTab('login');
-                  resetErrors();
-                }}
-              />
-            </View>
+            ) : null}
+            <PrimaryButton label="Continue with Google" size="lg" loading={busy} onPress={() => setGoogleOpen(true)} />
+            <SecondaryButton label="Continue with email" size="lg" onPress={() => setEmailOpen(true)} />
           </View>
         )}
       </ScrollView>
