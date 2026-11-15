@@ -52,10 +52,25 @@ Files in this folder:
 3. Make a QR code: open the form link in Chrome → right-click the page → "Create QR code for this page".
 4. Share the link and the QR code.
 
-## Later: send survey answers to our API
+## Survey answers in our API and Tiger Cloud (live since 15 Nov)
 
-When P2's API and the M11 feedback route are live, in Apps Script go to **Project Settings (⚙) →
-Script properties** and add:
+The API **pulls** the answers, because Google cannot reach an API running on a laptop:
+
+1. Apps Script → **Project Settings (⚙) → Script properties**: add `API_TOKEN` = the same value as
+   `FEEDBACK_INGEST_TOKEN` in the API's `.env`.
+2. **Deploy → New deployment → Web app** (Execute as: Me, Who has access: Anyone). The `doGet` function answers only
+   with the right token and returns the cleaned answers, never emails.
+3. Put the Web app URL (ends in `/exec`) in the API's `.env` as `SURVEY_SYNC_URL=…`.
+
+The API then loads the saved answers from Tiger Cloud at start and pulls new ones every 5 minutes
+(`services/api/src/modules/m11-feedback/survey-sync.ts`, table `m11_survey_responses`).
+Check it at `GET /v1/m/feedback/sync-status`; pull right away with `POST /v1/m/feedback/sync` and the header
+`X-Ingest-Token: <FEEDBACK_INGEST_TOKEN>`. After changing `doGet`, deploy a new version
+(**Deploy → Manage deployments → ✏ → Version: New version**).
+
+### Alternative: push from the Sheet (only for an API with a public address)
+
+In Apps Script go to **Project Settings (⚙) → Script properties** and add:
 
 | Property | Value |
 | --- | --- |
