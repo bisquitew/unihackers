@@ -1,4 +1,4 @@
-import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEmailUser, logout, onAuthChange, switchToken } from './auth.js';
+import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEmailUser, loginWithAuth0, logout, onAuthChange, switchToken } from './auth.js';
 import { renderNavbar, renderMenu } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
 import { applyTheme, syncTabState, toggleTheme, trapDialog } from './ui.js';
@@ -159,6 +159,10 @@ function openAuthModal(error = '') {
 
   document.getElementById('googleLoginBtn')?.addEventListener('click', () => {
     signIn(() => loginGoogleUser({ email: 'alex.popescu@gmail.com', name: 'Alex Popescu' }));
+  });
+
+  document.getElementById('auth0LoginBtn')?.addEventListener('click', () => {
+    signIn(() => loginWithAuth0());
   });
 
   document.getElementById('emailForm')?.addEventListener('submit', (e) => {

@@ -1,11 +1,64 @@
-import { fetchAuthMe, loginWithGoogle, loginWithEmail } from './api.js';
+import { fetchAuthMe, loginWithGoogle, loginWithEmail, fetchAuth0Info } from './api.js';
 
 // no saved sign-in means a guest: the website then shows the public preview
 let currentToken = localStorage.getItem('hub_auth_token') || '';
 let currentUser = null;
 const listeners = new Set();
+let auth0ClientInstance = null;
+
+export async function getAuth0Client() {
+  if (auth0ClientInstance) return auth0ClientInstance;
+  const createClient = window.auth0?.createAuth0Client || window.createAuth0Client;
+  if (!createClient) return null;
+
+  try {
+    const info = await fetchAuth0Info() || {};
+    const domain = info.auth0_domain || 'dev-77qb7o5o5lzcrtxa.us.auth0.com';
+    const clientId = info.client_id || 'nX2Hf4pmmdetK73ydXFmg2S632Bh966D';
+    const audience = info.auth0_audience || 'https://api.timisoara-hub.ro';
+
+    auth0ClientInstance = await createClient({
+      domain,
+      clientId,
+      authorizationParams: {
+        redirect_uri: window.location.origin,
+        audience,
+        scope: 'openid profile email'
+      },
+      cacheLocation: 'localstorage'
+    });
+    return auth0ClientInstance;
+  } catch (err) {
+    console.warn('[Auth0] Could not initialize Auth0 client:', err);
+    return null;
+  }
+}
 
 export async function initAuth() {
+  // Check if returning from an Auth0 redirect
+  try {
+    const client = await getAuth0Client();
+    if (client) {
+      if (window.location.search.includes('code=') && window.location.search.includes('state=')) {
+        await client.handleRedirectCallback();
+        window.history.replaceState({}, document.title, window.location.pathname);
+        const token = await client.getTokenSilently().catch(() => null);
+        if (token) {
+          await switchToken(token);
+          return;
+        }
+      } else if (await client.isAuthenticated().catch(() => false)) {
+        const token = await client.getTokenSilently().catch(() => null);
+        if (token) {
+          await switchToken(token);
+          return;
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[Auth0] Redirect handling skipped:', err);
+  }
+
   await switchToken(currentToken);
 }
 
@@ -52,7 +105,50 @@ export async function switchToken(token) {
   return currentUser;
 }
 
+export async function loginWithAuth0(options = {}) {
+  const client = await getAuth0Client();
+  if (!client) {
+    throw new Error('Auth0 SDK is not available or blocked by browser.');
+  }
+
+  try {
+    // Try popup login first for smooth in-page UX
+    await client.loginWithPopup(options);
+    const token = await client.getTokenSilently();
+    await switchToken(token);
+    return currentUser;
+  } catch (err) {
+    // If popup blocked by browser or closed, and redirect is requested/needed:
+    if (options.useRedirect || err.message?.includes('popup')) {
+      console.log('[Auth0] Switching to loginWithRedirect...');
+      await client.loginWithRedirect(options);
+      return null;
+    }
+    throw err;
+  }
+}
+
 export async function loginGoogleUser({ email, name } = {}) {
+  // Try real Auth0 Google connection first if client is available
+  try {
+    const client = await getAuth0Client();
+    if (client) {
+      await client.loginWithPopup({
+        authorizationParams: {
+          connection: 'google-oauth2'
+        }
+      });
+      const token = await client.getTokenSilently();
+      if (token) {
+        await switchToken(token);
+        return currentUser;
+      }
+    }
+  } catch (err) {
+    console.warn('[Auth0] Google popup login failed or cancelled; falling back to demo login:', err);
+  }
+
+  // Fallback to local Google demo login
   const result = await loginWithGoogle({ email, name });
   currentToken = result.token;
   currentUser = result.user;
@@ -73,6 +169,18 @@ export async function loginEmailUser({ email, password, token } = {}) {
 export async function logout() {
   currentToken = '';
   localStorage.removeItem('hub_auth_token');
+  try {
+    const client = await getAuth0Client();
+    if (client && await client.isAuthenticated().catch(() => false)) {
+      await client.logout({
+        logoutParams: {
+          returnTo: window.location.origin
+        }
+      });
+    }
+  } catch (e) {
+    console.warn('[Auth0] Logout notice:', e);
+  }
   currentUser = await fetchAuthMe('');
   notifyListeners();
   return currentUser;

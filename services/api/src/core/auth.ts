@@ -14,14 +14,20 @@ import type {
   SecurityEmailAlert
 } from '@hub/contracts';
 
-const AUTH0_DOMAIN = process.env.AUTH0_DOMAIN || 'timisoara-hub.eu.auth0.com';
-const AUTH0_AUDIENCE = process.env.AUTH0_AUDIENCE || 'https://api.timisoara-hub.ro';
+const getAuth0Domain = () => process.env.AUTH0_DOMAIN || 'dev-77qb7o5o5lzcrtxa.us.auth0.com';
+const getAuth0Audience = () => process.env.AUTH0_AUDIENCE || 'https://api.timisoara-hub.ro';
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-try {
-  jwks = createRemoteJWKSet(new URL(`https://${AUTH0_DOMAIN}/.well-known/jwks.json`));
-} catch {
-  // Remote JWKS will be created on demand if network available
+function getJwks() {
+  if (!jwks) {
+    const domain = getAuth0Domain();
+    try {
+      jwks = createRemoteJWKSet(new URL(`https://${domain}/.well-known/jwks.json`));
+    } catch (err: any) {
+      console.warn('⚠️ Could not initialize remote JWKS:', err.message);
+    }
+  }
+  return jwks;
 }
 
 // In-memory Security Audit Log buffer (records access control and MFA decisions)
@@ -619,22 +625,27 @@ async function resolveAuthUserRaw(authHeader?: string): Promise<AuthUser> {
   }
 
   // 2. Real Auth0 RS256 JWT validation
-  if (jwks) {
+  const remoteJwks = getJwks();
+  if (remoteJwks) {
     try {
-      const { payload } = await jwtVerify(token, jwks, {
-        issuer: `https://${AUTH0_DOMAIN}/`,
-        audience: AUTH0_AUDIENCE
+      const domain = getAuth0Domain();
+      const audience = getAuth0Audience();
+      const { payload } = await jwtVerify(token, remoteJwks, {
+        issuer: `https://${domain}/`,
+        audience
       });
 
       const rawAmr = Array.isArray(payload.amr) ? (payload.amr as string[]) : [];
       const hasMfa = rawAmr.includes('mfa') || rawAmr.includes('otp') || rawAmr.includes('webauthn');
-      const role = ((payload['https://timisoara-hub.ro/role'] || payload.role) as UserRole) || 'resident';
+      const email = (payload['https://timisoara-hub.ro/email'] || payload.email || '') as string;
+      const explicitRole = (payload['https://timisoara-hub.ro/role'] || payload.role) as UserRole;
+      const role = explicitRole || (email && isStaffEmail(email) ? 'admin' : 'resident');
       const permissions = (payload.permissions as string[]) || ROLE_PERMISSIONS[role] || [];
       const isM2M = payload.gty === 'client-credentials';
 
       return {
         sub: payload.sub as string,
-        email: (payload['https://timisoara-hub.ro/email'] || payload.email || '') as string,
+        email,
         name: (payload['https://timisoara-hub.ro/name'] || payload.name || 'Auth0 User') as string,
         role,
         permissions,
@@ -710,7 +721,7 @@ export function enforceSecurityPolicy(
       current_amr: user.amr,
       supported_mfa_factors: ['totp_authenticator', 'fido2_webauthn_passkey', 'sms'],
       auth0_step_up_prompt: 'mfa',
-      auth0_authorize_url: `https://${AUTH0_DOMAIN}/authorize?client_id=${process.env.AUTH0_CLIENT_ID || 'hub-api'}&response_type=token&prompt=mfa&scope=openid%20profile%20mfa`
+      auth0_authorize_url: `https://${getAuth0Domain()}/authorize?client_id=${process.env.AUTH0_CLIENT_ID || 'hub-api'}&response_type=token&prompt=mfa&scope=openid%20profile%20mfa`
     };
 
     return {
