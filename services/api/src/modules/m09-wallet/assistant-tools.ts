@@ -35,8 +35,11 @@ export const walletAssistantTools = [
         !q || id.toLowerCase() === args.event!.trim().toLowerCase() || normalizePlace(title).includes(q) || q.split(' ').every((w) => normalizePlace(title).includes(w));
       const t = wallet.tickets.filter((x) => matches(x.eventTitle ?? '', x.ticketId ?? ''));
       const p = wallet.poaps.filter((x) => matches(x.eventTitle ?? '', x.poapId ?? ''));
-      const status = await onChainStatuses([...t.map((x) => x.txSignature), ...p.map((x) => x.txSignature)].filter(Boolean));
-      const link = (sig: string, url: string) => (sig && isOnChain(status[sig]) ? url : null);
+      // "pending-…" means the mint never reached Solana: say so instead of looking it up (it would read as "devnet unreachable")
+      const unminted = (sig?: string) => !sig || sig.startsWith('pending-');
+      const status: Record<string, string> = await onChainStatuses([...t.map((x) => x.txSignature), ...p.map((x) => x.txSignature)].filter((s) => !unminted(s)));
+      const chain = (sig?: string) => (unminted(sig) ? 'never_minted' : status[sig as string]);
+      const link = (sig: string, url: string) => (!unminted(sig) && isOnChain(status[sig] as never) ? url : null);
       return {
         signedIn: true,
         network: 'Solana devnet (test network, no real money)',
@@ -45,13 +48,13 @@ export const walletAssistantTools = [
           ticketId: x.ticketId,
           checkedIn: !!x.isCheckedIn,
           mintedAt: x.mintedAt ?? null,
-          onChain: x.txSignature ? status[x.txSignature] : 'unknown',
+          onChain: chain(x.txSignature),
           explorerUrl: link(x.txSignature, x.explorerUrl),
         })),
-        poapBadges: p.map((x) => ({ event: x.eventTitle, badge: x.badgeName, issuedAt: x.issuedAt ?? null, onChain: x.txSignature ? status[x.txSignature] : 'unknown', explorerUrl: link(x.txSignature, x.explorerUrl) })),
+        poapBadges: p.map((x) => ({ event: x.eventTitle, badge: x.badgeName, issuedAt: x.issuedAt ?? null, onChain: chain(x.txSignature), explorerUrl: link(x.txSignature, x.explorerUrl) })),
         note: [
           'Only share explorerUrl values that are present (they were verified on devnet just now).',
-          'If onChain is "not_found", say the ticket is in the app but its devnet transaction could not be found; if "unknown", devnet could not be reached right now.',
+          'If onChain is "not_found", say the ticket is in the app but its devnet transaction could not be found; if "never_minted", say the ticket is in the app but was never written to Solana (the mint did not go through); if "unknown", devnet could not be reached right now.',
           wallet.tickets.length === 0 && wallet.poaps.length === 0 ? 'The wallet is empty: the user gets a ticket by tapping "Get a ticket" on an event, and a badge when it is scanned at the door.' : '',
           q && t.length === 0 && p.length === 0 && (wallet.tickets.length || wallet.poaps.length) ? 'No ticket or badge matches that event.' : '',
         ].filter(Boolean).join(' '),
