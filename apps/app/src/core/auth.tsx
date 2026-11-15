@@ -1,8 +1,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ApiError } from '@hub/api-client';
-import { api, setSessionToken } from './api';
+import { api, setSessionToken, devServerOrigin } from './api';
 import type { UserRole, AuthUser as ContractAuthUser, SecurityTier } from '@hub/contracts';
 
 export interface AuthUser {
@@ -29,7 +29,11 @@ interface AuthContextType {
   login: (tokenOrRole?: string) => Promise<void>;
   loginAsResident: () => Promise<void>;
   /** Signs in through the API. Resolves with an error message when refused. */
-  signIn: (method: 'google' | 'email', email?: string) => Promise<{ ok: boolean; error?: string }>;
+  signIn: (method: 'google' | 'email', email?: string, password?: string) => Promise<{ ok: boolean; error?: string }>;
+  /** Signs in through real Auth0 Universal Login (Google, Email, Passkey). */
+  loginWithAuth0: () => Promise<{ ok: boolean; error?: string }>;
+  /** Registers a new resident account in the database through the API. */
+  register: (data: { name: string; email: string; password?: string; neighbourhood?: string }) => Promise<{ ok: boolean; error?: string }>;
   logout: () => void;
   isLoading: boolean;
   /** Set when a sign-in is refused. Cleared by the next attempt or `clearAuthError`. */
@@ -91,6 +95,8 @@ const AuthContext = createContext<AuthContextType>({
   login: async () => {},
   loginAsResident: async () => {},
   signIn: async () => ({ ok: false }),
+  loginWithAuth0: async () => ({ ok: false }),
+  register: async () => ({ ok: false }),
   logout: () => {},
   isLoading: true,
   authError: null,
@@ -103,16 +109,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // Restore saved authentication token on app mount
+  // Restore saved authentication token on app mount or capture deep link redirect
   useEffect(() => {
     let mounted = true;
+
+    const handleAuthUrl = async (url: string) => {
+      if (!url || (!url.includes('access_token=') && !url.includes('id_token='))) return false;
+      const hash = url.split('#')[1] || url.split('?')[1] || '';
+      const params = new URLSearchParams(hash);
+      const token = params.get('id_token') || params.get('access_token');
+      if (token) {
+        setSessionToken(token);
+        try {
+          const me = await api.get<any>('/v1/core/auth/me');
+          if (me?.sub && me.sub !== 'guest|unauthenticated' && !STAFF_ROLES.includes(me.role)) {
+            if (mounted) {
+              setUser({ ...me, id: me.id ?? me.sub });
+              setToken(token);
+              await AsyncStorage.setItem(STORAGE_KEY, token);
+              setIsLoading(false);
+            }
+            return true;
+          }
+        } catch (e) {
+          console.warn('Failed to resolve user from auth redirect token:', e);
+          setSessionToken(null);
+        }
+      }
+      return false;
+    };
+
     async function restoreSession() {
       try {
+        // 1. Web hash check if redirected
+        if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
+          const handled = await handleAuthUrl(window.location.href);
+          if (handled) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+          }
+        }
+
+        // 2. Native deep link check
+        const initialUrl = await Linking.getInitialURL();
+        if (initialUrl && (initialUrl.includes('access_token=') || initialUrl.includes('id_token='))) {
+          const handled = await handleAuthUrl(initialUrl);
+          if (handled) return;
+        }
+
+        // 3. Saved token restore
         const savedToken = await AsyncStorage.getItem(STORAGE_KEY);
         if (mounted && savedToken) {
           setSessionToken(savedToken);
           try {
-            // ask the API who this token is; a token it no longer knows comes back as a guest
             const me = await api.get<any>('/v1/core/auth/me');
             if (me?.sub && me.sub !== 'guest|unauthenticated' && !STAFF_ROLES.includes(me.role)) {
               setUser({ ...me, id: me.id ?? me.sub });
@@ -121,7 +170,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               setSessionToken(null);
             }
           } catch (err) {
-            // the API is not reachable: keep a saved demo session so the app still opens
             const profile = TOKEN_PROFILES[savedToken];
             if (err instanceof ApiError && err.offline && profile && !STAFF_ROLES.includes(profile.user.role)) {
               setUser(profile.user);
@@ -137,9 +185,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (mounted) setIsLoading(false);
       }
     }
+
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      handleAuthUrl(url);
+    });
+
     restoreSession();
     return () => {
       mounted = false;
+      sub.remove();
     };
   }, []);
 
@@ -167,12 +221,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   };
 
-  const signIn = async (method: 'google' | 'email', email?: string): Promise<{ ok: boolean; error?: string }> => {
+  const signIn = async (method: 'google' | 'email', email?: string, password?: string): Promise<{ ok: boolean; error?: string }> => {
     setIsLoading(true);
     setAuthError(null);
     try {
       const path = method === 'google' ? '/v1/core/auth/google-login' : '/v1/core/auth/login';
-      const result = await api.post<{ token: string; user: any }>(path, method === 'google' ? { email: email || 'alex.popescu@gmail.com', name: 'Alex Popescu' } : { email });
+      const result = await api.post<{ token: string; user: any }>(
+        path,
+        method === 'google'
+          ? { email: email || 'alex.popescu@gmail.com', name: 'Alex Popescu' }
+          : { email, password }
+      );
       if (STAFF_ROLES.includes(result.user?.role)) {
         setAuthError(STAFF_MESSAGE);
         return { ok: false, error: STAFF_MESSAGE };
@@ -193,6 +252,135 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const message = err instanceof ApiError && err.code === 'use_web_dashboard' ? STAFF_MESSAGE : err instanceof Error ? err.message : 'Could not sign in.';
       setAuthError(message);
       return { ok: false, error: message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (data: { name: string; email: string; password?: string; neighbourhood?: string }): Promise<{ ok: boolean; error?: string }> => {
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      const result = await api.post<{ token: string; user: any }>('/v1/core/auth/register', data);
+      if (STAFF_ROLES.includes(result.user?.role)) {
+        setAuthError(STAFF_MESSAGE);
+        return { ok: false, error: STAFF_MESSAGE };
+      }
+      setSessionToken(result.token);
+      setUser({ ...result.user, id: result.user.id ?? result.user.sub });
+      setToken(result.token);
+      try {
+        await AsyncStorage.setItem(STORAGE_KEY, result.token);
+      } catch {}
+      return { ok: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Registration failed.';
+      setAuthError(message);
+      return { ok: false, error: message };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const loginWithAuth0 = async (): Promise<{ ok: boolean; error?: string }> => {
+    setIsLoading(true);
+    setAuthError(null);
+    try {
+      const domain = 'dev-77qb7o5o5lzcrtxa.us.auth0.com';
+      const clientId = 'nX2Hf4pmmdeTk73ydXFmg2S632Bh966D';
+      const isWeb = Platform.OS === 'web' && typeof window !== 'undefined';
+      let redirectUri: string;
+      if (isWeb) {
+        redirectUri = window.location.origin;
+      } else {
+        const origin = devServerOrigin();
+        redirectUri = origin || 'http://10.109.24.138:8081';
+      }
+      const nonce = Math.random().toString(36).substring(2, 15);
+      const state = Math.random().toString(36).substring(2, 15);
+
+      const authUrl = `https://${domain}/authorize?client_id=${clientId}&response_type=token%20id_token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=openid%20profile%20email&state=${state}&nonce=${nonce}`;
+
+      if (isWeb) {
+        const width = 500;
+        const height = 650;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+
+        const popup = window.open(
+          authUrl,
+          'auth0_login_popup',
+          `width=${width},height=${height},left=${left},top=${top},status=0,toolbar=0,menubar=0`
+        );
+
+        if (!popup) {
+          window.location.href = authUrl;
+          return { ok: true };
+        }
+
+        const auth0Token = await new Promise<string>((resolve, reject) => {
+          let resolved = false;
+          const timer = setInterval(() => {
+            try {
+              if (!popup || popup.closed) {
+                clearInterval(timer);
+                if (!resolved) reject(new Error('Auth0 login window was closed.'));
+                return;
+              }
+
+              const currentUrl = popup.location.href;
+              if (currentUrl && (currentUrl.includes('access_token=') || currentUrl.includes('id_token=') || currentUrl.includes('error='))) {
+                clearInterval(timer);
+                resolved = true;
+                popup.close();
+
+                const hash = currentUrl.split('#')[1] || '';
+                const params = new URLSearchParams(hash || currentUrl.split('?')[1]);
+                const error = params.get('error_description') || params.get('error');
+                if (error) {
+                  reject(new Error(error));
+                  return;
+                }
+
+                const idToken = params.get('id_token');
+                const accessToken = params.get('access_token');
+                const token = idToken || accessToken;
+                if (token) {
+                  resolve(token);
+                } else {
+                  reject(new Error('No token returned from Auth0.'));
+                }
+              }
+            } catch {
+              // Cross-origin access expected while on dev-77qb7o5o5lzcrtxa.us.auth0.com
+            }
+          }, 350);
+        });
+
+        setSessionToken(auth0Token);
+        const me = await api.get<any>('/v1/core/auth/me');
+        if (me && me.sub && me.sub !== 'guest|unauthenticated') {
+          if (STAFF_ROLES.includes(me.role)) {
+            setSessionToken(null);
+            setAuthError(STAFF_MESSAGE);
+            return { ok: false, error: STAFF_MESSAGE };
+          }
+          setUser({ ...me, id: me.id ?? me.sub });
+          setToken(auth0Token);
+          try {
+            await AsyncStorage.setItem(STORAGE_KEY, auth0Token);
+          } catch {}
+          return { ok: true };
+        }
+        throw new Error('Could not verify Auth0 identity.');
+      } else {
+        await Linking.openURL(authUrl);
+        return { ok: true };
+      }
+    } catch (err: any) {
+      const msg = err.message || 'Auth0 login failed.';
+      setAuthError(msg);
+      return { ok: false, error: msg };
     } finally {
       setIsLoading(false);
     }
@@ -224,6 +412,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         loginAsResident,
         signIn,
+        loginWithAuth0,
+        register,
         logout,
         isLoading,
         authError,

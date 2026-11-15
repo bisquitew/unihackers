@@ -33,7 +33,7 @@ export let apiBaseSource = 'default';
  *  2. the same value on the legacy module object;
  *  3. the host Expo Go reports (`hostUri`), which is the tunnel or LAN address.
  */
-function devServerOrigin(): string | null {
+export function devServerOrigin(): string | null {
   const fromUrl = (value: unknown): string | null => (typeof value === 'string' ? value.match(/^(https?:\/\/[^/]+)/)?.[1] ?? null : null);
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
