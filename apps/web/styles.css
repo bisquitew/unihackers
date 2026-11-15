@@ -389,3 +389,15 @@ a.row { color: inherit; text-decoration: none; }
 @media (max-width: 1000px) { .checker { position: static; } }
 
 .google-login-button { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+/* profile, wallet, report, info, feedback pages */
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.ticket-card { display: flex; gap: 20px; align-items: center; padding: 20px 0; border-top: 1px solid var(--hair); }
+.ticket-card .qr { width: 160px; height: 160px; flex: none; padding: 10px; border-radius: 20px; background: #fff; box-shadow: var(--ring); }
+.ticket-card .qr svg { width: 100%; height: 100%; display: block; }
+.ticket-card h3 { font-size: 20px; line-height: 26px; }
+.stars { display: flex; gap: 4px; }
+.stars button { border: 0; background: none; font-size: 34px; line-height: 1; color: var(--hair-strong, #cfc8de); padding: 2px; }
+.stars button.on { color: var(--apricot); }
+.info-entry summary::-webkit-details-marker { display: none; }
+@media (max-width: 720px) { .ticket-card { flex-direction: column; align-items: flex-start; } }

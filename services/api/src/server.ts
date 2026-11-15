@@ -46,6 +46,14 @@ import {
   broadcastRealPoap,
 } from '../../../packages/solana/src/real-solana.ts';
 
+// what each signed-in person holds: tickets and badges (so the website and the app show the same wallet)
+const wallets = new Map<string, { tickets: any[]; poaps: any[] }>();
+const walletOf = (sub: string) => {
+  let w = wallets.get(sub);
+  if (!w) wallets.set(sub, (w = { tickets: [], poaps: [] }));
+  return w;
+};
+
 const PORT = parseInt(process.env.PORT || '8000', 10);
 
 // Raw buffer parser for uploads
@@ -937,6 +945,12 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
     // events, forum, buddy, wallet and the P4 modules are answered by the module routers (index.ts), see the forward below
 
     // --- Solana Devnet Endpoints [M09_WALLET & M01_EVENTS] ---
+    // what each signed-in person holds: tickets they were given and badges they earned (so the website and the app show the same wallet)
+    if (pathname === '/v1/m/solana/tickets/mine' && method === 'GET') {
+      if (!requireLogin(res, currentUser)) return;
+      return sendJson(res, 200, walletOf(currentUser.sub));
+    }
+
     if (pathname === '/v1/m/solana/status' && method === 'GET') {
       const status = await getLiveDevnetStatus();
       return sendJson(res, 200, {
@@ -962,7 +976,7 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         attendeeWallet || ORGANIZER_WALLET_ADDRESS
       );
 
-      return sendJson(res, 200, {
+      const minted = {
         ticketId,
         eventId,
         eventTitle,
@@ -982,7 +996,9 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
           wallet: attendeeWallet || ORGANIZER_WALLET_ADDRESS,
           sig: (realTx.signature || 'pending').slice(0, 16),
         }),
-      });
+      };
+      walletOf(currentUser.sub).tickets.unshift(minted);
+      return sendJson(res, 200, minted);
     }
 
     if (pathname === '/v1/m/solana/poap/mint' && method === 'POST') {
@@ -1000,7 +1016,7 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         ticketId || 'tkt-scan'
       );
 
-      return sendJson(res, 200, {
+      const badge = {
         poapId: `poap-${eventId}-${Date.now().toString(36)}`,
         eventId,
         eventTitle: eventTitle || 'Eveniment Cultural Timișoara',
@@ -1012,7 +1028,12 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         slot: realTx.slot,
         issuedAt: new Date().toISOString(),
         message: realTx.message || realTx.error,
-      });
+      };
+      const w = walletOf(currentUser.sub);
+      w.poaps.unshift(badge);
+      const t = w.tickets.find((x: any) => x.ticketId === ticketId);
+      if (t) t.isCheckedIn = true;
+      return sendJson(res, 200, badge);
     }
 
     // --- [M02_VISITOR_INFO] [M06_SMELL] [M10_ASSISTANT] [M11_FEEDBACK] (P4) ---
