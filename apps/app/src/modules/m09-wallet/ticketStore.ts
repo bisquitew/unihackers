@@ -94,6 +94,13 @@ class TicketStore {
     return data;
   }
 
+  /** Gives a ticket back (cancelling a place). Throws when the server refuses. */
+  async cancelTicket(ticketId: string): Promise<void> {
+    await api.del(`/v1/m/solana/tickets/${encodeURIComponent(ticketId)}`);
+    this.state = { ...this.state, tickets: this.state.tickets.filter((t) => t.ticketId !== ticketId) };
+    this.notify();
+  }
+
   /** Door check-in: the server gives the attendance badge for a ticket in this wallet. */
   async checkInTicket(ticketId: string): Promise<{ success: boolean; poap?: PoapResult; error?: string }> {
     const ticket = this.state.tickets.find((t) => t.ticketId === ticketId);

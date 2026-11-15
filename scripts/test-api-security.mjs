@@ -195,6 +195,14 @@ r = await call('GET', '/v1/m/assistant/tour/walk?lang=ro');
 if (r.status === 200) check('the tour walk has a leg for every stop after the first, each with a spoken passage', r.json.legs?.length >= 1 && r.json.legs.every((l) => l.spoken?.length > 20 && l.steps?.length > 0), JSON.stringify(r.json).slice(0, 120));
 else console.log(`  (skipped the live tour walk check: the routing service answered ${r.status})`);
 
+// --- cancelling a place: only your own, only when signed in ---
+r = await call('DELETE', '/v1/m/events/evt-plai-2026/rsvp');
+check('cancelling a place needs a sign-in', r.status === 401, r.status);
+r = await call('DELETE', '/v1/m/solana/tickets/tkt-not-mine');
+check('giving a ticket back needs a sign-in', r.status === 401, r.status);
+r = await call('DELETE', '/v1/m/solana/tickets/tkt-not-mine', { token: 'dev_resident' });
+check('giving back a ticket that is not in your wallet is a 404', r.status === 404, r.status);
+
 // --- bad input ---
 r = await call('POST', '/v1/core/auth/google-login', { raw: '{not json' });
 check('invalid JSON is a 400, not a silent empty body', r.status === 400, r.status);

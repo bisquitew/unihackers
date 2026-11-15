@@ -14,6 +14,7 @@ export function MobileLoginScreen() {
   const keyboard = useKeyboardHeight();
   const { signIn, authError, clearAuthError } = useAuth();
   const [emailOpen, setEmailOpen] = useState(false);
+  const [googleOpen, setGoogleOpen] = useState(false);
   const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -55,7 +56,24 @@ export function MobileLoginScreen() {
       </ScrollView>
 
       <View style={styles.actions}>
-        {emailOpen ? (
+        {googleOpen ? (
+          <View style={{ gap: 12 }}>
+            <Text variant="subheading" accessibilityRole="header">
+              Choose an account
+            </Text>
+            <Text variant="body">Alex Popescu</Text>
+            <Text variant="rowDetail" color="mutedForeground" style={{ marginTop: -8 }}>
+              alex.popescu@gmail.com (demo account)
+            </Text>
+            {message ? (
+              <Text variant="label" color="danger" accessibilityRole="alert">
+                {message}
+              </Text>
+            ) : null}
+            <PrimaryButton label="Continue as Alex" size="lg" loading={busy} onPress={() => go('google')} />
+            <TextButton label="Cancel" size="md" onPress={() => { setGoogleOpen(false); setNote(''); clearAuthError(); }} />
+          </View>
+        ) : emailOpen ? (
           <View style={{ gap: 12 }}>
             <Field 
               label="Email" 
@@ -82,7 +100,7 @@ export function MobileLoginScreen() {
                 {message}
               </Text>
             ) : null}
-            <PrimaryButton label="Continue with Google" size="lg" loading={busy} onPress={() => go('google')} />
+            <PrimaryButton label="Continue with Google" size="lg" loading={busy} onPress={() => setGoogleOpen(true)} />
             <SecondaryButton label="Continue with email" size="lg" onPress={() => setEmailOpen(true)} />
           </View>
         )}

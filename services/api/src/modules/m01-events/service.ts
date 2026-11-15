@@ -208,6 +208,23 @@ export class EventsService {
     return rsvpRecord;
   }
 
+  /** Takes someone's place back. Returns false when they had none. */
+  async cancelRsvp(eventId: string, userId: string): Promise<boolean> {
+    await this.loadRsvps();
+    const at = this.rsvps.findIndex((r) => r.eventId === eventId && r.userId === userId);
+    if (at < 0) return false;
+    this.rsvps.splice(at, 1);
+    const event = await this.getEventById(eventId);
+    if (event) event.attendeeCount = Math.max(0, event.attendeeCount - 1);
+    if (db.isTigerConnected()) {
+      try {
+        await db.query(`DELETE FROM m01_event_rsvps WHERE event_id = $1 AND user_id = $2;`, [eventId, userId]);
+        await db.query(`UPDATE m01_events SET attendee_count = GREATEST(attendee_count - 1, 0) WHERE id = $1;`, [eventId]);
+      } catch {}
+    }
+    return true;
+  }
+
   async getEventRSVPs(eventId: string): Promise<RSVPRecord[]> {
     await this.loadRsvps();
     return this.rsvps.filter((r) => r.eventId === eventId);
