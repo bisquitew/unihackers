@@ -104,10 +104,11 @@ async function show(tab, scrollTop = true, soft = false) {
     html = await view.render(c);
   } catch (e) {
     console.error(e);
-    html = `<div class="page"><div class="empty">Could not load this page. Is the API running?</div></div>`;
+    html = `<div class="page"><div class="empty"><b>Something went wrong</b><br>We could not load this page. Check your connection and try again.<br><button class="btn btn-primary btn-md" id="retryPage" style="margin-top:16px">Try again</button></div></div>`;
   }
   if (mine !== navToken) return; // the person moved on while this was loading
   main.innerHTML = html;
+  document.getElementById('retryPage')?.addEventListener('click', () => show(tab));
   main.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => go(b.dataset.goto)));
   main.querySelectorAll('[data-login]').forEach((b) => b.addEventListener('click', openAuthModal));
   if (tab === 'admin') {
@@ -197,6 +198,12 @@ function openAuthModal(error = '', mode = 'login') {
     emailInput?.focus();
   }
 }
+
+// anything that fails without being caught: the person sees one plain sentence, the details stay in the console
+window.addEventListener('unhandledrejection', (e) => {
+  console.error(e.reason);
+  showToast('Something went wrong. Try again.');
+});
 
 export function showToast(msg) {
   const el = document.getElementById('toast');

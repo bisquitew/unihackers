@@ -36,6 +36,7 @@ import { fetchRoute, type RouteMode } from '../../src/core/directions';
 import { usePrefs } from '../../src/core/prefs';
 import { useMyLocation } from '../../src/core/location';
 import { getMapLayersVersion, onMapLayersChanged } from '../../src/core/map-layers/changes';
+import { friendlyError } from '../../src/core/errors';
 
 const TAB_BAR_BODY = 68; // height of the floating tab bar (see packages/ui/src/TabBar.tsx); it sits above the bottom safe area
 const PLACE_BAR_H = 140; // the "Choose the spot" bar, shown while the user places a pin
@@ -159,7 +160,7 @@ export default function MapScreen() {
         const result = await fetchRoute(from, to, mode);
         if (ask === tripAsk.current) setTrip({ name, mode, status: 'ready', result });
       } catch (e: any) {
-        if (ask === tripAsk.current) setTrip({ name, mode, status: 'error', error: typeof e?.message === 'string' && e.message.length < 140 ? e.message : undefined });
+        if (ask === tripAsk.current) setTrip({ name, mode, status: 'error', error: friendlyError(e, 'Could not get directions.') });
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps

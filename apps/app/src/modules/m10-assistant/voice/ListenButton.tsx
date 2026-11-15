@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, View } from 'react-native';
 import { Text, colors, icons } from '@hub/ui';
 import { guessLang, speak, stopSpeaking, voiceAvailable, webPlaybackSupported, type VoiceLang } from './voiceClient';
+import { friendlyError } from '../../../core/errors';
 
 type State = 'idle' | 'loading' | 'playing' | 'error';
 
@@ -44,7 +45,7 @@ export function ListenButton({ text, lang, label = 'Listen', compact = false }: 
       setState('idle');
     } catch (e) {
       setState('error');
-      setError(e instanceof Error ? e.message : 'Voice is not available right now.');
+      setError(friendlyError(e, 'Voice is not available right now.'));
     }
   };
 
