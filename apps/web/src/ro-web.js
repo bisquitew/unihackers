@@ -80,4 +80,18 @@ export const RO_WEB = {
   'About {}': 'Despre {}', '{} stars': '{} stele',
   'Visitor info': 'Info vizitatori', 'Outages': 'Avarii', 'Smell reports': 'Sesizări de miros', 'Buddies': 'Parteneri',
   'Switch language': 'Schimbă limba',
+  // Ask the data (P4)
+  'Ask the data': 'Întreabă datele', 'Ask': 'Întreabă',
+  "Ask about parking, air, noise, smells or safety reports. Gemini fetches the real numbers from Tiger Cloud and the city's modules, runs its own Python on them and draws a chart.": 'Întreabă despre parcări, aer, zgomot, mirosuri sau sesizări de siguranță. Gemini aduce cifrele reale din Tiger Cloud și din modulele orașului, rulează propriul cod Python pe ele și desenează un grafic.',
+  'At what hour of the day is parking in the city most full? Last 7 days.': 'La ce oră din zi sunt parcările din oraș cele mai pline? Ultimele 7 zile.',
+  'When were the most smell reports in the last 24 hours, and does it line up with the wind?': 'Când au fost cele mai multe sesizări de miros în ultimele 24 de ore și se potrivește cu vântul?',
+  'Compare PM2.5 across areas over the last 3 days. Which area is worst?': 'Compară PM2.5 între zone în ultimele 3 zile. Care zonă stă cel mai rău?',
+  'At what time of day do residents report feeling unsafe, and where?': 'La ce oră din zi raportează locuitorii că nu se simt în siguranță și unde?',
+  'Staff tools need a second check first.': 'Instrumentele pentru personal necesită mai întâi o a doua verificare.',
+  'How Gemini got this': 'Cum a ajuns Gemini la asta', 'Show the Python Gemini ran': 'Arată codul Python rulat de Gemini',
+  'Parking history': 'Istoricul parcărilor', 'Air, noise and smell sensors': 'Senzori de aer, zgomot și miros', "Residents' smell reports": 'Sesizările de miros ale locuitorilor',
+  "Residents' safety reports": 'Sesizările de siguranță ale locuitorilor', 'Measured wind': 'Vântul măsurat', 'No chart for this question.': 'Niciun grafic pentru această întrebare.',
+  'Fetching the data…': 'Aduc datele…', 'Gemini is writing and running Python…': 'Gemini scrie și rulează cod Python…', 'Checking the numbers and drawing the chart…': 'Verific cifrele și desenez graficul…',
+  'Could not answer.': 'Nu am putut răspunde.', 'Verify with your passkey, then ask again.': 'Verifică-te cu cheia de acces, apoi întreabă din nou.',
+  'Gemini is busy right now. Wait a few seconds and try again.': 'Gemini este ocupat acum. Așteaptă câteva secunde și încearcă din nou.',
 };
