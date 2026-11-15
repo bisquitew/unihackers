@@ -1,5 +1,6 @@
 import { fetchBuddyRequests, fetchEvents, fetchForumPosts, hubGet, hubPost } from '../api.js';
 import { trapDialog, art, esc, row, when } from '../ui.js';
+import { dateLocale } from '../i18n.js';
 import { CITY } from '../city.js';
 
 // the neighbourhoods an event or post can belong to, with the middle of each (used when a venue cannot be found on the map)
@@ -18,7 +19,7 @@ const ago = (iso) => {
   if (mins < 1) return 'now';
   if (mins < 60) return `${mins}m ago`;
   if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return new Date(iso).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
 };
 
 const eventRows = (events, canAct, myTickets = []) => events.map((e) => {

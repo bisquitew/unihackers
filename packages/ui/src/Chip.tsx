@@ -4,6 +4,7 @@ import { SpringPressable } from './SpringPressable';
 import { colors, minTarget, radii, shadows } from './tokens';
 import { isDark } from './theme';
 import { Text } from './Text';
+import { tr } from './locale';
 
 type ChipProps = {
   label: string;
@@ -29,7 +30,7 @@ export function Chip({ label, selected, onPress, leading, tone = 'solid', dot }:
       scaleTo={0.92}
       accessibilityRole="button"
       accessibilityState={{ selected: !!selected }}
-      accessibilityLabel={label}
+      accessibilityLabel={tr(label)}
       onPress={onPress}
       style={({ pressed }) => [
         styles.chip,

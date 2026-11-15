@@ -20,11 +20,16 @@ export interface EnginePin {
   fillColor?: string;
   strokeColor?: string;
   fillOpacity?: number;
+  /** more than 1 when several people reported the same issue here: the pin is drawn bigger, with a ring and the number */
+  count?: number;
+  /** drawn as a small icon on the map instead of a pin with a disc: hospitals, police and fire stations */
+  symbol?: 'hospital' | 'police' | 'fire';
 }
 
 export type ToEngine =
   | { type: 'setPins'; pins: EnginePin[] }
   | { type: 'flyTo'; lat: number; lng: number; zoom?: number }
+  | { type: 'setRoute'; coords: [number, number][] | null; fit?: boolean }
   | { type: 'setCity'; lat: number; lng: number; zoom: number; bounds: [[number, number], [number, number]] }
   | { type: 'select'; id: string | null }
   | { type: 'setTheme'; theme: MapTheme }
@@ -53,6 +58,8 @@ export function toEnginePin(pin: MapPin): EnginePin {
     badge: pin.owner === 'me' ? (pin.visibility === 'public' ? 'shared' : 'lock') : '',
     radiusMeters: pin.radiusMeters,
     zoneType: pin.zoneType,
+    count: pin.count && pin.count > 1 ? pin.count : undefined,
+    symbol: pin.kind === 'hospital' || pin.kind === 'police' || pin.kind === 'fire' ? pin.kind : undefined,
   };
 }
 
@@ -68,6 +75,8 @@ export interface CityMapProps {
   insets?: MapInsets;
   /** where the person is; `heading` (degrees clockwise from north) turns the dot into a navigation arrow */
   userLocation?: (Coordinate & { heading?: number }) | null;
+  /** a route to draw as a line (and zoom to fit); null clears it */
+  route?: { coordinates: Coordinate[] } | null;
   reducedMotion?: boolean;
   onPinPress?: (id: string) => void;
   onLongPress?: (coordinate: Coordinate) => void;
@@ -115,7 +124,7 @@ export function useEngineBridge(props: CityMapProps, post: (message: ToEngine) =
     }
   }, [post]);
 
-  const { pins, selectedId, focus, theme, skin, insets, userLocation, reducedMotion } = props;
+  const { pins, selectedId, focus, theme, skin, insets, userLocation, reducedMotion, route } = props;
 
   useEffect(() => {
     if (ready) post({ type: 'setReducedMotion', value: !!reducedMotion });
@@ -136,6 +145,10 @@ export function useEngineBridge(props: CityMapProps, post: (message: ToEngine) =
   useEffect(() => {
     if (ready) post({ type: 'setPins', pins: pins.map(toEnginePin) });
   }, [ready, pins, post]);
+
+  useEffect(() => {
+    if (ready) post({ type: 'setRoute', coords: route ? route.coordinates.map((c) => [c.longitude, c.latitude] as [number, number]) : null });
+  }, [ready, route, post]);
 
   useEffect(() => {
     if (ready) post({ type: 'select', id: selectedId ?? null });

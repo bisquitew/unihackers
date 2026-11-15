@@ -2,9 +2,9 @@ import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
 import {
   approveReportedPost, createAreaAlert, createOutage, fetchAreaAlerts, fetchAuditLogs, fetchDashboardOverview, fetchLots,
   fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
-  parseNoticePhoto, confirmNotice, hubGet, askAnalyst,
+  parseNoticePhoto, confirmNotice, hubGet, askAnalyst, fetchIncidents,
 } from '../api.js';
-import { getLang } from '../i18n.js';
+import { dateLocale, getLang, tr } from '../i18n.js';
 import { createLotEditor } from '../components/ParkieLotEditor.js';
 import { bars, columns, donut, hueOf, moduleLabel } from '../components/charts.js';
 import { EXAMPLE_ANALYTICS } from '../components/analyticsExample.js';
@@ -12,7 +12,7 @@ import { art, cap, esc, row, statusText } from '../ui.js';
 
 // The staff dashboard is one page with a side menu. Each entry is a section; only the open one is on screen.
 const SECTIONS = [
-  { group: 'City', items: [['overview', 'Overview'], ['analytics', 'Analytics'], ['analyst', 'Ask the data'], ['alerts', 'Alerts'], ['notice', 'Scan a notice']] },
+  { group: 'City', items: [['overview', 'Overview'], ['analytics', 'Analytics'], ['incidents', 'Incident radar'], ['analyst', 'Ask the data'], ['alerts', 'Alerts'], ['notice', 'Scan a notice']] },
   { group: 'Services', items: [['parking', 'Parking cameras']] },
   { group: 'Community', items: [['moderation', 'Moderation']] },
   { group: 'System', items: [['security', 'Security log'], ['database', 'Database']] },
@@ -45,20 +45,23 @@ export async function render(ctx) {
   </div>`;
 }
 
+let dashOpen = 'overview';
+
 export function mount(ctx, { showToast } = {}) {
   const body = document.getElementById('dashBody');
   const nav = document.querySelectorAll('.dash-nav [data-section]');
-  let open = 'overview';
+  let open = dashOpen; // kept across redraws, so changing the language keeps the section
   let token = 0;
   let sectionCleanup = () => {};
 
   const draw = async () => {
     const mine = ++token;
+    dashOpen = open;
     sectionCleanup();
     sectionCleanup = () => {};
     nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
     body.innerHTML = '<p class="muted">Loading…</p>';
-    const section = { overview, analytics, analyst, alerts, notice, parking, moderation, security, database }[open];
+    const section = { overview, analytics, incidents, analyst, alerts, notice, parking, moderation, security, database }[open];
     let html;
     try {
       html = await section.render(ctx);
@@ -406,6 +409,99 @@ function analystMarkdown(text) {
   return html + (inList ? '</ul>' : '');
 }
 
+/* ------------------------------------------------------------ Incident radar (P4) */
+// Residents' smell and safety reports, forum posts and official outages about the same problem in the same area,
+// linked by Gemini embeddings; Gemini writes each card. Every link and its similarity is shown, so staff can judge it.
+const URGENCY = { high: ['High', 'danger'], medium: ['Medium', 'apricot'], low: ['Low', 'mint'] };
+const SOURCE_NAMES = {
+  smell: (n) => `${n} smell ${n === 1 ? 'report' : 'reports'}`,
+  safety: (n) => `${n} safety ${n === 1 ? 'report' : 'reports'}`,
+  forum: (n) => `${n} forum ${n === 1 ? 'post' : 'posts'}`,
+  outage: (n) => (n === 1 ? 'Official outage' : `${n} official outages`),
+};
+const SOURCE_SHORT = { smell: 'smell reports', safety: 'safety reports', forum: 'forum post', outage: 'official outage' };
+const RADAR_WINDOWS = [[24, '24 h'], [48, '48 h'], [168, '7 days']];
+let radarHours = 48;
+
+const timeSpan = (from, to) => {
+  const f = new Intl.DateTimeFormat(getLang() === 'ro' ? 'ro-RO' : 'en-GB', { timeZone: 'Europe/Bucharest', weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  return from === to ? f.format(new Date(from)) : `${f.format(new Date(from))} – ${f.format(new Date(to))}`;
+};
+
+const incidents = {
+  async render() {
+    const mfa = hasMfa();
+    return `
+      <h1 class="page-title">Incident radar</h1>
+      <p class="page-sub">Residents' reports, forum posts and official outages about the same problem, grouped by Gemini embeddings. Gemini writes each card and double-checks every link.</p>
+      <div class="chips section" id="irWindows" role="group" aria-label="Time window">${RADAR_WINDOWS.map(([h, label]) => `<button type="button" class="chip ${h === radarHours ? 'on' : ''}" data-h="${h}">${label}</button>`).join('')}<button type="button" class="chip" id="irRefresh">Refresh</button></div>
+      ${mfa ? '' : '<div class="mfa warn section"><span>Staff tools need a second check first.</span><button class="btn btn-secondary btn-sm" type="button" id="irMfa">Verify with passkey</button></div>'}
+      <div id="irBody" class="section" aria-live="polite"><p class="muted">Gemini is reading the city's signals…</p></div>`;
+  },
+  mount(ctx, showToast, redraw) {
+    const $ = (id) => document.getElementById(id);
+    let alive = true;
+    $('irMfa')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); redraw(); });
+    document.querySelectorAll('#irWindows [data-h]').forEach((b) => b.addEventListener('click', () => { radarHours = Number(b.dataset.h); redraw(); }));
+
+    const lang = getLang() === 'ro' ? 'ro' : 'en';
+    const draw = (r) => {
+      const linksOk = r.links.filter((l) => !l.rejected);
+      const cards = r.incidents.map((inc, i) => {
+        const [uLabel, uColor] = URGENCY[inc.urgency] || URGENCY.low;
+        const chips = Object.entries(inc.counts).filter(([, n]) => n > 0).map(([s, n]) => `<span class="ir-src ir-${s}">${esc(SOURCE_NAMES[s](n))}</span>`).join('');
+        const texts = inc.members.filter((m) => m.source === 'forum' || m.source === 'outage');
+        return `
+          <article class="ir-card">
+            <div class="ir-head"><span class="ir-urgency" style="color:var(--${uColor})">${esc(uLabel)}</span><span class="muted">${esc(inc.areas.join(', '))} · ${esc(timeSpan(inc.firstAt, inc.lastAt))}</span></div>
+            <h2 class="ir-title">${esc(inc.title[lang])}</h2>
+            <p>${esc(inc.summary[lang])}</p>
+            ${inc.action ? `<p class="ir-action"><b>Suggested next step:</b> ${esc(inc.action[lang])}</p>` : ''}
+            <div class="ir-srcs">${chips}${inc.demoReports ? `<span class="ir-src ir-demo">${esc(`${inc.demoReports} demo`)}</span>` : ''}</div>
+            ${texts.length ? `<ul class="ir-texts">${texts.map((m) => `<li><span class="muted">${esc(SOURCE_SHORT[m.source])}${m.similarity ? ` · ${esc(`similarity ${m.similarity.toFixed(2)}`)}` : ''}</span> ${esc(m.label)}</li>`).join('')}</ul>` : ''}
+            <button class="btn btn-secondary btn-sm" type="button" data-ask="${i}">Ask the data about this</button>
+          </article>`;
+      }).join('');
+      $('irBody').innerHTML = `
+        <div class="stats" style="margin-top:0">
+          ${kpi(r.incidents.length, 'Incidents')}
+          ${kpi(r.signals.smell + r.signals.safety, 'Resident reports')}
+          ${kpi(r.signals.forum, 'Forum posts read')}
+          ${kpi(linksOk.length, 'Links found by embeddings', 'blue')}
+        </div>
+        ${r.note ? `<div class="notice section">${esc(r.note)}</div>` : ''}
+        <div class="ir-grid section">${cards || '<div class="empty">No incidents in this time window.</div>'}</div>
+        <div class="section-head" style="margin-top:28px"><h2>How Gemini grouped these</h2></div>
+        <div class="list">${r.links.map((l) => row({
+          title: `“${esc(l.from)}” → ${esc(l.to)}`,
+          detail: `${esc(SOURCE_SHORT[l.fromSource])} → ${esc(SOURCE_SHORT[l.toSource])} · ${esc(l.area)} · ${esc(`similarity ${l.similarity.toFixed(2)}`)}${l.rejected ? ` · ${esc('taken out again by Gemini: different problem')}` : ''}`,
+        })).join('') || row({ title: 'No links in this time window', detail: 'No forum post or outage matched a group of reports closely enough.' })}</div>
+        <p class="muted" style="margin-top:12px;font-size:13px">${esc(`${r.embeddingModel} (semantic similarity, same area, at least 0.83)`)} · ${esc(r.cardModel ? `cards by ${r.cardModel}` : 'plain cards (Gemini unavailable)')}${r.cached ? ` · ${esc('cached for 5 minutes')}` : ''} · Residents' reports are unverified.</p>`;
+      document.querySelectorAll('#irBody [data-ask]').forEach((b) => b.addEventListener('click', () => {
+        const inc = r.incidents[Number(b.dataset.ask)];
+        const q = lang === 'ro'
+          ? `Spune-mi mai multe despre: ${inc.title.ro}. Când apare, cum evoluează și se potrivește cu vântul sau cu alte date?`
+          : `Tell me more about: ${inc.title.en}. When does it happen, how is it changing, and does it line up with the wind or other data?`;
+        try { sessionStorage.setItem('hub_analyst_question', q); } catch {}
+        document.querySelector('.dash-nav [data-section="analyst"]')?.click();
+      }));
+    };
+
+    const load = (fresh) => fetchIncidents(getCurrentToken(), radarHours, fresh).then((r) => { if (alive) draw(r); }).catch((err) => {
+      if (!alive) return;
+      $('irBody').innerHTML = err.status === 403 && /mfa/i.test(`${err.message} ${err.data?.error || ''}`)
+        ? '<div class="empty">A second check is needed. Verify with your passkey.</div>'
+        : `<div class="empty">The incident radar is not available right now. ${esc(err.message)}</div>`;
+    });
+    $('irRefresh').addEventListener('click', () => {
+      $('irBody').innerHTML = `<p class="muted">${esc("Gemini is reading the city's signals…")}</p>`;
+      load(true);
+    });
+    load(false);
+    return () => { alive = false; };
+  },
+};
+
 const analyst = {
   async render() {
     const mfa = hasMfa();
@@ -413,8 +509,8 @@ const analyst = {
       <h1 class="page-title">Ask the data</h1>
       <p class="page-sub">Ask about parking, air, noise, smells or safety reports. Gemini fetches the real numbers from Tiger Cloud and the city's modules, runs its own Python on them and draws a chart.</p>
       <form class="stack section" id="anForm" style="max-width:760px">
-        <label class="field"><span>Your question</span><textarea id="anQ" rows="3" maxlength="500" required placeholder="${esc(ANALYST_EXAMPLES[0])}"></textarea></label>
-        <div class="chips" id="anExamples">${ANALYST_EXAMPLES.map((q, i) => `<button type="button" class="chip" data-q="${i}">${esc(q)}</button>`).join('')}</div>
+        <label class="field"><span>Your question</span><textarea id="anQ" rows="3" maxlength="500" required placeholder="${esc(tr(ANALYST_EXAMPLES[0]))}"></textarea></label>
+        <div class="chips" id="anExamples">${ANALYST_EXAMPLES.map((q, i) => `<button type="button" class="chip" data-q="${i}">${esc(tr(q))}</button>`).join('')}</div>
         ${mfa ? '' : '<div class="mfa warn"><span>Staff tools need a second check first.</span><button class="btn btn-secondary btn-sm" type="button" id="anMfa">Verify with passkey</button></div>'}
         <div><button class="btn btn-primary" type="submit" id="anAsk">Ask</button></div>
       </form>
@@ -426,8 +522,13 @@ const analyst = {
     let timer = null;
     let alive = true;
     $('anMfa')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); redraw(); });
+    // a question handed over from the incident radar ("Ask the data about this")
+    try {
+      const handed = sessionStorage.getItem('hub_analyst_question');
+      if (handed) { sessionStorage.removeItem('hub_analyst_question'); $('anQ').value = handed; $('anQ').focus(); }
+    } catch {}
     document.querySelectorAll('#anExamples [data-q]').forEach((b) => b.addEventListener('click', () => {
-      $('anQ').value = ANALYST_EXAMPLES[Number(b.dataset.q)];
+      $('anQ').value = tr(ANALYST_EXAMPLES[Number(b.dataset.q)]);
       $('anQ').focus();
     }));
 
@@ -617,7 +718,7 @@ const parking = {
 // The feedback summed up: averages and shares, drawn as charts. Nothing here says how many people answered.
 let showExample = false;
 const oneDecimal = (n) => Number(n).toFixed(1);
-const shortDate = (iso) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
+const shortDate = (iso) => new Date(iso).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
 
 const analytics = {
   async render() {
@@ -729,7 +830,7 @@ const security = {
       <div class="list section">${logs.map((l) => row({
         title: esc(l.action),
         detail: `${esc(l.user_email || 'Anonymous')} · ${esc(l.user_role || 'guest')}`,
-        side: `<span class="tag ${String(l.outcome).toLowerCase().startsWith('allow') || String(l.outcome).toLowerCase() === 'success' ? 'mint' : 'apricot'}">${esc(statusText(l.outcome || ''))}</span> <span class="muted" style="font-size:13px">${esc(new Date(l.created_at).toLocaleTimeString())}</span>`,
+        side: `<span class="tag ${String(l.outcome).toLowerCase().startsWith('allow') || String(l.outcome).toLowerCase() === 'success' ? 'mint' : 'apricot'}">${esc(statusText(l.outcome || ''))}</span> <span class="muted" style="font-size:13px">${esc(l.created_at && !Number.isNaN(new Date(l.created_at).getTime()) ? new Date(l.created_at).toLocaleTimeString(dateLocale()) : '')}</span>`,
       })).join('') || '<div class="empty">Nothing logged yet.</div>'}</div>`;
   },
 };

@@ -2,8 +2,9 @@ import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { ScrollView, StyleSheet, Switch, View, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { usePersonalPins, type MapTheme } from '@hub/map';
-import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, setLang, lang, type Lang, type ThemeMode } from '@hub/ui';
+import { Avatar, Field, PrimaryButton, Row, RowGroup, Screen, Section, Segmented, Sheet, Text, TextButton, colors, icons, setThemeMode, themeMode, setLang, lang, type Lang, type ThemeMode, tr } from '@hub/ui';
 import { useAuth } from '../../src/core/auth';
+import { apiBaseSource, apiBaseUrl } from '../../src/core/api';
 import { initialsOf, toneFor } from '../../src/core/people';
 import { setPrefs, usePrefs } from '../../src/core/prefs';
 import { chatStore } from '../../src/modules/m07-buddy/chatStore';
@@ -50,7 +51,25 @@ type Part = 'overview' | 'settings';
  * Profile: two sections of one white page. Overview is who you are and what you have done in the app; Settings is
  * appearance, the map, alerts and your account. Every row goes somewhere or changes something.
  */
+/** Which server the app talks to, and whether it answers. Shows up in Settings so a wrong address is easy to spot. */
+function useConnection() {
+  const base = apiBaseUrl();
+  const [state, setState] = useState<'checking' | 'ok' | 'down'>('checking');
+  const check = React.useCallback(() => {
+    setState('checking');
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    fetch(`${base}/v1/core/areas`, { signal: controller.signal })
+      .then((r) => setState(r.ok ? 'ok' : 'down'))
+      .catch(() => setState('down'))
+      .finally(() => clearTimeout(timer));
+  }, [base]);
+  useEffect(check, [check]);
+  return { base, state, check };
+}
+
 export default function ProfileTab() {
+  const connection = useConnection();
   const router = useRouter();
   const { height: windowHeight } = useWindowDimensions();
   const { user, logout } = useAuth();
@@ -135,7 +154,7 @@ export default function ProfileTab() {
 
           <Section title="Your things">
             <RowGroup>
-              <LinkRow icon={<icons.Ticket size={22} color={colors.foreground} />} title="Tickets and badges" detail={`${tickets} ticket${tickets === 1 ? '' : 's'}, ${badges} badge${badges === 1 ? '' : 's'}`} onPress={() => go('/community?tab=wallet')} />
+              <LinkRow icon={<icons.Ticket size={22} color={colors.foreground} />} title="Tickets and badges" detail={tr(`${tickets} ${tickets === 1 ? 'ticket' : 'tickets'}, ${badges} ${badges === 1 ? 'badge' : 'badges'}`)} onPress={() => go('/community?tab=wallet')} />
               <LinkRow icon={<icons.ChatCircle size={22} color={colors.foreground} />} title="Chats" detail={chats ? `${chats} conversation${chats === 1 ? '' : 's'}` : 'Find someone to go with'} onPress={() => go('/community?tab=buddies&view=chats')} />
               <LinkRow icon={<icons.MapPin size={22} color={colors.foreground} />} title="Your places on the map" detail={myPins ? `${myPins} saved` : 'Pin Home, Work or a spot you like'} onPress={() => go('/map')} />
             </RowGroup>
@@ -185,6 +204,12 @@ export default function ProfileTab() {
           <Section title="Account">
             <RowGroup>
               <LinkRow icon={<icons.ShieldCheck size={22} color={colors.foreground} />} title="Sign-in and security" detail={user ? `Signed in with ${SIGN_IN_LABEL[user.idp] ?? user.idp}` : 'Not signed in'} onPress={() => setSecurity(true)} />
+              <LinkRow
+                icon={<icons.Globe size={22} color={colors.foreground} />}
+                title={connection.state === 'ok' ? 'Connected to the server' : connection.state === 'checking' ? 'Checking the connection' : 'Cannot reach the server'}
+                detail={`${connection.base.replace(/^https?:\/\//, '')} (${apiBaseSource})`}
+                onPress={connection.check}
+              />
             </RowGroup>
             <View style={{ marginTop: 16, alignItems: 'flex-start' }}>
               <TextButton label="Sign out" size="lg" onPress={logout} />
@@ -267,7 +292,7 @@ export default function ProfileTab() {
 
 function Stat({ value, label }: { value: number; label: string }) {
   return (
-    <View style={styles.stat} accessible accessibilityLabel={`${value} ${label}`}>
+    <View style={styles.stat} accessible accessibilityLabel={`${value} ${tr(label)}`}>
       <Text variant="heading" style={{ fontSize: 24, lineHeight: 28 }}>
         {value}
       </Text>

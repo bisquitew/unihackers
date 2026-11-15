@@ -29,11 +29,13 @@ export async function render(ctx) {
   </div>`;
 }
 
+let profileOpen = 'overview';
+
 export function mount(ctx) {
   if (!ctx.loggedIn) return;
   const body = document.getElementById('profileBody');
   const u = ctx.user;
-  let open = 'overview';
+  let open = profileOpen; // kept across redraws, so changing the language does not send you back to Overview
 
   const overview = () => `
     <div class="list">
@@ -116,6 +118,7 @@ export function mount(ctx) {
   };
 
   const draw = () => {
+    profileOpen = open;
     document.querySelectorAll('#profileTabs [data-sec]').forEach((b) => b.classList.toggle('on', b.dataset.sec === open));
     if (open === 'wallet') wallet();
     else {

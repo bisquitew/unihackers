@@ -21,6 +21,12 @@
     "plugins": [
       "expo-router",
       [
+        "expo-audio",
+        {
+          "microphonePermission": "hop uses the microphone when you speak a question to the assistant."
+        }
+      ],
+      [
         "expo-location",
         {
           "locationWhenInUsePermission": "hop uses your location to show where you are on the map."

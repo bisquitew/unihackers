@@ -38,6 +38,10 @@ export const pinKinds: Record<PinKind, PinKindDef> = {
   alert: { id: 'alert', label: 'City alert', art: 'utilities', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'From the city.' },
   event: { id: 'event', label: 'Event', art: 'events', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'An event.' },
   parking: { id: 'parking', label: 'Parking', art: 'parkie', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'A parking lot.' },
+  hospital: { id: 'hospital', label: 'Hospital', art: 'safety', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'A safe place: you can get medical help here.', ownerModule: 'm03-safety' },
+  police: { id: 'police', label: 'Police station', art: 'safety', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'A safe place: you can ask the police for help here.', ownerModule: 'm03-safety' },
+  fire: { id: 'fire', label: 'Fire station', art: 'safety', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'A safe place: firefighters are based here.', ownerModule: 'm03-safety' },
+  place: { id: 'place', label: 'Place', art: 'note', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'A place from the search.' },
   transit: { id: 'transit', label: 'Transit', art: 'transit', policy: 'public-only', defaultVisibility: 'public', userCreatable: false, description: 'A stop or detour.' },
 };
 
@@ -64,4 +68,10 @@ export function roundForSharing(c: Coordinate, meters: number): Coordinate {
     latitude: Math.round(c.latitude / latStep) * latStep,
     longitude: Math.round(c.longitude / lngStep) * lngStep,
   };
+}
+
+/** Places you can go to. Reports (a smell, a safety concern, a lost pet), city alerts and danger or works zones are not destinations. */
+const DESTINATION_KINDS: PinKind[] = ['home', 'work', 'favourite', 'note', 'meetup', 'event', 'parking', 'hospital', 'police', 'fire', 'place', 'transit'];
+export function canNavigateTo(pin: { kind: PinKind; radiusMeters?: number; count?: number }): boolean {
+  return DESTINATION_KINDS.includes(pin.kind) && !pin.radiusMeters && !(pin.count && pin.count > 1);
 }

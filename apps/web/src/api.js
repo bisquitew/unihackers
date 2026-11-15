@@ -227,6 +227,20 @@ export async function confirmNotice(token, draft) {
   return data;
 }
 
+// --- M10 INCIDENT RADAR (P4): residents' signals grouped by Gemini embeddings, cards written by Gemini ---
+/** Returns { incidents, signals, links, embeddingModel, cardModel, note, cached }. Staff session only. */
+export async function fetchIncidents(token, hours = 48, fresh = false) {
+  const res = await fetch(`${BASE_URL}/v1/m/assistant/incidents?hours=${encodeURIComponent(hours)}${fresh ? '&fresh=1' : ''}`, { headers: getHeaders(token) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error_description || data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
 // --- M10 ASK THE DATA (P4): staff question -> Gemini fetches data, runs Python, draws a chart ---
 /** Returns { answer, charts: [{ mimeType, data }], steps, model, ms }. Staff session only. */
 export async function askAnalyst(token, question, lang) {
@@ -313,12 +327,13 @@ export async function fetchBuddyRequests() {
 
 
 // --- M10 ASSISTANT ---
-export async function askAssistant(message, history = []) {
+/** `location` ({ latitude, longitude }) is only given when the person chose to share it with this question. */
+export async function askAssistant(message, history = [], location = null) {
   try {
     const res = await fetch(`${BASE_URL}/v1/m/assistant/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({ message, history, ...(location ? { location } : {}) }),
     });
     return await res.json();
   } catch (err) {

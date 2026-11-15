@@ -3,6 +3,7 @@ import {  StyleSheet } from 'react-native';
 import { SpringPressable } from './SpringPressable';
 import { colors, minTarget, shadows } from './tokens';
 import { isDark } from './theme';
+import { tr } from './locale';
 
 type IconButtonProps = {
   /** Always required: an icon alone is not a label. */
@@ -26,7 +27,7 @@ export function IconButton({ label, onPress, children, tone = 'light', size = 48
     <SpringPressable
       scaleTo={0.88}
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={tr(label)}
       onPress={onPress}
       hitSlop={size < minTarget + 4 ? 6 : 4}
       style={({ pressed }) => [

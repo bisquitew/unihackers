@@ -10,6 +10,7 @@ export * from './types';
 export * from './kinds';
 export * from './link';
 export { usePersonalPins, registerPinsSync, type NewPin, type PinPatch, type PinsSync } from './usePersonalPins';
+export { groupSimilarReports, type GroupOptions } from './cluster';
 export { useCommunityPins, registerShareAdapter, sharePin, unsharePin, toSharedCopy, type ShareAdapter } from './community';
 export { PIN_ART_KEYS, type PinArtKey } from './engine.generated';
 export { PinArt, PinArtByKey } from './PinArt';

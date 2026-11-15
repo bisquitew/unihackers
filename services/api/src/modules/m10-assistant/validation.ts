@@ -13,7 +13,7 @@ const isObject = (v: unknown): v is Record<string, unknown> =>
 /** POST /v1/m/assistant/chat — { message, history?, language? } */
 export function parseChatInput(body: unknown): Parsed<ChatInput> {
   if (!isObject(body)) return { ok: false, error: 'Body must be a JSON object' };
-  const { message, history, language } = body;
+  const { message, history, language, location } = body;
 
   if (typeof message !== 'string' || message.trim().length === 0) {
     return { ok: false, error: 'message is required' };
@@ -43,8 +43,19 @@ export function parseChatInput(body: unknown): Parsed<ChatInput> {
     return { ok: false, error: 'language must be "ro" or "en"' };
   }
 
+  // optional: where the person is, if they chose to share it. It is coarsened here (3 decimals is about 100 m) and not kept.
+  let approx: ChatInput['location'] = null;
+  if (location !== undefined && location !== null) {
+    const lat = isObject(location) ? Number((location as Record<string, unknown>).latitude) : NaN;
+    const lng = isObject(location) ? Number((location as Record<string, unknown>).longitude) : NaN;
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return { ok: false, error: 'location must be { latitude, longitude } with valid coordinates' };
+    }
+    approx = { latitude: Math.round(lat * 1000) / 1000, longitude: Math.round(lng * 1000) / 1000 };
+  }
+
   return {
     ok: true,
-    value: { message: message.trim(), history: turns, language: (language as AssistantLanguage | undefined) ?? null },
+    value: { message: message.trim(), history: turns, language: (language as AssistantLanguage | undefined) ?? null, location: approx },
   };
 }

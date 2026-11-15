@@ -25,6 +25,19 @@
     box-shadow: 1px 1px 0 0 rgba(26,16,51,.08), 3px 4px 8px -3px rgba(26,16,51,.25); }
   .pin .foot { position: absolute; left: 15px; bottom: 0; width: 18px; height: 5px; border-radius: 50%; background: rgba(26,16,51,.20); filter: blur(2px); z-index: 0; }
   .pin .badge { position: absolute; right: -1px; top: -1px; width: 18px; height: 18px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 1px rgba(26,16,51,.10); z-index: 3; }
+  /* several people reported the same issue here: one bigger pin with an apricot ring, a slow halo and the number of reports */
+  .pin.hot { width: 68px; height: 80px; }
+  .pin.hot .disc { left: 4px; width: 60px; height: 60px; box-shadow: 0 0 0 4px #FF9A5C, 0 0 0 5px rgba(26,16,51,.12), 0 10px 18px -6px rgba(26,16,51,.38); }
+  .pin.hot .disc svg { width: 38px; height: 38px; }
+  .pin.hot .tip { left: 28px; top: 52px; width: 14px; height: 14px; background: #FF9A5C; }
+  .pin.hot .foot { left: 22px; width: 24px; }
+  .pin .halo { position: absolute; left: 4px; top: 0; width: 60px; height: 60px; border-radius: 50%; border: 3px solid #FF9A5C; z-index: 1; pointer-events: none; animation: hot-halo 2.4s ease-out infinite; }
+  .pin .count { position: absolute; right: -2px; top: -4px; min-width: 26px; height: 26px; padding: 0 7px; box-sizing: border-box; border-radius: 13px; background: #1A1033; color: #fff; z-index: 4;
+    display: grid; place-items: center; font: 800 14px/1 Nunito, system-ui, sans-serif; box-shadow: 0 0 0 2px #fff; }
+  @keyframes hot-halo { 0% { transform: scale(1); opacity: .75; } 80%, 100% { transform: scale(1.55); opacity: 0; } }
+  html[data-theme="night"] .pin.hot .disc { box-shadow: 0 0 0 4px #FFB88A, 0 0 22px rgba(255,185,102,.5), 0 8px 16px -6px rgba(0,0,0,.6); }
+  html[data-theme="night"] .pin .count { background: #FFD9A8; color: #1A1033; box-shadow: 0 0 0 2px #14091F; }
+  html[data-theme="night"] .pin.hot .tip { background: #FFB88A; }
   .pin.selected { z-index: 5; }
   .pin.selected .disc { transform: scale(1.15); box-shadow: 0 0 0 3px var(--ink), 0 12px 20px -8px rgba(26,16,51,.45); }
   .pin:focus-visible .disc { outline: 3px solid var(--ink); outline-offset: 2px; }
@@ -47,7 +60,7 @@
   #offline[hidden] { display: none; }
   #offline span { flex: 1; font-weight: 500; color: var(--muted); }
   #offline button { border: 0; border-radius: 999px; height: 40px; padding: 0 16px; background: #FF3D7F; color: #1A1033; font: 700 15px system-ui, sans-serif; cursor: pointer; }
-  @media (prefers-reduced-motion: reduce) { .pin .disc { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .pin .disc { transition: none; } .pin .halo { animation: none; opacity: .5; } }
 </style>
 </head>
 <body>

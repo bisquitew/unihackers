@@ -48,4 +48,9 @@ export {
   StopIcon as Stop,
   SpeakerHighIcon as SpeakerHigh,
   PlayIcon as Play,
+  GlobeIcon as Globe,
+  MagnifyingGlassIcon as MagnifyingGlass,
+  PersonSimpleWalkIcon as PersonSimpleWalk,
+  PersonSimpleBikeIcon as PersonSimpleBike,
+  CarSimpleIcon as CarSimple,
 } from 'phosphor-react-native';

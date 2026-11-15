@@ -5,6 +5,7 @@ import { eventBus } from './events.ts';
 import { DEV_USERS } from './auth.ts';
 import { placeMatches } from './text.ts';
 import { db } from './db.ts';
+import { nearestSafePlaces } from './safe-places.ts';
 
 // Alerts published by staff are written to core_area_alerts and loaded back at start (the seed alerts are not stored).
 const AREA_ALERTS_SCHEMA = `CREATE TABLE IF NOT EXISTS core_area_alerts (
@@ -243,6 +244,7 @@ export const areaAlertsService = {
       is_inside_radius: boolean;
       status_message: string;
     }>;
+    nearest_safe_place: ReturnType<typeof nearestSafePlaces>[number] | null;
   } {
     let checkLat = query.latitude;
     let checkLng = query.longitude;
@@ -301,10 +303,14 @@ export const areaAlertsService = {
       return a.distance_meters - b.distance_meters;
     });
 
+    // somewhere to go for help: the hospital, police or fire station closest to the place that was asked about
+    const nearest = nearestSafePlaces(checkLat, checkLng, { limit: 1 })[0] ?? null;
+
     return {
       in_danger_zone: inDanger,
       in_construction_zone: inConstruction,
-      matching_alerts: matches
+      matching_alerts: matches,
+      nearest_safe_place: nearest
     };
   }
 };

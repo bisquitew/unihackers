@@ -1,8 +1,9 @@
 import { checkAddressOutages, checkAreaProximity, checkTransitStop, fetchAreaAlerts, fetchOutages, fetchTransitLines } from '../api.js';
 import { art, cap, esc, row, statusText } from '../ui.js';
+import { dateLocale } from '../i18n.js';
 
 const plain = (t = '') => String(t).replace(/^[^\p{L}\p{N}]+/u, '');
-const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+const hhmm = (iso) => new Date(iso).toLocaleTimeString(dateLocale(), { hour: '2-digit', minute: '2-digit' });
 
 // What each kind of check asks for
 const CHECKS = {
@@ -90,16 +91,19 @@ export function mount() {
       if (kind === 'zone') {
         const res = await checkAreaProximity({ address: value });
         const inside = (res.matching_alerts || []).filter((m) => m.is_inside_radius);
+        const ns = res.nearest_safe_place;
+        const safeLine = ns ? `Nearest safe place: ${esc(ns.name)} (${esc({ hospital: 'hospital', police: 'police station', fire: 'fire station' }[ns.kind] || ns.kind)}), ${esc(ns.distance_meters)} m away. In an emergency call 112.` : '';
         if (res.error) show('bad', 'Could not check right now. Try again.');
         else if (inside.length) {
           const a = inside[0].alert;
           show(a.type === 'danger' ? 'warn' : 'info', a.type === 'danger' ? 'You are inside a danger zone.' : 'You are inside a works zone.', [
             `<a href="#/map?alert=${encodeURIComponent(a.id)}">${esc(plain(a.title))}</a> · ${esc(a.radius_meters)} m around`,
             esc(a.description),
-          ]);
+            safeLine,
+          ].filter(Boolean));
         } else {
           const near = (res.matching_alerts || [])[0];
-          show('ok', 'You are outside every active zone.', near ? [`Closest: ${esc(plain(near.alert.title))}, ${esc(near.distance_meters)} m away (it reaches ${esc(near.alert.radius_meters)} m).`] : []);
+          show('ok', 'You are outside every active zone.', [...(near ? [`Closest: ${esc(plain(near.alert.title))}, ${esc(near.distance_meters)} m away (it reaches ${esc(near.alert.radius_meters)} m).`] : []), safeLine].filter(Boolean));
         }
       } else if (kind === 'outage') {
         const res = await checkAddressOutages(value);

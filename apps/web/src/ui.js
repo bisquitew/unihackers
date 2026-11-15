@@ -1,5 +1,6 @@
 // Small helpers shared by every view: escaping, illustrations, icons, theme, QR code.
 import { ART } from './art.js';
+import { dateLocale } from './i18n.js';
 
 export const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
@@ -52,7 +53,7 @@ export const when = (iso) => {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return String(iso);
-  return d.toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleString(dateLocale(), { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 };
 
 /** A hairline list row. `title`, `detail`, `side` must already be escaped. Optional: an illustration, a coloured number, a meter. */

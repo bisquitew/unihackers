@@ -21,6 +21,8 @@ function initial() {
 }
 let lang = initial();
 export const getLang = () => lang;
+/** The locale for dates and times: Romanian or British English (24-hour clock in both). */
+export const dateLocale = () => (lang === 'ro' ? 'ro-RO' : 'en-GB');
 
 /** The text in the current language; unknown text comes back unchanged. */
 export function tr(text) {
@@ -76,8 +78,10 @@ function walk(node) {
     return;
   }
   if (node.nodeType !== 1) return;
-  if (SKIP.has(node.tagName.toUpperCase()) || node.closest('[data-notr]')) return;
+  if (node.closest('[data-notr]')) return;
   swapAttrs(node);
+  // a textarea, an iframe and the like keep their content, but their placeholder and labels are still text people read
+  if (SKIP.has(node.tagName.toUpperCase())) return;
   for (let c = node.firstChild; c; c = c.nextSibling) walk(c);
 }
 
