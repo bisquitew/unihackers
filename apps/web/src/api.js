@@ -204,6 +204,24 @@ export async function confirmNotice(token, draft) {
   return data;
 }
 
+// --- M10 ASK THE DATA (P4): staff question -> Gemini fetches data, runs Python, draws a chart ---
+/** Returns { answer, charts: [{ mimeType, data }], steps, model, ms }. Staff session only. */
+export async function askAnalyst(token, question, lang) {
+  const res = await fetch(`${BASE_URL}/v1/m/assistant/analyst`, {
+    method: 'POST',
+    headers: getHeaders(token),
+    body: JSON.stringify({ question, lang }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error_description || data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
 // --- M05 TRANSIT ---
 export async function fetchTransitLines() {
   try {
