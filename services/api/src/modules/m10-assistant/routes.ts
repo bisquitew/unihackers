@@ -3,6 +3,7 @@ import { enforceSecurityPolicy, GUEST_USER, hubClientOf, resolveAuthUser } from 
 import { clientKey, rateLimit } from '../../core/rate-limit.ts';
 import { utilitiesService } from '../m04-utilities/service.ts';
 import { ANALYST_MAX_QUESTION, askAnalyst } from './analyst.ts';
+import { incidentRadar } from './incidents.ts';
 import { NOTICE_IMAGE_TYPES, NOTICE_MAX_BYTES, NoticeUnavailableError, parseConfirmedDraft, parseNoticePhoto } from './notice.ts';
 import { assistantService, AssistantUnavailableError } from './service.ts';
 import { loadTour } from './tour.ts';
@@ -175,6 +176,26 @@ assistantRoutes.post('/notice/confirm', async (c) => {
   if (parsed.ok === false) return c.json({ error: parsed.error }, 400);
   const outage = await utilitiesService.createOutage(parsed.value);
   return c.json({ outage }, 201);
+});
+
+// Incident radar for city staff: residents' reports, forum posts and outages about the same problem, grouped with
+// Gemini embeddings; Gemini writes a card per incident. Cached 5 minutes. Staff only (second check included).
+const incidentsLimit = rateLimit({ windowMs: 10 * 60_000, max: 30, message: 'Too many refreshes in a short time. Please wait a few minutes.' });
+
+assistantRoutes.get('/incidents', async (c, next) => {
+  const user = await resolveAuthUser(c.req.header('Authorization'));
+  const auth = enforceSecurityPolicy(user, 'dashboard.incident_radar', { requiredRoles: ['admin', 'moderator'], ip: clientKey(c) });
+  if (auth.authorized === false) return c.json(auth.body, auth.status as 401 | 403);
+  return next();
+}, incidentsLimit, async (c) => {
+  const raw = Number(c.req.query('hours') ?? 48);
+  const hours = Number.isFinite(raw) ? Math.min(168, Math.max(6, Math.round(raw))) : 48;
+  try {
+    return c.json(await incidentRadar(hours, c.req.query('fresh') === '1'));
+  } catch (err) {
+    console.error('[m10-incidents] Unexpected error:', err instanceof Error ? err.message.slice(0, 200) : 'unknown');
+    return c.json({ error: 'The incident radar failed unexpectedly. Please try again.' }, 500);
+  }
 });
 
 // "Ask the data" for city staff: Gemini fetches real data with our tools, runs Python (code execution) and can draw a chart.
