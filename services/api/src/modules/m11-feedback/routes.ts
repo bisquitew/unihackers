@@ -55,6 +55,11 @@ feedbackRoutes.get('/summary', async (c) => {
   return c.json({ summary });
 });
 
+// The feedback summed up for the staff dashboard (the staff-only rule is in index.ts)
+feedbackRoutes.get('/analytics', async (c) => {
+  return c.json({ analytics: await feedbackService.getAnalytics() });
+});
+
 // Versions and the feedback that caused them
 feedbackRoutes.get('/changelog', async (c) => {
   const changelog = await feedbackService.getChangelog();
