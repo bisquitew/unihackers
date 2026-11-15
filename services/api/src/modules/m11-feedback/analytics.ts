@@ -1,4 +1,18 @@
+import { createHash } from 'node:crypto';
 import type { FeedbackEntry } from './types.ts';
+
+// "In their words" shows feedback, not every answer: non-answers are skipped, and comments that are personal rather
+// than about the app can be hidden by the SHA-256 of their trimmed, lower-cased text (so the text itself never
+// appears in this public repo). Add a hash here to hide another one.
+const NON_ANSWER = /^(-+|\.+|n\/?a|no|none|nothing|idk|i don'?t know|nu|nimic|nu stiu|nu știu|nu am|nothing really)$/i;
+const HIDDEN_COMMENT_HASHES = new Set<string>([
+  'b39267cb4af2c8cb50c9c33ee447f340df4c7d043b34bd23462310b83121b2b1',
+]);
+const showable = (text: string) => {
+  const t = text.trim();
+  if (t.length < 8 || NON_ANSWER.test(t.replace(/[!.?]+$/, ''))) return false;
+  return !HIDDEN_COMMENT_HASHES.has(createHash('sha256').update(t.toLowerCase()).digest('hex'));
+};
 
 // The numbers behind the staff dashboard's Analytics page: the feedback summed up into averages and shares.
 // By design nothing here says how many people answered: only averages, percentages and the people's own words.
@@ -106,6 +120,7 @@ export function buildAnalytics(entries: FeedbackEntry[]): FeedbackAnalytics {
     if (e.surveyComments?.confusing?.trim()) comments.push({ kind: 'confusing', moduleId: null, text: e.surveyComments.confusing.trim(), at: e.submittedAt });
     if (e.surveyComments?.missing?.trim()) comments.push({ kind: 'missing', moduleId: null, text: e.surveyComments.missing.trim(), at: e.submittedAt });
   });
+  for (let i = comments.length - 1; i >= 0; i--) if (!showable(comments[i].text)) comments.splice(i, 1);
   comments.sort((a, b) => b.at.localeCompare(a.at));
 
   return {
