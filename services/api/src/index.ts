@@ -10,7 +10,9 @@ import { TIMISOARA_AREAS } from './core/areas.ts';
 import { userService } from './core/users.ts';
 import { getUserNotifications, markNotificationAsRead } from './core/notifications.ts';
 import { getAllFlags } from './core/flags.ts';
-import { geocode } from './core/geocode.ts';
+import { geocode, searchPlaces } from './core/geocode.ts';
+import { planRoute, RouteError, type RouteMode } from './core/route.ts';
+import { rateLimit } from './core/rate-limit.ts';
 import { registeredModules } from './modules/index.ts';
 
 type AppVariables = {
@@ -100,6 +102,37 @@ core.get('/geocode', async (c) => {
   geocodeUse.set(user.sub, [...recent, Date.now()]);
   const q = c.req.query('q') ?? '';
   return c.json(await geocode(q));
+});
+
+// Place and address search for the map's search box. Open to everyone (the website's map is public), a few a second per client.
+const placeSearch = rateLimit({ windowMs: 60_000, max: 40, message: 'Too many searches. Try again in a minute.' });
+core.get('/places/search', placeSearch, async (c) => {
+  const q = c.req.query('q') ?? '';
+  if (q.trim().length < 3) return c.json({ places: [] });
+  if (q.length > 120) return c.json({ error: 'query_too_long', error_description: 'Search for at most 120 characters.' }, 400);
+  return c.json({ places: await searchPlaces(q, 6) });
+});
+
+// Directions: a route between two points inside the city, checked against the danger and works zones. Open to everyone (the
+// website's map is public); each route asks an outside server, so it is limited per client.
+const routeLimit = rateLimit({ windowMs: 60_000, max: 20, message: 'Too many route requests. Try again in a minute.' });
+core.get('/route', routeLimit, async (c) => {
+  const point = (raw: string | undefined): [number, number] | null => {
+    const [lat, lng] = String(raw ?? '').split(',').map(Number);
+    // inside the same box the map is confined to (Timișoara and a little around it)
+    return Number.isFinite(lat) && Number.isFinite(lng) && lat > 45.6 && lat < 45.9 && lng > 21.0 && lng < 21.5 ? [lng, lat] : null;
+  };
+  const from = point(c.req.query('from'));
+  const to = point(c.req.query('to'));
+  if (!from || !to) return c.json({ error: 'bad_points', error_description: 'Give from and to as "lat,lng", both inside Timișoara.' }, 400);
+  const modeIn = c.req.query('mode') ?? 'foot';
+  if (!['foot', 'bike', 'car'].includes(modeIn)) return c.json({ error: 'bad_mode', error_description: 'mode is foot, bike or car.' }, 400);
+  try {
+    return c.json(await planRoute(from, to, modeIn as RouteMode, c.req.query('avoid') !== '0'));
+  } catch (err: any) {
+    if (err instanceof RouteError) return c.json({ error: err.code, error_description: err.message }, err.code === 'no_route' ? 404 : 502);
+    throw err;
+  }
 });
 
 // User profile & saved places

@@ -1,5 +1,6 @@
 import { fetchBuddyRequests, fetchEvents, fetchForumPosts, hubGet, hubPost } from '../api.js';
 import { trapDialog, art, esc, row, when } from '../ui.js';
+import { dateLocale } from '../i18n.js';
 import { CITY } from '../city.js';
 
 // the neighbourhoods an event or post can belong to, with the middle of each (used when a venue cannot be found on the map)
@@ -18,15 +19,18 @@ const ago = (iso) => {
   if (mins < 1) return 'now';
   if (mins < 60) return `${mins}m ago`;
   if (mins < 1440) return `${Math.round(mins / 60)}h ago`;
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  return new Date(iso).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
 };
 
-const eventRows = (events, canAct) => events.map((e) => row({
-  art: art('events', 52), title: esc(e.title),
-  detail: `${esc((e.description || '').slice(0, 110))}<br><span class="muted">${esc(e.locationName || e.location || CITY.name)} · ${esc(when(e.dateTime || e.date))}${e.attendeeCount ? ` · ${e.attendeeCount} going` : ''}</span>`,
-  side: `<div style="display:grid;gap:6px;justify-items:end">${e.isFree ? '<span class="tag mint">Free</span>' : `<span class="tag">${esc(e.priceAmount ?? '')} RON</span>`}
-    <span><button class="pill" data-map-event="${esc(e.id)}">On the map</button>${canAct ? ` <button class="pill on" data-rsvp="${esc(e.id)}" data-title="${esc(e.title)}">Get a ticket</button>` : ''}</span></div>`,
-})).join('') || '<div class="empty">No events yet.</div>';
+const eventRows = (events, canAct, myTickets = []) => events.map((e) => {
+  const hasTicket = myTickets.some((t) => t.eventId === e.id);
+  return row({
+    art: art('events', 52), title: esc(e.title),
+    detail: `${esc((e.description || '').slice(0, 110))}<br><span class="muted">${esc(e.locationName || e.location || CITY.name)} · ${esc(when(e.dateTime || e.date))}${e.attendeeCount ? ` · ${e.attendeeCount} going` : ''}</span>`,
+    side: `<div style="display:grid;gap:6px;justify-items:end">${e.isFree ? '<span class="tag mint">Free</span>' : `<span class="tag">${esc(e.priceAmount ?? '')} RON</span>`}
+      <span><button class="pill" data-map-event="${esc(e.id)}">On the map</button>${canAct ? (hasTicket ? ` <button class="pill" data-goto="profile" style="background:var(--mint);color:#0a3528;font-weight:600">Ticket in wallet ✓</button>` : ` <button class="pill on" data-rsvp="${esc(e.id)}" data-title="${esc(e.title)}">Get a ticket</button>`) : ''}</span></div>`,
+  });
+}).join('') || '<div class="empty">No events yet.</div>';
 
 const postBlock = (p, canAct) => `
   <div class="post">
@@ -57,12 +61,18 @@ const buddyRows = (buddies) => buddies.map((b) => row({
 })).join('') || '<div class="empty">No requests yet.</div>';
 
 export async function render(ctx) {
-  const [events, posts, buddies] = await Promise.all([fetchEvents(), fetchForumPosts(), fetchBuddyRequests()]);
   const act = ctx.loggedIn;
+  const [events, posts, buddies, myWallet] = await Promise.all([
+    fetchEvents(),
+    fetchForumPosts(),
+    fetchBuddyRequests(),
+    act ? hubGet('/v1/m/solana/tickets/mine').catch(() => ({ tickets: [] })) : Promise.resolve({ tickets: [] })
+  ]);
+  const myTickets = myWallet?.tickets || [];
   const feed = `<div class="cols section">
       <div>
         <div class="section-head"><h2>Events (${events.length})</h2>${act ? '<button class="btn btn-secondary btn-md" id="hostEventBtn">Host an event</button>' : ''}</div>
-        <div class="list">${eventRows(events, act)}</div>
+        <div class="list">${eventRows(events, act, myTickets)}</div>
       </div>
       <div>
         <div class="section-head"><h2>Forum</h2>${act ? '<button class="btn btn-secondary btn-md" id="newPostBtn">New post</button>' : ''}</div>
@@ -135,8 +145,13 @@ export function mount(ctx, { showToast } = {}) {
   root.querySelectorAll('[data-map-event]').forEach((b) => b.addEventListener('click', () => { location.hash = `#/map/evt-${b.dataset.mapEvent}`; }));
   root.querySelectorAll('[data-rsvp]').forEach((b) => b.addEventListener('click', () => run(async () => {
     await hubPost(`/v1/m/events/${encodeURIComponent(b.dataset.rsvp)}/rsvp`, { userName: me.name });
-    await hubPost('/v1/m/solana/tickets/mint', { eventId: b.dataset.rsvp, eventTitle: b.dataset.title, attendeeName: me.name });
-  }, 'You have a ticket. See it in Profile, under Wallet.')));
+    const mintRes = await hubPost('/v1/m/solana/tickets/mint', { eventId: b.dataset.rsvp, eventTitle: b.dataset.title, attendeeName: me.name });
+    if (mintRes?.already_held) {
+      showToast?.('Ticket is already in your wallet.');
+    } else {
+      showToast?.('🎟️ Ticket claimed! See it in Profile → Wallet.');
+    }
+  })));
   root.querySelectorAll('[data-upvote]').forEach((b) => b.addEventListener('click', () => run(() => hubPost(`/v1/m/forum/${encodeURIComponent(b.dataset.upvote)}/upvote`))));
   root.querySelectorAll('[data-report]').forEach((b) => b.addEventListener('click', () => run(() => hubPost(`/v1/m/forum/${encodeURIComponent(b.dataset.report)}/report`, { reason: 'inappropriate' }), 'Thanks. A moderator will look at it.')));
   root.querySelectorAll('[data-togglec]').forEach((b) => b.addEventListener('click', () => { const id = b.dataset.togglec; openComments.has(id) ? openComments.delete(id) : openComments.add(id); refresh(); }));

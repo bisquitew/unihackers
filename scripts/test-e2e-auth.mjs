@@ -227,6 +227,23 @@ async function runTests() {
       auth0Info.body.algorithms.includes('RS256')
     );
 
+    // 14. Test User Registration (/v1/core/auth/register) -> Must be 201 Created and return valid user
+    const regResult = await request('/v1/core/auth/register', {
+      method: 'POST',
+      body: {
+        name: 'Elena Vasile',
+        email: 'elena.vasile@example.com',
+        neighbourhood: 'Fabric'
+      }
+    });
+    assert('New user can register and receive session token',
+      regResult.status === 201 &&
+      regResult.body.ok === true &&
+      regResult.body.token &&
+      regResult.body.user.name === 'Elena Vasile' &&
+      regResult.body.user.email === 'elena.vasile@example.com'
+    );
+
     console.log(`\n======================================================`);
     console.log(`🎉 RESULTS: ${passed}/${total} TESTS PASSED (100% Success)`);
     console.log(`======================================================\n`);

@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { minTarget } from './tokens';
 import { Text } from './Text';
+import { tr } from './locale';
 
 type SectionProps = {
   title: string;
@@ -22,7 +23,7 @@ export function Section({ title, onSeeAll, seeAllLabel = 'See all', children }: 
         {onSeeAll ? (
           <Pressable
             accessibilityRole="link"
-            accessibilityLabel={`${seeAllLabel}, ${title}`}
+            accessibilityLabel={`${tr(seeAllLabel)}, ${tr(title)}`}
             onPress={onSeeAll}
             hitSlop={{ top: 8, bottom: 8, left: 12, right: 8 }}
             style={styles.seeAll}

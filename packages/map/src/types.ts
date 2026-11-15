@@ -17,6 +17,12 @@ export type PinKind =
   | 'meetup'
   // contributed by modules through layers
   | 'alert'
+  // safe places: hospitals, police and fire stations, drawn as small icons
+  | 'hospital'
+  | 'police'
+  | 'fire'
+  // a place picked from the map's search
+  | 'place'
   | 'event'
   | 'parking'
   | 'transit';
@@ -41,6 +47,8 @@ export interface MapPin {
   createdAt: string;
   /** sample data that is not real yet; the UI labels it */
   demo?: boolean;
+  /** how many reports this one pin stands for, when several people reported the same issue close together (see cluster.ts) */
+  count?: number;
   /** actual geographic visual radius drawn around the pin in meters (e.g. 650m danger zone) */
   radiusMeters?: number;
   /** type of zone to color appropriately: 'danger' (red) or 'construction' (amber) */

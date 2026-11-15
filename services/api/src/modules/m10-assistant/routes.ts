@@ -26,7 +26,7 @@ assistantRoutes.post('/chat', async (c) => {
   try {
     // who is asking: the app and the website send the sign-in token with every request; a guest gets no "my tickets"
     const user = await resolveAuthUser(c.req.header('Authorization'), hubClientOf(c.req.header('X-Hub-Client')));
-    const result = await assistantService.chat(parsed.value, { userSub: user === GUEST_USER ? null : user.sub });
+    const result = await assistantService.chat(parsed.value, { userSub: user === GUEST_USER ? null : user.sub, location: parsed.value.location ?? null });
     return c.json(result);
   } catch (err) {
     if (err instanceof AssistantUnavailableError) return c.json({ error: err.message }, 503);

@@ -2,19 +2,6 @@ import type { ParkingLot } from '../modules/parkie.ts';
 
 export const PARKIE_SEED_LOTS: ParkingLot[] = [
   {
-    id: 'lot-unirii-01',
-    name: 'Piața Unirii Central',
-    latitude: 45.7581,
-    longitude: 21.2290,
-    capacity: 45,
-    available_spots: 12,
-    status_color: 'yellow',
-    is_verified: true,
-    slots_data: [],
-    camera_url: null,
-    last_updated: new Date().toISOString()
-  },
-  {
     id: 'lot-piata-700-02',
     name: 'Piața 700 Business',
     latitude: 45.7567,
@@ -35,19 +22,6 @@ export const PARKIE_SEED_LOTS: ParkingLot[] = [
     capacity: 80,
     available_spots: 4,
     status_color: 'yellow',
-    is_verified: true,
-    slots_data: [],
-    camera_url: null,
-    last_updated: new Date().toISOString()
-  },
-  {
-    id: 'lot-continental-04',
-    name: 'Parcare Hotel Continental',
-    latitude: 45.7538,
-    longitude: 21.2303,
-    capacity: 150,
-    available_spots: 0,
-    status_color: 'red',
     is_verified: true,
     slots_data: [],
     camera_url: null,
@@ -126,6 +100,32 @@ export const PARKIE_SEED_LOTS: ParkingLot[] = [
     capacity: 500,
     available_spots: 260,
     status_color: 'green',
+    is_verified: true,
+    slots_data: [],
+    camera_url: null,
+    last_updated: new Date().toISOString()
+  },
+  {
+    id: 'lot-foch-11',
+    name: 'Piața Mareșal Foch',
+    latitude: 45.7551,
+    longitude: 21.2302,
+    capacity: 40,
+    available_spots: 14,
+    status_color: 'yellow',
+    is_verified: true,
+    slots_data: [],
+    camera_url: null,
+    last_updated: new Date().toISOString()
+  },
+  {
+    id: 'lot-gara-est-12',
+    name: 'Gara de Nord – Parcare Est',
+    latitude: 45.7490,
+    longitude: 21.2080,
+    capacity: 20,
+    available_spots: 9,
+    status_color: 'yellow',
     is_verified: true,
     slots_data: [],
     camera_url: null,

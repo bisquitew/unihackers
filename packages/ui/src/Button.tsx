@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, type ViewStyle } from 'react-native';
 import { SpringPressable } from './SpringPressable';
 import { colors, fonts, minTarget, radii, shadows } from './tokens';
 import { Text } from './Text';
+import { tr } from './locale';
 
 export type ButtonSize = 'lg' | 'md';
 
@@ -28,8 +29,8 @@ function ButtonBase({ variant, label, onPress, size = 'lg', disabled, loading, a
     <SpringPressable
       scaleTo={0.95}
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityHint={accessibilityHint}
+      accessibilityLabel={tr(label)}
+      accessibilityHint={accessibilityHint ? tr(accessibilityHint) : accessibilityHint}
       accessibilityState={{ disabled: !!inactive, busy: !!loading }}
       disabled={inactive}
       onPress={onPress}

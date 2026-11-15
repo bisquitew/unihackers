@@ -7,6 +7,7 @@ import { colors, radii, shadows } from './tokens';
 import { isDark } from './theme';
 import { Text } from './Text';
 import { House, MapTrifold, ChatsCircle, UserCircle } from './icons';
+import { tr } from './locale';
 
 // Structural subset of React Navigation's BottomTabBarProps, so this package does not depend on it.
 type TabBarProps = {
@@ -65,7 +66,7 @@ export function FloatingTabBar({ state, descriptors, navigation, onTabPress, blu
               key={route.key}
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
-              accessibilityLabel={descriptors[route.key]?.options.tabBarAccessibilityLabel ?? cfg.label}
+              accessibilityLabel={tr(descriptors[route.key]?.options.tabBarAccessibilityLabel ?? cfg.label)}
               onPress={onPress}
               style={[styles.item, focused && styles.itemActive]}
             >

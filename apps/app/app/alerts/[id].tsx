@@ -4,11 +4,32 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { mapHref, pinRef } from '@hub/map';
 import { AvatarStack, BackLink, PrimaryButton, Screen, Text, TextButton, Timeline } from '@hub/ui';
 import { useAlerts } from '../../src/core/alerts';
+import { api } from '../../src/core/api';
+
+interface NearSafe { id: string; kind: 'hospital' | 'police' | 'fire'; name: string; street: string | null; distance_meters: number }
+const SAFE_LABEL = { hospital: 'Hospital', police: 'Police station', fire: 'Fire station' } as const;
+
+/** For danger and works zones: the closest place to get help (hospital, police or fire station), with its distance. */
+function useNearestSafePlace(coordinate?: { latitude: number; longitude: number }): NearSafe | null {
+  const [near, setNear] = React.useState<NearSafe | null>(null);
+  const lat = coordinate?.latitude;
+  const lng = coordinate?.longitude;
+  React.useEffect(() => {
+    if (lat === undefined || lng === undefined) return;
+    let alive = true;
+    api.get<{ places: NearSafe[] }>('/v1/m/safety/places', { lat, lng, limit: 1 }).then((r) => alive && setNear(r.places?.[0] ?? null)).catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [lat, lng]);
+  return near;
+}
 
 export default function AlertDetail() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const alert = useAlerts().find((a) => a.id === String(id));
+  const nearestSafe = useNearestSafePlace(alert?.zoneType ? alert.coordinate : undefined);
 
   if (!alert) {
     return (
@@ -44,6 +65,19 @@ export default function AlertDetail() {
         {alert.context}
       </Text>
       <Timeline steps={alert.steps} />
+      {nearestSafe ? (
+        <View style={styles.safe}>
+          <Text variant="label" color="mutedForeground">
+            Nearest safe place
+          </Text>
+          <Text variant="rowTitle" onPress={() => router.push(mapHref({ pin: pinRef('safe', `safe-${nearestSafe.id}`) }) as any)} accessibilityRole="link">
+            {nearestSafe.name}
+          </Text>
+          <Text variant="rowDetail" color="mutedForeground">
+            {`${SAFE_LABEL[nearestSafe.kind]} · ${nearestSafe.distance_meters} m from here`}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.mapLink}>
         <TextButton label="Show on map" size="md" onPress={() => router.push(mapHref({ pin: pinRef('alerts', alert.id) }) as any)} />
       </View>
@@ -63,5 +97,6 @@ export default function AlertDetail() {
 const styles = StyleSheet.create({
   context: { marginTop: 8, marginBottom: 18 },
   confirm: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 },
+  safe: { marginTop: 6, marginBottom: 14, gap: 2 },
   mapLink: { alignItems: 'flex-start', marginLeft: -20, marginBottom: 8 },
 });

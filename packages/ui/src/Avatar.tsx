@@ -2,6 +2,7 @@ import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { colors, palette } from './tokens';
 import { Text } from './Text';
+import { tr } from './locale';
 
 export type AvatarTone = 'apricot' | 'blue' | 'mint' | 'ink';
 
@@ -35,7 +36,7 @@ export type Person = { initials: string; tone?: AvatarTone };
 /** Overlapping avatars. `extra` adds a "+N" chip. */
 export function AvatarStack({ people, extra, label }: { people: Person[]; extra?: number; label?: string }) {
   return (
-    <View style={styles.stack} accessible accessibilityLabel={label}>
+    <View style={styles.stack} accessible accessibilityLabel={label ? tr(label) : label}>
       {people.map((p, i) => (
         <View key={i} style={[styles.ring, i > 0 && styles.overlap]}>
           <Avatar initials={p.initials} tone={p.tone ?? (['apricot', 'blue', 'mint'] as AvatarTone[])[i % 3]} />

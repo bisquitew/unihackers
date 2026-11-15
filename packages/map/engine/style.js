@@ -129,7 +129,8 @@
      Colour follows the app's hue-by-meaning: blue = getting around and water, mint = health and services, a ringed
      star = a landmark worth a look, a small plain dot = food and shops. */
   var POI_DOT = ['restaurant', 'cafe', 'bar', 'fast_food', 'bakery', 'grocery'];
-  var POI_HEALTH = ['pharmacy', 'hospital', 'dentist', 'doctors'];
+  // hospitals are drawn from the safe places list (see engine.js, setPins), with their own icon
+  var POI_HEALTH = ['pharmacy', 'dentist', 'doctors'];
   var POI_LANDMARK = ['attraction', 'monument', 'museum', 'castle', 'theatre', 'ruins', 'viewpoint', 'zoo'];
 
   function poiImage(kind) {
@@ -150,6 +151,27 @@
       g.beginPath(); g.moveTo(24, 10); g.bezierCurveTo(24, 10, 14, 22, 14, 29); g.arc(24, 29, 10, Math.PI, 0, true); g.bezierCurveTo(34, 22, 24, 10, 24, 10); g.closePath();
       g.fillStyle = BLUE; g.fill();
       g.beginPath(); g.ellipse(20.5, 29, 2.2, 4, 0.3, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fill();
+    } else if (kind === 'hospital') {
+      // safe places: a white disc with a coloured ring and glyph, like the fountain. Hospital: mint cross.
+      disc(19, '#FFFFFF', MINT, 2.5);
+      g.fillStyle = MINT; g.fillRect(21.5, 13.5, 5, 21); g.fillRect(13.5, 21.5, 21, 5);
+    } else if (kind === 'police') {
+      // police: a blue shield
+      disc(19, '#FFFFFF', BLUE, 2.5);
+      g.beginPath(); g.moveTo(24, 12.5); g.lineTo(33, 16); g.lineTo(33, 25); g.bezierCurveTo(33, 30.5, 28.5, 34.5, 24, 36.5); g.bezierCurveTo(19.5, 34.5, 15, 30.5, 15, 25); g.lineTo(15, 16); g.closePath();
+      g.fillStyle = BLUE; g.fill();
+      g.beginPath();
+      for (var j = 0; j < 10; j++) { var rr = j % 2 ? 2.2 : 5.2, aa = -Math.PI / 2 + j * Math.PI / 5; g.lineTo(24 + rr * Math.cos(aa), 24.6 + rr * Math.sin(aa)); }
+      g.closePath(); g.fillStyle = '#FFFFFF'; g.fill();
+    } else if (kind === 'fire') {
+      // fire station: an apricot flame
+      var APRICOT = '#E2711D';
+      disc(19, '#FFFFFF', APRICOT, 2.5);
+      g.beginPath(); g.moveTo(24, 11); g.bezierCurveTo(26.5, 17, 33, 20, 33, 28); g.bezierCurveTo(33, 33.5, 28.5, 37, 24, 37); g.bezierCurveTo(19.5, 37, 15, 33.5, 15, 28);
+      g.bezierCurveTo(15, 24.5, 17, 22.5, 18.5, 21); g.bezierCurveTo(19, 23.5, 20.5, 25, 22, 25); g.bezierCurveTo(21, 20, 22, 14.5, 24, 11); g.closePath();
+      g.fillStyle = APRICOT; g.fill();
+      g.beginPath(); g.moveTo(24, 36); g.bezierCurveTo(21.2, 36, 19.5, 34, 19.5, 31.5); g.bezierCurveTo(19.5, 29, 22, 27.5, 24, 25.5); g.bezierCurveTo(26, 27.5, 28.5, 29, 28.5, 31.5); g.bezierCurveTo(28.5, 34, 26.8, 36, 24, 36); g.closePath();
+      g.fillStyle = '#FFE0CC'; g.fill();
     } else if (kind === 'health') {
       disc(18, MINT, '#FFFFFF', 2.5);
       g.fillStyle = '#FFFFFF'; g.fillRect(21, 14, 6, 20); g.fillRect(14, 21, 20, 6);

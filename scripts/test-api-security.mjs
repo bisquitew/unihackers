@@ -148,6 +148,46 @@ check('a resident cannot read the feedback analytics', r.status === 403, r.statu
 r = await call('GET', '/v1/m/feedback/analytics', { token: 'dev_admin_mfa', client: 'web' });
 check('an admin on the website can, and it never states how many people answered', r.status === 200 && !/responses|"count"|"total"/i.test(JSON.stringify(r.json)), r.status);
 
+// --- safe places: public, filterable, sorted by distance; the assistant's location is validated ---
+r = await call('GET', '/v1/m/safety/places');
+check('safe places are public and include hospitals, police and fire stations', r.status === 200 && ['hospital', 'police', 'fire'].every((k) => r.json?.places?.some((p) => p.kind === k)), r.status);
+r = await call('GET', '/v1/m/safety/places?lat=45.745&lng=21.205&kind=police&limit=3');
+const dists = (r.json?.places || []).map((p) => p.distance_meters);
+check('places near a spot come back nearest first', r.status === 200 && dists.length === 3 && dists.every((d, i) => i === 0 || d >= dists[i - 1]), JSON.stringify(dists));
+r = await call('GET', '/v1/m/safety/places?kind=bank');
+check('an unknown kind of place is refused', r.status === 400, r.status);
+r = await call('GET', '/v1/m/safety/places?lat=45.7');
+check('a latitude without a longitude is refused', r.status === 400, r.status);
+r = await call('POST', '/v1/m/assistant/chat', { body: { message: 'hi', location: { latitude: 'north', longitude: 21 } } });
+check('a bad location sent to the assistant is refused', r.status === 400, r.status);
+r = await call('POST', '/v1/core/area-alerts/check-proximity', { body: { address: 'Circumvalațiunii' } });
+check('the danger-zone check also names the nearest safe place', !!r.json?.nearest_safe_place?.name && r.json.nearest_safe_place.distance_meters >= 0, JSON.stringify(r.json?.nearest_safe_place));
+
+// --- map search: open to everyone, short queries are empty, long ones refused ---
+r = await call('GET', '/v1/core/places/search?q=ab');
+check('a search shorter than 3 letters answers with no places', r.status === 200 && Array.isArray(r.json?.places) && r.json.places.length === 0, r.status);
+r = await call('GET', `/v1/core/places/search?q=${'x'.repeat(130)}`);
+check('a search longer than 120 characters is refused', r.status === 400, r.status);
+r = await call('GET', '/v1/core/places/search?q=Gara%20de%20Nord');
+check('the map search needs no sign-in and finds places', r.status === 200 && r.json?.places?.length > 0 && r.json.places.every((p) => Number.isFinite(p.latitude) && Number.isFinite(p.longitude)), r.status);
+r = await call('GET', '/v1/core/places/search?q=Pia%C8%9Ba%20Unirii');
+check('Romanian letters like ț still find the square', r.status === 200 && r.json?.places?.some((p) => /unirii/i.test(p.name)), JSON.stringify((r.json?.places || []).map((p) => p.name)));
+
+// --- directions: open to everyone, only inside the city, checked against the danger zones ---
+r = await call('GET', '/v1/core/route?from=45.75,21.20');
+check('a route without a destination is refused', r.status === 400, r.status);
+r = await call('GET', '/v1/core/route?from=48.85,2.35&to=45.75,21.23');
+check('a route starting outside the city is refused', r.status === 400, r.status);
+r = await call('GET', '/v1/core/route?from=45.75,21.20&to=45.757,21.23&mode=jetpack');
+check('an unknown way of travelling is refused', r.status === 400, r.status);
+r = await call('GET', '/v1/core/route?from=45.7500,21.2030&to=45.7570,21.2300&mode=foot');
+if (r.status === 200) {
+  check('a route needs no sign-in and has a line, a time and steps', r.json.geometry?.length > 2 && r.json.duration_s > 0 && r.json.steps?.length > 0, r.status);
+  check('a walk across the gas-leak zone goes round it, or says plainly it could not', r.json.avoided?.length > 0 || r.json.could_not_avoid === true || r.json.warnings?.length > 0, JSON.stringify(r.json.warnings));
+} else {
+  console.log(`  (skipped the live route checks: the routing service answered ${r.status})`);
+}
+
 // --- bad input ---
 r = await call('POST', '/v1/core/auth/google-login', { raw: '{not json' });
 check('invalid JSON is a 400, not a silent empty body', r.status === 400, r.status);

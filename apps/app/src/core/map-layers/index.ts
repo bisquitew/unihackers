@@ -8,6 +8,7 @@ import { pinRef, type MapLayer, type MapPin, type PinKind } from '@hub/map';
 import { registeredModuleManifests } from '../../modules';
 import { getAlerts } from '../alerts';
 import type { AlertItem } from '../mock/alerts';
+import { safePlacesLayer } from './safePlaces';
 
 const moduleToKind: Record<AlertItem['module'], PinKind> = {
   utilities: 'alert',
@@ -58,7 +59,8 @@ export function collectModuleLayers(): MapLayer[] {
 export function allMapLayers(): MapLayer[] {
   const fromModules = collectModuleLayers();
   const hasAlerts = fromModules.some((l) => l.id === 'alerts');
-  return hasAlerts ? fromModules : [alertsLayer(), ...fromModules];
+  // safe places (hospitals, police and fire stations) are always on offer
+  return [...(hasAlerts ? fromModules : [alertsLayer(), ...fromModules]), safePlacesLayer()];
 }
 
 export { pinRef };

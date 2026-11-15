@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Linking, Pressable, StyleSheet, View } from 'react-native';
-import { Chip, Field, PrimaryButton, SecondaryButton, Text, TextButton, colors, icons, moduleArt } from '@hub/ui';
+import { Chip, Field, PrimaryButton, SecondaryButton, Text, TextButton, colors, icons, moduleArt, tr } from '@hub/ui';
 import { ModulePage } from '../../core/ModulePage';
 import { registeredModuleManifests } from '../index';
 import { fetchChangelog, submitFeedback } from './api';
@@ -106,9 +106,9 @@ export function FeedbackScreen({ onOpenChangelog }: Props) {
         <Text variant="section" accessibilityRole="header">
           How is the app?
         </Text>
-        <View style={styles.stars} accessibilityRole="adjustable" accessibilityLabel={`Rating: ${rating} out of 5`}>
+        <View style={styles.stars} accessibilityRole="adjustable" accessibilityLabel={tr(`Rating: ${rating} out of 5`)}>
           {[1, 2, 3, 4, 5].map((n) => (
-            <Pressable key={n} onPress={() => setRating(n)} accessibilityRole="button" accessibilityLabel={`${n} ${n === 1 ? 'star' : 'stars'}`} accessibilityState={{ selected: n <= rating }} hitSlop={4} style={styles.star}>
+            <Pressable key={n} onPress={() => setRating(n)} accessibilityRole="button" accessibilityLabel={tr(`${n} ${n === 1 ? 'star' : 'stars'}`)} accessibilityState={{ selected: n <= rating }} hitSlop={4} style={styles.star}>
               <icons.Star size={34} weight={n <= rating ? 'fill' : 'regular'} color={n <= rating ? colors.foreground : colors.secondaryPressed} />
             </Pressable>
           ))}
