@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Chip, Field, PrimaryButton, SecondaryButton, Section, Segmented, Text, TextButton, colors, moduleArt, type ModuleArtId } from '@hub/ui';
 import { ModulePage } from './ModulePage';
 import { useMyLocation } from './location';
+import { friendlyError } from './errors';
 
 export interface ReportType {
   id: string;
@@ -70,7 +71,7 @@ export function ReportFlow({ title, intro, art, types, withIntensity, withNote, 
       await onSubmit({ type, ...(withIntensity ? { intensity } : {}), ...(withNote && note.trim() ? { note: note.trim() } : {}), ...where });
       setDone(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not send. Try again.');
+      setError(friendlyError(e, 'Could not send. Try again.'));
     } finally {
       setSending(false);
     }

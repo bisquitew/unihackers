@@ -5,6 +5,7 @@ import { ModulePage } from '../../core/ModulePage';
 import { registeredModuleManifests } from '../index';
 import { fetchChangelog, submitFeedback } from './api';
 import { FALLBACK_APP_VERSION, SURVEY_URL } from './config';
+import { friendlyError } from '../../core/errors';
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 
@@ -56,7 +57,7 @@ export function FeedbackScreen({ onOpenChangelog }: Props) {
       setStatus('done');
     } catch (e) {
       setStatus('error');
-      setError(e instanceof Error ? e.message : 'Could not send. Try again.');
+      setError(friendlyError(e, 'Could not send. Try again.'));
     }
   };
 

@@ -8,6 +8,7 @@ import { getApproxLocation } from '../../core/location';
 import { sendChat, type ChatTurn, type ToolUse } from './api';
 import { ListenButton } from './voice/ListenButton';
 import { guessLang, speak, startRecording, stopSpeaking, transcribe, voiceAvailable, webVoiceSupported, type Recording } from './voice/voiceClient';
+import { friendlyError } from '../../core/errors';
 
 interface Message {
   id: string;
@@ -84,7 +85,7 @@ export function AssistantScreen() {
         speak(reply, guessLang(reply)).catch((e) => setVoiceError(e instanceof Error ? e.message : 'Voice is not available right now.'));
       }
     } catch (e) {
-      setError({ text: e instanceof Error ? e.message : 'The assistant is not answering right now.', failedMessage: message });
+      setError({ text: friendlyError(e, 'The assistant is not answering right now.'), failedMessage: message });
     } finally {
       setLoading(false);
     }

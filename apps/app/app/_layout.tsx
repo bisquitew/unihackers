@@ -6,6 +6,7 @@ import { Figtree_400Regular, Figtree_500Medium, Figtree_600SemiBold, Figtree_700
 import { colors, isDark, returnTo, themeStore, useThemeVersion } from '@hub/ui';
 import { AuthProvider } from '../src/core/auth';
 import { AuthGate } from '../src/core/AuthGate';
+import { ErrorScreen } from '../src/core/ErrorScreen';
 import { installHubClientHeader } from '../src/core/hubClient';
 import { registerPinsSync, type MapPin } from '@hub/map';
 import { api, getSessionToken } from '../src/core/api';
@@ -19,6 +20,12 @@ registerPinsSync({
     if (getSessionToken()) await api.put('/v1/core/user/pins', { pins });
   },
 });
+
+/** expo-router shows this for any screen that throws while it draws (instead of a red error page). */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  const router = useRouter();
+  return <ErrorScreen error={error} retry={() => void retry()} home={() => router.replace('/' as any)} />;
+}
 
 export default function RootLayout() {
   const [loaded] = useNunito({

@@ -3,6 +3,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { Row, RowGroup, Text, TextButton, colors } from '@hub/ui';
 import { ModulePage } from '../../core/ModulePage';
 import { ChangelogEntry, fetchChangelog } from './api';
+import { friendlyError } from '../../core/errors';
 
 export function ChangelogScreen() {
   const [entries, setEntries] = useState<ChangelogEntry[] | null>(null);
@@ -13,7 +14,7 @@ export function ChangelogScreen() {
     setEntries(null);
     fetchChangelog()
       .then((list) => setEntries([...list].reverse())) // newest first
-      .catch((e) => setError(e instanceof Error ? e.message : 'Could not load the list.'));
+      .catch((e) => setError(friendlyError(e, 'Could not load the list.')));
   }, []);
 
   useEffect(load, [load]);

@@ -5,20 +5,28 @@ import { ModulePage } from '../../core/ModulePage';
 import { initialsOf, toneFor } from '../../core/people';
 import { forumStore, type Post } from './forumStore';
 
-const CATEGORY_LABEL: Record<Post['category'], string> = {
+const CATEGORY_LABEL: Record<string, string> = {
   lost_pets: 'Lost pets',
   neighbourhood: 'Local',
   help: 'Help',
   buy_sell: 'Buy and sell',
   cultural: 'Culture',
+  environment: 'Environment',
+  transport: 'Transport',
+  general: 'General',
+  community: 'Community',
 };
 // The dot before a post's category: apricot for something urgent, mint for people helping people, blue for local news.
-const CATEGORY_DOT: Record<Post['category'], string> = {
+const CATEGORY_DOT: Record<string, string> = {
   lost_pets: palette.apricot500,
   help: palette.mint500,
   neighbourhood: palette.blue500,
   buy_sell: palette.ink600,
   cultural: palette.blue500,
+  environment: palette.mint500,
+  transport: palette.blue500,
+  general: palette.ink600,
+  community: palette.mint500,
 };
 const FILTERS = [
   { id: 'all', label: 'All' },
@@ -166,9 +174,10 @@ export function ForumScreen({ embedded }: { embedded?: boolean }) {
                     </Text>
                   </View>
                   <View style={styles.category}>
-                    <View style={[styles.dot, { backgroundColor: CATEGORY_DOT[post.category] }]} />
+                    <View style={[styles.dot, { backgroundColor: CATEGORY_DOT[post.category] ?? palette.blue500 }]} />
                     <Text variant="caption" color="mutedForeground">
-                      {CATEGORY_LABEL[post.category]}, {post.neighbourhood}
+                      {/* a post whose category we do not know shows just its place, never a lone comma */}
+                      {[CATEGORY_LABEL[post.category] ? tr(CATEGORY_LABEL[post.category]) : '', post.neighbourhood].filter(Boolean).join(', ')}
                     </Text>
                   </View>
                   <Text variant="subheading" style={{ marginTop: 8 }}>
