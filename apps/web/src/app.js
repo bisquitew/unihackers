@@ -1,4 +1,4 @@
-import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEmailUser, loginWithAuth0, logout, onAuthChange, switchToken } from './auth.js?v=auth0_v5';
+import { getCurrentUser, initAuth, isAdmin, isLoggedIn, loginGoogleUser, loginEmailUser, loginWithAuth0, logout, onAuthChange, switchToken, registerAccount } from './auth.js';
 import { renderNavbar, renderMenu } from './components/Navbar.js';
 import { renderAuthModal } from './components/AuthModal.js';
 import { applyTheme, syncTabState, toggleTheme, trapDialog } from './ui.js';
@@ -119,14 +119,20 @@ async function show(tab, scrollTop = true, soft = false) {
   else if (soft) window.scrollTo(0, keepScroll);
 }
 
-function openAuthModal(error = '') {
+function openAuthModal(error = '', mode = 'login') {
   const host = document.getElementById('modalContainer');
   let release = () => {};
   const close = () => { release(); host.innerHTML = ''; };
-  host.innerHTML = renderAuthModal({ error: typeof error === 'string' ? error : '' });
+  host.innerHTML = renderAuthModal({ error: typeof error === 'string' ? error : '', mode });
   release = trapDialog(host.querySelector('.dialog'), close);
   document.getElementById('closeAuthBtn')?.addEventListener('click', close);
   document.getElementById('authBackdrop')?.addEventListener('click', (e) => { if (e.target.id === 'authBackdrop') close(); });
+
+  // Tab & mode switching
+  document.getElementById('tabLoginBtn')?.addEventListener('click', () => { close(); openAuthModal('', 'login'); });
+  document.getElementById('tabRegisterBtn')?.addEventListener('click', () => { close(); openAuthModal('', 'register'); });
+  document.getElementById('switchToRegisterBtn')?.addEventListener('click', () => { close(); openAuthModal('', 'register'); });
+  document.getElementById('switchToLoginBtn')?.addEventListener('click', () => { close(); openAuthModal('', 'login'); });
 
   const signIn = async (fn) => {
     try {
@@ -136,7 +142,7 @@ function openAuthModal(error = '') {
       // staff go straight to their dashboard, everyone else stays where they were
       if (user.role === 'admin' && activeTab === 'home') go('admin');
     } catch (e) {
-      openAuthModal(e.message);
+      openAuthModal(e.message, mode);
     }
   };
 
@@ -168,6 +174,15 @@ function openAuthModal(error = '') {
     signIn(() => loginEmailUser({ email, password }));
   });
 
+  document.getElementById('registerForm')?.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const name = document.getElementById('regNameInput')?.value.trim() || '';
+    const email = document.getElementById('regEmailInput')?.value.trim() || '';
+    const neighbourhood = document.getElementById('regNeighbourhoodSelect')?.value || 'Cetate';
+    const password = document.getElementById('regPasswordInput')?.value.trim() || undefined;
+    signIn(() => registerAccount({ name, email, password, neighbourhood }));
+  });
+
   document.getElementById('demoResidentBtn')?.addEventListener('click', () => {
     signIn(() => switchToken('dev_resident'));
   });
@@ -176,7 +191,11 @@ function openAuthModal(error = '') {
     signIn(() => switchToken('dev_admin_mfa'));
   });
 
-  emailInput?.focus();
+  if (mode === 'register') {
+    document.getElementById('regNameInput')?.focus();
+  } else {
+    emailInput?.focus();
+  }
 }
 
 export function showToast(msg) {

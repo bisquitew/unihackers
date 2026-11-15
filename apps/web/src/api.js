@@ -54,6 +54,19 @@ export async function loginWithEmail({ email, password, token } = {}) {
   return await res.json();
 }
 
+export async function registerUser({ name, email, password, neighbourhood } = {}) {
+  const res = await fetch(`${BASE_URL}/v1/core/auth/register`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, email, password, neighbourhood }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error_description || `Înregistrare eșuată (${res.status})`);
+  }
+  return await res.json();
+}
+
 
 
 /** The Auth0 tenant settings the website needs to start the login (domain, audience, client id). */

@@ -329,7 +329,7 @@ export async function handleLoginLocationCheck(
 }
 
 // Standard Role Permission Matrix
-const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   resident: [
     'read:city-alerts',
     'read:parking',
@@ -531,6 +531,37 @@ export function registerGoogleUser(googlePayload: {
   DEV_USERS[token] = user;
   DEV_USERS[sub] = user;
   recordAudit(user, 'auth.google_login', 'ALLOW');
+  return { token, user };
+}
+
+export function registerLocalUser(payload: {
+  email: string;
+  name: string;
+  role?: UserRole;
+  neighbourhood?: string;
+  sub?: string;
+}): { token: string; user: AuthUser } {
+  const role: UserRole = payload.role || (isStaffEmail(payload.email) ? 'admin' : 'resident');
+  const id = crypto.randomUUID();
+  const sub = payload.sub || `auth0|local-${id.replace(/-/g, '').slice(0, 16)}`;
+  const token = `usr_${id.replace(/-/g, '')}`;
+
+  const user: AuthUser = {
+    sub,
+    email: payload.email,
+    name: payload.name,
+    role,
+    permissions: ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.resident,
+    mfa_enabled: role === 'admin',
+    mfa_verified: role === 'admin',
+    amr: ['pwd'],
+    idp: 'local',
+    security_tier: role === 'admin' ? 'tier_2_mfa_verified' : 'tier_1_standard'
+  };
+
+  DEV_USERS[token] = user;
+  DEV_USERS[sub] = user;
+  recordAudit(user, 'auth.register', 'ALLOW');
   return { token, user };
 }
 

@@ -33,6 +33,8 @@ import {
   isLocationTrusted,
   DEV_USERS,
   registerGoogleUser,
+  registerLocalUser,
+  ROLE_PERMISSIONS,
   hubClientOf,
   roleAllowedOnClient,
   wrongClientBody,
@@ -399,8 +401,24 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
             WHERE LOWER(email) = $1 LIMIT 1;
           `, [email]);
           if (rows && rows.length > 0) {
-            targetUser = rows[0];
-            token = targetUser.role === 'admin' ? 'dev_admin_mfa' : 'dev_resident';
+            const dbUser = rows[0];
+            if (dbUser.email === 'resident@timisoara-hub.ro') {
+              targetUser = DEV_USERS.dev_resident;
+              token = 'dev_resident';
+            } else if (dbUser.email === 'admin@timisoara-hub.ro') {
+              targetUser = DEV_USERS.dev_admin_mfa;
+              token = 'dev_admin_mfa';
+            } else {
+              const reg = registerLocalUser({
+                email: dbUser.email,
+                name: dbUser.name,
+                role: dbUser.role,
+                neighbourhood: dbUser.neighbourhood,
+                sub: dbUser.auth0_id
+              });
+              targetUser = reg.user;
+              token = reg.token;
+            }
           }
         } catch (err: any) {
           console.warn('Login db query error:', err.message);
@@ -419,6 +437,80 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
         role_label: role === 'admin' ? 'City staff' : 'Resident',
         security_tier: role === 'admin' ? 'tier_2_mfa_verified' : 'tier_1_standard',
         example_header: `Authorization: Bearer ${token}`
+      });
+    }
+
+    if (pathname === '/v1/core/auth/register' && method === 'POST') {
+      const body = await parseBody(req);
+      const email = String(body.email || '').trim().toLowerCase();
+      const name = String(body.name || '').trim();
+      const neighbourhood = String(body.neighbourhood || 'Cetate').trim();
+
+      if (!email || !email.includes('@')) {
+        return sendJson(res, 400, { error: 'invalid_email', error_description: 'Adresă de email invalidă.' });
+      }
+      if (!name || name.length < 2) {
+        return sendJson(res, 400, { error: 'invalid_name', error_description: 'Numele complet este obligatoriu.' });
+      }
+
+      const role = isStaffEmail(email) ? 'admin' : 'resident';
+      if (hubClient && !roleAllowedOnClient(role, hubClient)) {
+        return sendJson(res, 403, wrongClientBody(role, hubClient));
+      }
+
+      let existingUser: any = null;
+      if (db.isTigerConnected()) {
+        try {
+          const rows = await db.query<any>(`
+            SELECT id, auth0_id, email, name, role, neighbourhood 
+            FROM core_users 
+            WHERE LOWER(email) = $1 LIMIT 1;
+          `, [email]);
+          if (rows && rows.length > 0) {
+            existingUser = rows[0];
+          }
+        } catch (err: any) {
+          console.warn('[register] DB check warning:', err.message);
+        }
+      }
+
+      const id = existingUser?.id || crypto.randomUUID();
+      const auth0_id = existingUser?.auth0_id || `auth0|local-${id.replace(/-/g, '').slice(0, 16)}`;
+
+      if (db.isTigerConnected()) {
+        try {
+          await db.query(`
+            INSERT INTO core_users (id, auth0_id, email, name, role, neighbourhood, created_at, updated_at)
+            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())
+            ON CONFLICT (email) DO UPDATE 
+            SET name = EXCLUDED.name, neighbourhood = EXCLUDED.neighbourhood, updated_at = NOW();
+          `, [id, auth0_id, email, name, role, neighbourhood]);
+        } catch (err: any) {
+          console.warn('[register] DB save warning:', err.message);
+        }
+      }
+
+      userService.upsertUser({
+        id,
+        auth0_id,
+        email,
+        name,
+        role,
+        neighbourhood,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
+
+      const registered = registerLocalUser({ email, name, role, neighbourhood, sub: auth0_id });
+
+      return sendJson(res, 201, {
+        ok: true,
+        token: registered.token,
+        user: registered.user,
+        account_type: role,
+        role_label: role === 'admin' ? 'City staff' : 'Resident',
+        security_tier: role === 'admin' ? 'tier_2_mfa_verified' : 'tier_1_standard',
+        example_header: `Authorization: Bearer ${registered.token}`
       });
     }
 
@@ -987,6 +1079,16 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
       const { eventId, eventTitle, attendeeName, attendeeWallet } = body;
       if (!eventId || !eventTitle) {
         return sendJson(res, 400, { error: 'Missing required fields: eventId, eventTitle' });
+      }
+
+      // Check if user already holds a ticket for this event
+      const existingTicket = walletOf(currentUser.sub).tickets.find((t: any) => t.eventId === eventId);
+      if (existingTicket) {
+        return sendJson(res, 200, {
+          ...existingTicket,
+          already_held: true,
+          message: 'Biletul este deja în portofelul tău.'
+        });
       }
 
       const ticketId = `tkt-sol-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;

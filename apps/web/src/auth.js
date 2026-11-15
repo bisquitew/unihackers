@@ -1,4 +1,4 @@
-import { fetchAuthMe, loginWithGoogle, loginWithEmail, fetchAuth0Info } from './api.js';
+import { fetchAuthMe, loginWithGoogle, loginWithEmail, registerUser, fetchAuth0Info } from './api.js';
 
 // no saved sign-in means a guest: the website then shows the public preview
 let currentToken = localStorage.getItem('hub_auth_token') || '';
@@ -164,6 +164,15 @@ export async function loginGoogleUser({ email, name } = {}) {
 
 export async function loginEmailUser({ email, password, token } = {}) {
   const result = await loginWithEmail({ email, password, token });
+  currentToken = result.token;
+  currentUser = result.user;
+  localStorage.setItem('hub_auth_token', result.token);
+  notifyListeners();
+  return currentUser;
+}
+
+export async function registerAccount({ name, email, password, neighbourhood } = {}) {
+  const result = await registerUser({ name, email, password, neighbourhood });
   currentToken = result.token;
   currentUser = result.user;
   localStorage.setItem('hub_auth_token', result.token);
