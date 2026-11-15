@@ -98,7 +98,8 @@ export class ForumService {
     return {
       ...p,
       comments,
-      commentsCount: Math.max(comments.length, p.commentsCount ?? 0),
+      // the number is the comments there really are (a stored or seeded number can disagree with them)
+      commentsCount: comments.length,
       isReported: reasons.length > 0,
       reportCount: reasons.length,
       reportReasons: reasons,
@@ -213,7 +214,7 @@ export class ForumService {
       try {
         await db.query(`INSERT INTO m08_forum_comments (id, post_id, author_id, author_name, content, created_at) VALUES ($1, $2, $3, $4, $5, $6);`,
           [comment.id, postId, comment.authorId, authorName, content, comment.createdAt]);
-        await db.query(`UPDATE m08_forum_posts SET comments_count = GREATEST(comments_count + 1, $2) WHERE id = $1;`, [postId, list.length]);
+        await db.query(`UPDATE m08_forum_posts SET comments_count = $2 WHERE id = $1;`, [postId, list.length]);
       } catch (err: any) {
         console.warn('ForumService addComment error:', err.message);
       }
