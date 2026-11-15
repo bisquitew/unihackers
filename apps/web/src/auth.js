@@ -6,16 +6,21 @@ let currentUser = null;
 const listeners = new Set();
 let auth0ClientInstance = null;
 
+export const AUTH0_DOMAIN = 'dev-77qb7o5o5lzcrtxa.us.auth0.com';
+export const AUTH0_CLIENT_ID = 'nX2Hf4pmmdeTk73ydXFmg2S632Bh966D';
+export const AUTH0_AUDIENCE = 'https://api.timisoara-hub.ro';
+
 export async function getAuth0Client() {
   if (auth0ClientInstance) return auth0ClientInstance;
   const createClient = window.auth0?.createAuth0Client || window.createAuth0Client;
   if (!createClient) return null;
 
   try {
-    const info = await fetchAuth0Info() || {};
-    const domain = info.auth0_domain || 'dev-77qb7o5o5lzcrtxa.us.auth0.com';
-    const clientId = info.client_id || 'nX2Hf4pmmdetK73ydXFmg2S632Bh966D';
-    const audience = info.auth0_audience || 'https://api.timisoara-hub.ro';
+    const domain = AUTH0_DOMAIN;
+    const clientId = AUTH0_CLIENT_ID;
+    const audience = AUTH0_AUDIENCE;
+
+    console.log('[Auth0 V5] Initializing client with:', { domain, clientId, audience, origin: window.location.origin });
 
     auth0ClientInstance = await createClient({
       domain,
@@ -25,7 +30,7 @@ export async function getAuth0Client() {
         audience,
         scope: 'openid profile email'
       },
-      cacheLocation: 'localstorage'
+      cacheLocation: 'memory'
     });
     return auth0ClientInstance;
   } catch (err) {

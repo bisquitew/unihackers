@@ -47,13 +47,19 @@ const server = http.createServer((req, res) => {
   if (fs.existsSync(safePath) && fs.statSync(safePath).isFile()) {
     const ext = path.extname(safePath).toLowerCase();
     const contentType = MIME_TYPES[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': contentType });
+    res.writeHead(200, {
+      'Content-Type': contentType,
+      'Cache-Control': 'no-store, no-cache, must-revalidate'
+    });
     fs.createReadStream(safePath).pipe(res);
   } else {
     // Single-page fallback
     const fallback = path.join(__dirname, 'index.html');
     if (fs.existsSync(fallback)) {
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.writeHead(200, {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
+      });
       fs.createReadStream(fallback).pipe(res);
     } else {
       res.writeHead(404);

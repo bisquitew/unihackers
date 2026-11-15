@@ -59,7 +59,7 @@ export async function loginWithEmail({ email, password, token } = {}) {
 /** The Auth0 tenant settings the website needs to start the login (domain, audience, client id). */
 export async function fetchAuth0Info() {
   try {
-    const res = await fetch(`${BASE_URL}/v1/core/auth/auth0-info`);
+    const res = await fetch(`${BASE_URL}/v1/core/auth/auth0-info`, { cache: 'no-store' });
     return await res.json();
   } catch {
     return null;
@@ -207,6 +207,20 @@ export async function confirmNotice(token, draft) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const err = new Error(data.error_description || data.message || data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
+// --- M10 INCIDENT RADAR (P4): residents' signals grouped by Gemini embeddings, cards written by Gemini ---
+/** Returns { incidents, signals, links, embeddingModel, cardModel, note, cached }. Staff session only. */
+export async function fetchIncidents(token, hours = 48, fresh = false) {
+  const res = await fetch(`${BASE_URL}/v1/m/assistant/incidents?hours=${encodeURIComponent(hours)}${fresh ? '&fresh=1' : ''}`, { headers: getHeaders(token) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error_description || data.error || `HTTP ${res.status}`);
     err.status = res.status;
     err.data = data;
     throw err;
