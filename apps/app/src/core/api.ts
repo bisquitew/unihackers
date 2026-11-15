@@ -1,5 +1,6 @@
 // The app's one way to reach the API: where it is, who is asking, and the shared client built on both.
 import { NativeModules, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import { createApiClient } from '@hub/api-client';
 
 /**
@@ -18,9 +19,48 @@ export function apiBaseUrl(): string {
     const { protocol, hostname } = window.location;
     return `${protocol}//${hostname}:8000`;
   }
-  const scriptURL: string | undefined = NativeModules?.SourceCode?.scriptURL;
-  const origin = scriptURL?.match(/^(https?:\/\/[^/]+)/)?.[1];
-  return `${origin ?? 'http://localhost:8081'}/api`;
+  return `${devServerOrigin() ?? 'http://localhost:8081'}/api`;
+}
+
+/** Which source gave the dev server's address, for the Connection row in Settings. */
+export let apiBaseSource = 'default';
+
+/**
+ * The address the app was loaded from (the Expo dev server, over Wi-Fi or a tunnel). Several places know it, and which one
+ * answers depends on the React Native architecture, so they are tried in turn:
+ *  1. the script address, read the way React Native itself reads it (`getConstants()`; the old `.scriptURL` property
+ *     does not exist with the new architecture, which is why the app used to fall back to localhost on a phone);
+ *  2. the same value on the legacy module object;
+ *  3. the host Expo Go reports (`hostUri`), which is the tunnel or LAN address.
+ */
+function devServerOrigin(): string | null {
+  const fromUrl = (value: unknown): string | null => (typeof value === 'string' ? value.match(/^(https?:\/\/[^/]+)/)?.[1] ?? null : null);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const native = require('react-native/Libraries/NativeModules/specs/NativeSourceCode').default;
+    const url = fromUrl(native?.getConstants?.()?.scriptURL);
+    if (url) {
+      apiBaseSource = 'script address';
+      return url;
+    }
+  } catch {
+    /* not available in this build */
+  }
+  const legacy: any = NativeModules?.SourceCode;
+  const legacyUrl = fromUrl(legacy?.scriptURL ?? legacy?.getConstants?.()?.scriptURL);
+  if (legacyUrl) {
+    apiBaseSource = 'script address (legacy)';
+    return legacyUrl;
+  }
+  const host: string | undefined = Constants.expoConfig?.hostUri ?? (Constants as any).expoGoConfig?.debuggerHost;
+  if (host) {
+    const clean = host.replace(/^[a-z]+:\/\//, '').replace(/\/.*$/, '');
+    // a tunnel (*.expo.app, *.exp.direct) is served over https, a LAN address over plain http
+    const secure = /\.(expo\.app|exp\.direct)(:\d+)?$/.test(clean) || /:443$/.test(clean);
+    apiBaseSource = 'Expo host';
+    return `${secure ? 'https' : 'http'}://${clean.replace(/:443$/, '')}`;
+  }
+  return null;
 }
 
 // The session token, kept here (not in React state) so any module can attach it without being a component.

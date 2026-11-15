@@ -25,6 +25,19 @@
     box-shadow: 1px 1px 0 0 rgba(26,16,51,.08), 3px 4px 8px -3px rgba(26,16,51,.25); }
   .pin .foot { position: absolute; left: 15px; bottom: 0; width: 18px; height: 5px; border-radius: 50%; background: rgba(26,16,51,.20); filter: blur(2px); z-index: 0; }
   .pin .badge { position: absolute; right: -1px; top: -1px; width: 18px; height: 18px; border-radius: 50%; background: #fff; display: grid; place-items: center; box-shadow: 0 0 0 1px rgba(26,16,51,.10); z-index: 3; }
+  /* several people reported the same issue here: one bigger pin with an apricot ring, a slow halo and the number of reports */
+  .pin.hot { width: 68px; height: 80px; }
+  .pin.hot .disc { left: 4px; width: 60px; height: 60px; box-shadow: 0 0 0 4px #FF9A5C, 0 0 0 5px rgba(26,16,51,.12), 0 10px 18px -6px rgba(26,16,51,.38); }
+  .pin.hot .disc svg { width: 38px; height: 38px; }
+  .pin.hot .tip { left: 28px; top: 52px; width: 14px; height: 14px; background: #FF9A5C; }
+  .pin.hot .foot { left: 22px; width: 24px; }
+  .pin .halo { position: absolute; left: 4px; top: 0; width: 60px; height: 60px; border-radius: 50%; border: 3px solid #FF9A5C; z-index: 1; pointer-events: none; animation: hot-halo 2.4s ease-out infinite; }
+  .pin .count { position: absolute; right: -2px; top: -4px; min-width: 26px; height: 26px; padding: 0 7px; box-sizing: border-box; border-radius: 13px; background: #1A1033; color: #fff; z-index: 4;
+    display: grid; place-items: center; font: 800 14px/1 Nunito, system-ui, sans-serif; box-shadow: 0 0 0 2px #fff; }
+  @keyframes hot-halo { 0% { transform: scale(1); opacity: .75; } 80%, 100% { transform: scale(1.55); opacity: 0; } }
+  html[data-theme="night"] .pin.hot .disc { box-shadow: 0 0 0 4px #FFB88A, 0 0 22px rgba(255,185,102,.5), 0 8px 16px -6px rgba(0,0,0,.6); }
+  html[data-theme="night"] .pin .count { background: #FFD9A8; color: #1A1033; box-shadow: 0 0 0 2px #14091F; }
+  html[data-theme="night"] .pin.hot .tip { background: #FFB88A; }
   .pin.selected { z-index: 5; }
   .pin.selected .disc { transform: scale(1.15); box-shadow: 0 0 0 3px var(--ink), 0 12px 20px -8px rgba(26,16,51,.45); }
   .pin:focus-visible .disc { outline: 3px solid var(--ink); outline-offset: 2px; }
@@ -47,7 +60,7 @@
   #offline[hidden] { display: none; }
   #offline span { flex: 1; font-weight: 500; color: var(--muted); }
   #offline button { border: 0; border-radius: 999px; height: 40px; padding: 0 16px; background: #FF3D7F; color: #1A1033; font: 700 15px system-ui, sans-serif; cursor: pointer; }
-  @media (prefers-reduced-motion: reduce) { .pin .disc { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .pin .disc { transition: none; } .pin .halo { animation: none; opacity: .5; } }
 </style>
 </head>
 <body>
@@ -186,7 +199,8 @@
      Colour follows the app's hue-by-meaning: blue = getting around and water, mint = health and services, a ringed
      star = a landmark worth a look, a small plain dot = food and shops. */
   var POI_DOT = ['restaurant', 'cafe', 'bar', 'fast_food', 'bakery', 'grocery'];
-  var POI_HEALTH = ['pharmacy', 'hospital', 'dentist', 'doctors'];
+  // hospitals are drawn from the safe places list (see engine.js, setPins), with their own icon
+  var POI_HEALTH = ['pharmacy', 'dentist', 'doctors'];
   var POI_LANDMARK = ['attraction', 'monument', 'museum', 'castle', 'theatre', 'ruins', 'viewpoint', 'zoo'];
 
   function poiImage(kind) {
@@ -207,6 +221,27 @@
       g.beginPath(); g.moveTo(24, 10); g.bezierCurveTo(24, 10, 14, 22, 14, 29); g.arc(24, 29, 10, Math.PI, 0, true); g.bezierCurveTo(34, 22, 24, 10, 24, 10); g.closePath();
       g.fillStyle = BLUE; g.fill();
       g.beginPath(); g.ellipse(20.5, 29, 2.2, 4, 0.3, 0, Math.PI * 2); g.fillStyle = 'rgba(255,255,255,0.7)'; g.fill();
+    } else if (kind === 'hospital') {
+      // safe places: a white disc with a coloured ring and glyph, like the fountain. Hospital: mint cross.
+      disc(19, '#FFFFFF', MINT, 2.5);
+      g.fillStyle = MINT; g.fillRect(21.5, 13.5, 5, 21); g.fillRect(13.5, 21.5, 21, 5);
+    } else if (kind === 'police') {
+      // police: a blue shield
+      disc(19, '#FFFFFF', BLUE, 2.5);
+      g.beginPath(); g.moveTo(24, 12.5); g.lineTo(33, 16); g.lineTo(33, 25); g.bezierCurveTo(33, 30.5, 28.5, 34.5, 24, 36.5); g.bezierCurveTo(19.5, 34.5, 15, 30.5, 15, 25); g.lineTo(15, 16); g.closePath();
+      g.fillStyle = BLUE; g.fill();
+      g.beginPath();
+      for (var j = 0; j < 10; j++) { var rr = j % 2 ? 2.2 : 5.2, aa = -Math.PI / 2 + j * Math.PI / 5; g.lineTo(24 + rr * Math.cos(aa), 24.6 + rr * Math.sin(aa)); }
+      g.closePath(); g.fillStyle = '#FFFFFF'; g.fill();
+    } else if (kind === 'fire') {
+      // fire station: an apricot flame
+      var APRICOT = '#E2711D';
+      disc(19, '#FFFFFF', APRICOT, 2.5);
+      g.beginPath(); g.moveTo(24, 11); g.bezierCurveTo(26.5, 17, 33, 20, 33, 28); g.bezierCurveTo(33, 33.5, 28.5, 37, 24, 37); g.bezierCurveTo(19.5, 37, 15, 33.5, 15, 28);
+      g.bezierCurveTo(15, 24.5, 17, 22.5, 18.5, 21); g.bezierCurveTo(19, 23.5, 20.5, 25, 22, 25); g.bezierCurveTo(21, 20, 22, 14.5, 24, 11); g.closePath();
+      g.fillStyle = APRICOT; g.fill();
+      g.beginPath(); g.moveTo(24, 36); g.bezierCurveTo(21.2, 36, 19.5, 34, 19.5, 31.5); g.bezierCurveTo(19.5, 29, 22, 27.5, 24, 25.5); g.bezierCurveTo(26, 27.5, 28.5, 29, 28.5, 31.5); g.bezierCurveTo(28.5, 34, 26.8, 36, 24, 36); g.closePath();
+      g.fillStyle = '#FFE0CC'; g.fill();
     } else if (kind === 'health') {
       disc(18, MINT, '#FFFFFF', 2.5);
       g.fillStyle = '#FFFFFF'; g.fillRect(21, 14, 6, 20); g.fillRect(14, 21, 20, 6);
@@ -694,6 +729,91 @@
     } catch (e) { /* bridge not ready */ }
   }
 
+  /* ---------- safe places: small map icons (hospitals, police and fire stations), drawn like the fountains ----------
+     They come in through setPins like every other pin, but a pin with `symbol` is drawn as a symbol on the map instead of a
+     marker with a disc, so dozens of them do not crowd the map. Tapping one sends the same pinPress as a marker. */
+  var symbolPins = {};
+  function symbolGeoJSON() {
+    return {
+      type: 'FeatureCollection',
+      features: Object.keys(symbolPins).map(function (id) {
+        var p = symbolPins[id];
+        return { type: 'Feature', properties: { id: p.id, kind: p.symbol, title: p.title, selected: p.id === selectedId ? 1 : 0 }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } };
+      })
+    };
+  }
+  function ensureSymbolLayers() {
+    if (!map || !map.isStyleLoaded()) return;
+    if (!map.getSource('safe-places')) map.addSource('safe-places', { type: 'geojson', data: symbolGeoJSON() });
+    if (map.getLayer('safe-places-icon')) return;
+    var firstLabel = null;
+    try {
+      var ls = map.getStyle().layers;
+      for (var i = 0; i < ls.length; i++) if (ls[i].type === 'symbol') { firstLabel = ls[i].id; break; }
+    } catch (e) {}
+    // a ring behind the one that is picked
+    map.addLayer({ id: 'safe-places-picked', type: 'circle', source: 'safe-places', filter: ['==', ['get', 'selected'], 1],
+      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 14, 17, 26], 'circle-color': 'rgba(26,16,51,0.12)', 'circle-stroke-color': '#1A1033', 'circle-stroke-width': 2 } });
+    map.addLayer({ id: 'safe-places-icon', type: 'symbol', source: 'safe-places',
+      layout: {
+        'icon-image': ['concat', 'hop-poi-', ['get', 'kind']],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.5, 14, 0.72, 18, 1],
+        'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'text-field': ['step', ['zoom'], '', 15.2, ['get', 'title']], 'text-font': ['Noto Sans Bold'], 'text-size': 11.5, 'text-max-width': 8,
+        'text-anchor': 'top', 'text-offset': [0, 1.2], 'text-optional': true
+      },
+      paint: { 'text-color': activeTheme === 'night' ? '#F8F6FB' : '#1A1033', 'text-halo-color': activeTheme === 'night' ? '#14091F' : '#FFFFFF', 'text-halo-width': 1.6 } });
+  }
+  function refreshSymbols() {
+    ensureSymbolLayers();
+    var src = map && map.getSource && map.getSource('safe-places');
+    if (src && src.setData) src.setData(symbolGeoJSON());
+  }
+
+  /* ---------- directions: the route as a line, white edge under a blue core (blue = getting around) ---------- */
+  var routeCoords = null;
+  var routeFollow = false; // keep the whole route in view as the free area changes, until the person moves the map
+  var routeFitTimer = null;
+  function fitRoute() {
+    if (!map || !routeCoords || routeCoords.length < 2) return;
+    var b = new maplibregl.LngLatBounds(routeCoords[0], routeCoords[0]);
+    routeCoords.forEach(function (c) { b.extend(c); });
+    var pad = { top: insets.top + 70, right: insets.right + 40, bottom: insets.bottom + 40, left: insets.left + 40 };
+    try { map.fitBounds(b, { padding: pad, maxZoom: 17, duration: reduceMotion ? 0 : 700 }); } catch (e) {}
+  }
+  function routeGeoJSON() {
+    return { type: 'FeatureCollection', features: routeCoords && routeCoords.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: routeCoords } }] : [] };
+  }
+  function ensureRouteLayers() {
+    // not gated on isStyleLoaded(): that is false whenever tiles are still loading, which is exactly when a route arrives
+    if (!map || !map.getStyle || !map.getStyle()) return;
+    try {
+      if (!map.getSource('route')) map.addSource('route', { type: 'geojson', data: routeGeoJSON() });
+    } catch (e) { return; }
+    if (map.getLayer('route-line')) return;
+    var firstLabel = null;
+    try {
+      var ls = map.getStyle().layers;
+      for (var i = 0; i < ls.length; i++) if (ls[i].type === 'symbol') { firstLabel = ls[i].id; break; }
+    } catch (e) {}
+    var night = activeTheme === 'night';
+    map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': night ? '#14091F' : '#FFFFFF', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 7, 17, 15] } }, firstLabel || undefined);
+    map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': night ? '#9DB0FF' : '#3D5BFF', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 4, 17, 9] } }, firstLabel || undefined);
+  }
+  function paintRoute() {
+    ensureRouteLayers();
+    var src = map && map.getSource && map.getSource('route');
+    if (src && src.setData) src.setData(routeGeoJSON());
+  }
+  function setRoute(msg) {
+    routeCoords = msg.coords || null;
+    paintRoute();
+    routeFollow = !!(routeCoords && routeCoords.length > 1 && msg.fit !== false);
+    if (routeFollow) fitRoute();
+  }
+
   /* ---------- pins ---------- */
   function pinHtml(p) {
     var art = ART[p.art] || ART.note || '';
@@ -702,14 +822,15 @@
       : p.badge === 'lock'
       ? '<span class="badge" title="Private"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="#1A1033"/><path d="M5.2 7V5.4a2.8 2.8 0 0 1 5.6 0V7" fill="none" stroke="#1A1033" stroke-width="1.6"/></svg></span>'
       : '';
-    return '<span class="tip"></span><span class="disc"><svg viewBox="0 0 56 56" width="28" height="28" aria-hidden="true">' + art + '</svg></span>' + badge + '<span class="foot"></span>';
+    var hot = p.count > 1 ? '<span class="halo"></span><span class="count" aria-hidden="true">' + p.count + '</span>' : '';
+    return '<span class="tip"></span><span class="disc"><svg viewBox="0 0 56 56" width="28" height="28" aria-hidden="true">' + art + '</svg></span>' + hot + badge + '<span class="foot"></span>';
   }
 
   function makeMarker(p) {
     var el = document.createElement('button');
     el.type = 'button';
-    el.className = 'pin' + (p.id === selectedId ? ' selected' : '');
-    el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : ''));
+    el.className = 'pin' + (p.count > 1 ? ' hot' : '') + (p.id === selectedId ? ' selected' : '');
+    el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : '') + (p.count > 1 ? ', reported ' + p.count + ' times' : ''));
     el.innerHTML = pinHtml(p);
     el.addEventListener('click', function (ev) { ev.stopPropagation(); send({ type: 'pinPress', id: p.id }); });
     var marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(map);
@@ -717,6 +838,11 @@
   }
 
   function setPins(list) {
+    var plain = [];
+    symbolPins = {};
+    list.forEach(function (p) { if (p.symbol) symbolPins[p.id] = p; else plain.push(p); });
+    refreshSymbols();
+    list = plain;
     var next = {};
     list.forEach(function (p) { next[p.id] = p; });
     Object.keys(pins).forEach(function (id) {
@@ -725,11 +851,12 @@
     list.forEach(function (p) {
       var cur = pins[p.id];
       if (!cur) { pins[p.id] = makeMarker(p); return; }
-      var changed = cur.data.title !== p.title || cur.data.art !== p.art || cur.data.badge !== p.badge || cur.data.kindLabel !== p.kindLabel;
+      var changed = cur.data.title !== p.title || cur.data.art !== p.art || cur.data.badge !== p.badge || cur.data.kindLabel !== p.kindLabel || cur.data.count !== p.count;
       if (cur.data.lng !== p.lng || cur.data.lat !== p.lat) cur.marker.setLngLat([p.lng, p.lat]);
       if (changed) {
         cur.el.innerHTML = pinHtml(p);
-        cur.el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : ''));
+        cur.el.classList.toggle('hot', p.count > 1);
+        cur.el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : '') + (p.count > 1 ? ', reported ' + p.count + ' times' : ''));
       }
       cur.data = p;
     });
@@ -739,6 +866,7 @@
   function select(id) {
     if (selectedId && pins[selectedId]) pins[selectedId].el.classList.remove('selected');
     selectedId = id || null;
+    if (map && map.getSource && map.getSource('safe-places')) refreshSymbols();
     if (selectedId && pins[selectedId]) {
       pins[selectedId].el.classList.add('selected');
       pins[selectedId].marker.getElement().style.zIndex = 5;
@@ -760,6 +888,7 @@
     insets = { top: i.top || 0, right: i.right || 0, bottom: i.bottom || 0, left: i.left || 0 };
     document.documentElement.style.setProperty('--hub-bottom', insets.bottom + 'px');
     if (map) map.setPadding(insets);
+    if (routeFollow) { clearTimeout(routeFitTimer); routeFitTimer = setTimeout(fitRoute, 250); }
   }
 
   /* ---------- theme ---------- */
@@ -832,6 +961,7 @@
     if (!loaded && msg.type !== 'setTheme' && msg.type !== 'setReducedMotion' && msg.type !== 'setInsets') { queue.push(msg); return; }
     switch (msg.type) {
       case 'setPins': setPins(msg.pins || []); break;
+      case 'setRoute': setRoute(msg); break;
       case 'flyTo': flyTo(msg); break;
       case 'setCity': // the city this map shows: where it opens and how far it can be dragged
         START = { center: [msg.lng, msg.lat], zoom: msg.zoom };
@@ -881,16 +1011,20 @@
       if (rf && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.roofImage(rf[1], parseInt(rf[2], 10)), { pixelRatio: 2 });
     });
     map.on('styleimagemissing', function (ev) {
-      var p = /^hop-poi-(landmark|fountain|health|transit|dot)$/.exec(ev.id);
+      var p = /^hop-poi-(landmark|fountain|health|transit|dot|hospital|police|fire)$/.exec(ev.id);
       if (p && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.poiImage(p[1]), { pixelRatio: 2 });
     });
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     map.on('rotate', paintMe);
+    map.on('dragstart', function () { routeFollow = false; });
+    map.on('idle', function () { if (routeCoords && !map.getLayer('route-line')) paintRoute(); });
     map.touchZoomRotate.enableRotation();
 
     map.on('load', function () {
       loaded = true;
       ensureRadiusLayers();
+      refreshSymbols();
+      ensureRouteLayers();
       updateRadiusData(Object.keys(pins).map(function (k) { return pins[k].data; }));
       send({ type: 'ready', theme: activeTheme });
       var q = queue; queue = [];
@@ -899,12 +1033,19 @@
     map.on('styledata', function () {
       if (map && map.isStyleLoaded && map.isStyleLoaded()) {
         ensureRadiusLayers();
+        ensureSymbolLayers();
+        ensureRouteLayers();
         var s = map.getSource('area-radii');
         if (s && s.setData) {
           s.setData(currentRadiiGeoJSON);
         }
       }
     });
+    map.on('click', 'safe-places-icon', function (e) {
+      if (e.features && e.features[0] && e.features[0].properties) send({ type: 'pinPress', id: e.features[0].properties.id });
+    });
+    map.on('mouseenter', 'safe-places-icon', function () { var c = map.getCanvas(); if (c) c.style.cursor = 'pointer'; });
+    map.on('mouseleave', 'safe-places-icon', function () { var c = map.getCanvas(); if (c) c.style.cursor = ''; });
     map.on('click', 'area-radii-fill', function (e) {
       if (e.features && e.features[0] && e.features[0].properties && e.features[0].properties.id) {
         send({ type: 'pinPress', id: e.features[0].properties.id });

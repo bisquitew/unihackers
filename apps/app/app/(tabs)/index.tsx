@@ -30,6 +30,7 @@ const explore: { id: ModuleArtId; label: string; route?: string }[] = [
   { id: 'buddy', label: 'Buddy', route: '/m/buddy' },
   { id: 'forum', label: 'Forum', route: '/m/forum' },
   { id: 'assistant', label: 'Assistant', route: '/m/assistant' },
+  { id: 'dashboard', label: 'Audio tour', route: '/m/tour' },
   { id: 'wallet', label: 'Wallet', route: '/m/wallet' },
   { id: 'feedback', label: 'Feedback', route: '/m/feedback' },
   { id: 'visitorInfo', label: 'Visitor info', route: '/m/visitor-info' },

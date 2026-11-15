@@ -5,10 +5,17 @@ export interface ChatTurn {
   text: string;
 }
 
+/** Where the person is, roughly (rounded to about 100 m). Only sent when they chose to share it; never stored or logged. */
+export interface ApproxLocation {
+  latitude: number;
+  longitude: number;
+}
+
 export interface ChatInput {
   message: string;
   history: ChatTurn[];
   language: AssistantLanguage | null;
+  location?: ApproxLocation | null;
 }
 
 /**
@@ -17,6 +24,8 @@ export interface ChatInput {
  */
 export interface ToolContext {
   userSub: string | null;
+  /** the person's approximate location, when they shared it with this question; null otherwise */
+  location?: ApproxLocation | null;
 }
 
 export interface ToolUse {

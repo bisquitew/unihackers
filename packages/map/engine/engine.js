@@ -157,6 +157,91 @@
     } catch (e) { /* bridge not ready */ }
   }
 
+  /* ---------- safe places: small map icons (hospitals, police and fire stations), drawn like the fountains ----------
+     They come in through setPins like every other pin, but a pin with `symbol` is drawn as a symbol on the map instead of a
+     marker with a disc, so dozens of them do not crowd the map. Tapping one sends the same pinPress as a marker. */
+  var symbolPins = {};
+  function symbolGeoJSON() {
+    return {
+      type: 'FeatureCollection',
+      features: Object.keys(symbolPins).map(function (id) {
+        var p = symbolPins[id];
+        return { type: 'Feature', properties: { id: p.id, kind: p.symbol, title: p.title, selected: p.id === selectedId ? 1 : 0 }, geometry: { type: 'Point', coordinates: [p.lng, p.lat] } };
+      })
+    };
+  }
+  function ensureSymbolLayers() {
+    if (!map || !map.isStyleLoaded()) return;
+    if (!map.getSource('safe-places')) map.addSource('safe-places', { type: 'geojson', data: symbolGeoJSON() });
+    if (map.getLayer('safe-places-icon')) return;
+    var firstLabel = null;
+    try {
+      var ls = map.getStyle().layers;
+      for (var i = 0; i < ls.length; i++) if (ls[i].type === 'symbol') { firstLabel = ls[i].id; break; }
+    } catch (e) {}
+    // a ring behind the one that is picked
+    map.addLayer({ id: 'safe-places-picked', type: 'circle', source: 'safe-places', filter: ['==', ['get', 'selected'], 1],
+      paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 14, 17, 26], 'circle-color': 'rgba(26,16,51,0.12)', 'circle-stroke-color': '#1A1033', 'circle-stroke-width': 2 } });
+    map.addLayer({ id: 'safe-places-icon', type: 'symbol', source: 'safe-places',
+      layout: {
+        'icon-image': ['concat', 'hop-poi-', ['get', 'kind']],
+        'icon-size': ['interpolate', ['linear'], ['zoom'], 11, 0.5, 14, 0.72, 18, 1],
+        'icon-allow-overlap': true, 'icon-ignore-placement': true,
+        'text-field': ['step', ['zoom'], '', 15.2, ['get', 'title']], 'text-font': ['Noto Sans Bold'], 'text-size': 11.5, 'text-max-width': 8,
+        'text-anchor': 'top', 'text-offset': [0, 1.2], 'text-optional': true
+      },
+      paint: { 'text-color': activeTheme === 'night' ? '#F8F6FB' : '#1A1033', 'text-halo-color': activeTheme === 'night' ? '#14091F' : '#FFFFFF', 'text-halo-width': 1.6 } });
+  }
+  function refreshSymbols() {
+    ensureSymbolLayers();
+    var src = map && map.getSource && map.getSource('safe-places');
+    if (src && src.setData) src.setData(symbolGeoJSON());
+  }
+
+  /* ---------- directions: the route as a line, white edge under a blue core (blue = getting around) ---------- */
+  var routeCoords = null;
+  var routeFollow = false; // keep the whole route in view as the free area changes, until the person moves the map
+  var routeFitTimer = null;
+  function fitRoute() {
+    if (!map || !routeCoords || routeCoords.length < 2) return;
+    var b = new maplibregl.LngLatBounds(routeCoords[0], routeCoords[0]);
+    routeCoords.forEach(function (c) { b.extend(c); });
+    var pad = { top: insets.top + 70, right: insets.right + 40, bottom: insets.bottom + 40, left: insets.left + 40 };
+    try { map.fitBounds(b, { padding: pad, maxZoom: 17, duration: reduceMotion ? 0 : 700 }); } catch (e) {}
+  }
+  function routeGeoJSON() {
+    return { type: 'FeatureCollection', features: routeCoords && routeCoords.length > 1 ? [{ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: routeCoords } }] : [] };
+  }
+  function ensureRouteLayers() {
+    // not gated on isStyleLoaded(): that is false whenever tiles are still loading, which is exactly when a route arrives
+    if (!map || !map.getStyle || !map.getStyle()) return;
+    try {
+      if (!map.getSource('route')) map.addSource('route', { type: 'geojson', data: routeGeoJSON() });
+    } catch (e) { return; }
+    if (map.getLayer('route-line')) return;
+    var firstLabel = null;
+    try {
+      var ls = map.getStyle().layers;
+      for (var i = 0; i < ls.length; i++) if (ls[i].type === 'symbol') { firstLabel = ls[i].id; break; }
+    } catch (e) {}
+    var night = activeTheme === 'night';
+    map.addLayer({ id: 'route-casing', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': night ? '#14091F' : '#FFFFFF', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 7, 17, 15] } }, firstLabel || undefined);
+    map.addLayer({ id: 'route-line', type: 'line', source: 'route', layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': night ? '#9DB0FF' : '#3D5BFF', 'line-width': ['interpolate', ['linear'], ['zoom'], 11, 4, 17, 9] } }, firstLabel || undefined);
+  }
+  function paintRoute() {
+    ensureRouteLayers();
+    var src = map && map.getSource && map.getSource('route');
+    if (src && src.setData) src.setData(routeGeoJSON());
+  }
+  function setRoute(msg) {
+    routeCoords = msg.coords || null;
+    paintRoute();
+    routeFollow = !!(routeCoords && routeCoords.length > 1 && msg.fit !== false);
+    if (routeFollow) fitRoute();
+  }
+
   /* ---------- pins ---------- */
   function pinHtml(p) {
     var art = ART[p.art] || ART.note || '';
@@ -165,14 +250,15 @@
       : p.badge === 'lock'
       ? '<span class="badge" title="Private"><svg viewBox="0 0 16 16" width="10" height="10" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="#1A1033"/><path d="M5.2 7V5.4a2.8 2.8 0 0 1 5.6 0V7" fill="none" stroke="#1A1033" stroke-width="1.6"/></svg></span>'
       : '';
-    return '<span class="tip"></span><span class="disc"><svg viewBox="0 0 56 56" width="28" height="28" aria-hidden="true">' + art + '</svg></span>' + badge + '<span class="foot"></span>';
+    var hot = p.count > 1 ? '<span class="halo"></span><span class="count" aria-hidden="true">' + p.count + '</span>' : '';
+    return '<span class="tip"></span><span class="disc"><svg viewBox="0 0 56 56" width="28" height="28" aria-hidden="true">' + art + '</svg></span>' + hot + badge + '<span class="foot"></span>';
   }
 
   function makeMarker(p) {
     var el = document.createElement('button');
     el.type = 'button';
-    el.className = 'pin' + (p.id === selectedId ? ' selected' : '');
-    el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : ''));
+    el.className = 'pin' + (p.count > 1 ? ' hot' : '') + (p.id === selectedId ? ' selected' : '');
+    el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : '') + (p.count > 1 ? ', reported ' + p.count + ' times' : ''));
     el.innerHTML = pinHtml(p);
     el.addEventListener('click', function (ev) { ev.stopPropagation(); send({ type: 'pinPress', id: p.id }); });
     var marker = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.lng, p.lat]).addTo(map);
@@ -180,6 +266,11 @@
   }
 
   function setPins(list) {
+    var plain = [];
+    symbolPins = {};
+    list.forEach(function (p) { if (p.symbol) symbolPins[p.id] = p; else plain.push(p); });
+    refreshSymbols();
+    list = plain;
     var next = {};
     list.forEach(function (p) { next[p.id] = p; });
     Object.keys(pins).forEach(function (id) {
@@ -188,11 +279,12 @@
     list.forEach(function (p) {
       var cur = pins[p.id];
       if (!cur) { pins[p.id] = makeMarker(p); return; }
-      var changed = cur.data.title !== p.title || cur.data.art !== p.art || cur.data.badge !== p.badge || cur.data.kindLabel !== p.kindLabel;
+      var changed = cur.data.title !== p.title || cur.data.art !== p.art || cur.data.badge !== p.badge || cur.data.kindLabel !== p.kindLabel || cur.data.count !== p.count;
       if (cur.data.lng !== p.lng || cur.data.lat !== p.lat) cur.marker.setLngLat([p.lng, p.lat]);
       if (changed) {
         cur.el.innerHTML = pinHtml(p);
-        cur.el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : ''));
+        cur.el.classList.toggle('hot', p.count > 1);
+        cur.el.setAttribute('aria-label', p.title + (p.kindLabel ? ', ' + p.kindLabel : '') + (p.count > 1 ? ', reported ' + p.count + ' times' : ''));
       }
       cur.data = p;
     });
@@ -202,6 +294,7 @@
   function select(id) {
     if (selectedId && pins[selectedId]) pins[selectedId].el.classList.remove('selected');
     selectedId = id || null;
+    if (map && map.getSource && map.getSource('safe-places')) refreshSymbols();
     if (selectedId && pins[selectedId]) {
       pins[selectedId].el.classList.add('selected');
       pins[selectedId].marker.getElement().style.zIndex = 5;
@@ -223,6 +316,7 @@
     insets = { top: i.top || 0, right: i.right || 0, bottom: i.bottom || 0, left: i.left || 0 };
     document.documentElement.style.setProperty('--hub-bottom', insets.bottom + 'px');
     if (map) map.setPadding(insets);
+    if (routeFollow) { clearTimeout(routeFitTimer); routeFitTimer = setTimeout(fitRoute, 250); }
   }
 
   /* ---------- theme ---------- */
@@ -295,6 +389,7 @@
     if (!loaded && msg.type !== 'setTheme' && msg.type !== 'setReducedMotion' && msg.type !== 'setInsets') { queue.push(msg); return; }
     switch (msg.type) {
       case 'setPins': setPins(msg.pins || []); break;
+      case 'setRoute': setRoute(msg); break;
       case 'flyTo': flyTo(msg); break;
       case 'setCity': // the city this map shows: where it opens and how far it can be dragged
         START = { center: [msg.lng, msg.lat], zoom: msg.zoom };
@@ -344,16 +439,20 @@
       if (rf && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.roofImage(rf[1], parseInt(rf[2], 10)), { pixelRatio: 2 });
     });
     map.on('styleimagemissing', function (ev) {
-      var p = /^hop-poi-(landmark|fountain|health|transit|dot)$/.exec(ev.id);
+      var p = /^hop-poi-(landmark|fountain|health|transit|dot|hospital|police|fire)$/.exec(ev.id);
       if (p && !map.hasImage(ev.id)) map.addImage(ev.id, HubStyle.poiImage(p[1]), { pixelRatio: 2 });
     });
     map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-left');
     map.on('rotate', paintMe);
+    map.on('dragstart', function () { routeFollow = false; });
+    map.on('idle', function () { if (routeCoords && !map.getLayer('route-line')) paintRoute(); });
     map.touchZoomRotate.enableRotation();
 
     map.on('load', function () {
       loaded = true;
       ensureRadiusLayers();
+      refreshSymbols();
+      ensureRouteLayers();
       updateRadiusData(Object.keys(pins).map(function (k) { return pins[k].data; }));
       send({ type: 'ready', theme: activeTheme });
       var q = queue; queue = [];
@@ -362,12 +461,19 @@
     map.on('styledata', function () {
       if (map && map.isStyleLoaded && map.isStyleLoaded()) {
         ensureRadiusLayers();
+        ensureSymbolLayers();
+        ensureRouteLayers();
         var s = map.getSource('area-radii');
         if (s && s.setData) {
           s.setData(currentRadiiGeoJSON);
         }
       }
     });
+    map.on('click', 'safe-places-icon', function (e) {
+      if (e.features && e.features[0] && e.features[0].properties) send({ type: 'pinPress', id: e.features[0].properties.id });
+    });
+    map.on('mouseenter', 'safe-places-icon', function () { var c = map.getCanvas(); if (c) c.style.cursor = 'pointer'; });
+    map.on('mouseleave', 'safe-places-icon', function () { var c = map.getCanvas(); if (c) c.style.cursor = ''; });
     map.on('click', 'area-radii-fill', function (e) {
       if (e.features && e.features[0] && e.features[0].properties && e.features[0].properties.id) {
         send({ type: 'pinPress', id: e.features[0].properties.id });

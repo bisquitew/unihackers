@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { BackLink, Row, RowGroup, Screen, Section, Text, colors, icons, minTarget, moduleArt } from '@hub/ui';
+import { BackLink, Row, RowGroup, Screen, Section, Text, colors, icons, minTarget, moduleArt, tr } from '@hub/ui';
 import { useAlerts } from '../../src/core/alerts';
 import type { AlertItem } from '../../src/core/mock/alerts';
 
@@ -33,7 +33,7 @@ export default function AlertsScreen() {
         <Text variant="heading" accessibilityRole="header" style={{ paddingHorizontal: 4 }}>
           Alerts
         </Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Alert settings" style={styles.settings}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tr('Alert settings')} style={styles.settings}>
           <icons.SlidersHorizontal size={24} weight="bold" color={colors.foreground} />
         </Pressable>
       </View>

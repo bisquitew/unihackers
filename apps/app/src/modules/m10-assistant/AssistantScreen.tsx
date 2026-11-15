@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BackLink, Chip, IconButton, Row, RowGroup, Text, TextButton, colors, fonts, icons, moduleArt, radii, useKeyboardHeight, tr } from '@hub/ui';
 import { registeredModuleManifests } from '../index';
+import { getApproxLocation } from '../../core/location';
 import { sendChat, type ChatTurn, type ToolUse } from './api';
 import { ListenButton } from './voice/ListenButton';
 import { guessLang, speak, startRecording, stopSpeaking, transcribe, voiceAvailable, webVoiceSupported, type Recording } from './voice/voiceClient';
@@ -41,6 +42,9 @@ export function AssistantScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  // "Use my location": off by default; when on, a rough position (about 100 m) goes along with each question, only for that answer
+  const [shareLocation, setShareLocation] = useState(false);
+  const [locationNote, setLocationNote] = useState('');
   const [error, setError] = useState<{ text: string; failedMessage: string } | null>(null);
   const scrollRef = useRef<ScrollViewInstance>(null);
 
@@ -73,7 +77,8 @@ export function AssistantScreen() {
     setError(null);
     setLoading(true);
     try {
-      const { reply, toolsUsed } = await sendChat(message, history);
+      const where = shareLocation ? await getApproxLocation() : null;
+      const { reply, toolsUsed } = await sendChat(message, history, where);
       setMessages((current) => [...current, { id: newId(), role: 'model', text: reply, toolsUsed }]);
       if (autoReadRef.current) {
         speak(reply, guessLang(reply)).catch((e) => setVoiceError(e instanceof Error ? e.message : 'Voice is not available right now.'));
@@ -108,8 +113,8 @@ export function AssistantScreen() {
     try {
       recording.current = await startRecording(() => void toggleMicRef.current());
       setMic('recording');
-    } catch {
-      setVoiceError('I cannot use the microphone. Check the browser permission.');
+    } catch (e) {
+      setVoiceError(e instanceof Error && e.message ? e.message : 'I cannot use the microphone. Check the permission.');
     }
   };
   const toggleMicRef = useRef(toggleMic);
@@ -134,6 +139,7 @@ export function AssistantScreen() {
         <Text variant="heading" accessibilityRole="header">
           City assistant
         </Text>
+        <TextButton label="Audio tour of the city centre" size="md" onPress={() => router.push('/m/tour' as never)} />
       </View>
 
       <ScrollView
@@ -205,6 +211,33 @@ export function AssistantScreen() {
         ) : null}
       </ScrollView>
 
+      <View style={styles.voiceRow}>
+        <Text variant="rowDetail" color="mutedForeground">
+          Use my location
+        </Text>
+        <Switch
+          value={shareLocation}
+          onValueChange={async (v) => {
+            setLocationNote('');
+            if (!v) return setShareLocation(false);
+            const fix = await getApproxLocation();
+            setShareLocation(!!fix);
+            if (!fix) setLocationNote('Location is off for hop. Turn it on in your phone settings to use this.');
+          }}
+          accessibilityLabel={tr('Use my location')}
+          trackColor={{ false: colors.secondaryPressed, true: colors.success }}
+          thumbColor="#FFFFFF"
+        />
+      </View>
+      {shareLocation ? (
+        <Text variant="caption" color="mutedForeground" style={styles.note}>
+          Sent with your questions, rounded to about 100 m, and never stored.
+        </Text>
+      ) : locationNote ? (
+        <Text variant="caption" color="danger" style={styles.note}>
+          {locationNote}
+        </Text>
+      ) : null}
       {voiceOn ? (
         <View style={styles.voiceRow}>
           <Text variant="rowDetail" color="mutedForeground">

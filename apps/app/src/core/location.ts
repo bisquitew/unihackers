@@ -65,3 +65,18 @@ export function useMyLocation() {
 
   return { location, status, start };
 }
+
+/**
+ * One rough fix for the assistant ("what is near me?"): asks permission if needed, takes a single low-accuracy reading
+ * and rounds it to about 100 m. Nothing keeps following the person, and the result is only sent with the question.
+ */
+export async function getApproxLocation(): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const permission = await Location.requestForegroundPermissionsAsync();
+    if (permission.status !== 'granted') return null;
+    const fix = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Low });
+    return { latitude: Math.round(fix.coords.latitude * 1000) / 1000, longitude: Math.round(fix.coords.longitude * 1000) / 1000 };
+  } catch {
+    return null;
+  }
+}

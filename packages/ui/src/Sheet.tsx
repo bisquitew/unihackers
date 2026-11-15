@@ -2,6 +2,7 @@ import * as React from 'react';
 import { AccessibilityInfo, Animated, Dimensions, Easing, Keyboard, Modal, PanResponder, Platform, Pressable, StyleSheet, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radii } from './tokens';
+import { tr } from './locale';
 
 type SheetProps = {
   visible: boolean;
@@ -111,10 +112,10 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
   if (!mounted) return null;
   const body = (
     <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-      {scrim ? <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={onClose} style={styles.scrim} /> : null}
+      {scrim ? <Pressable accessibilityLabel={tr('Close')} accessibilityRole="button" onPress={onClose} style={styles.scrim} /> : null}
       <Animated.View
         accessibilityViewIsModal={scrim}
-        accessibilityLabel={accessibilityLabel}
+        accessibilityLabel={tr(accessibilityLabel)}
         onLayout={onLayout}
         style={[
           styles.sheet,
@@ -128,7 +129,7 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
         ]}
       >
         <View {...pan.panHandlers} style={styles.handleArea}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close" accessibilityHint="Drag down to close" onPress={onClose} style={styles.handleHit}>
+          <Pressable accessibilityRole="button" accessibilityLabel={tr('Close')} accessibilityHint={tr('Drag down to close')} onPress={onClose} style={styles.handleHit}>
             <View style={styles.grab} />
           </Pressable>
         </View>
@@ -151,7 +152,7 @@ export function Sheet({ visible, onClose, scrim = true, onHeight, bottomOffset =
 }
 
 const styles = StyleSheet.create({
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(26, 16, 51, 0.34)' },
+  scrim: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(26, 16, 51, 0.34)' },
   sheet: {
     position: 'absolute',
     left: 0,

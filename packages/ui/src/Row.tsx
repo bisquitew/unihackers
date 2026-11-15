@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { colors, palette } from './tokens';
 import { Text } from './Text';
+import { tr } from './locale';
 
 /**
  * The main list pattern: a hairline list on a plain page, no cards.
@@ -25,7 +26,7 @@ function RowRoot({ children, onPress, accessibilityLabel }: RowProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={accessibilityLabel ? tr(accessibilityLabel) : accessibilityLabel}
       onPress={onPress}
       style={({ pressed }) => (pressed ? { backgroundColor: colors.hairline } : undefined)}
     >
@@ -48,10 +49,10 @@ const Time = ({ children }: { children: React.ReactNode }) => (
     {children}
   </Text>
 );
-const NewDot = () => <View accessible accessibilityLabel="New" style={styles.newDot} />;
+const NewDot = () => <View accessible accessibilityLabel={tr('New')} style={styles.newDot} />;
 /** A tiny progress meter, value 0..1. */
 const Meter = ({ value, label }: { value: number; label?: string }) => (
-  <View accessible accessibilityLabel={label} style={styles.meterTrack}>
+  <View accessible accessibilityLabel={label ? tr(label) : label} style={styles.meterTrack}>
     <View style={[styles.meterFill, { width: `${Math.round(Math.min(Math.max(value, 0), 1) * 100)}%` }]} />
   </View>
 );

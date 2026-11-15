@@ -5,7 +5,7 @@ BASE_DIR = Path(__file__).resolve().parent
 
 class VisionConfig:
     BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
-    LOT_ID = os.getenv("LOT_ID", "lot-unirii-01")
+    LOT_ID = os.getenv("LOT_ID", "lot-iulius-p5-09")
     MODEL_PATH = os.getenv("MODEL_PATH", "yolov8n.pt")
     
     # Detection classes for vehicles (COCO indices: 2=car, 3=motorcycle, 5=bus, 7=truck, 1=bicycle)

@@ -2,6 +2,7 @@
 // Hue meaning (same as the rest of hop): blue = getting around and information, mint = people and services,
 // apricot = safety and warnings. Every chart also states its numbers as text, so it can be read without seeing it.
 import { esc } from '../ui.js';
+import { tr } from '../i18n.js';
 
 /** The part of the app each module belongs to, as a hue. */
 const HUE = {
@@ -46,7 +47,7 @@ export function donut(items, { title, centre } = {}) {
     offset -= len;
     return { svg, hue, opacity };
   });
-  const aria = `${title || 'Chart'}: ${items.map((i) => `${i.label} ${i.value}%`).join(', ')}`;
+  const aria = `${tr(title || 'Chart')}: ${items.map((i) => `${tr(i.label)} ${i.value}%`).join(', ')}`;
   return `<div class="donut">
     <svg viewBox="0 0 42 42" role="img" aria-label="${esc(aria)}"><circle cx="21" cy="21" r="15.9155" fill="none" stroke-width="6" style="stroke:var(--hair)"/>${arcs.map((a) => a.svg).join('')}</svg>
     ${centre ? `<div class="donut-centre"><b>${esc(centre.big)}</b><span>${esc(centre.small)}</span></div>` : ''}
@@ -57,7 +58,7 @@ export function donut(items, { title, centre } = {}) {
 /** Horizontal bars. `rows`: [{ label, value, hue? }]; `max` is the value that fills the bar; `format` writes the number. */
 export function bars(rows, { max = 100, format = (v) => `${v}%`, title } = {}) {
   if (!rows.length) return '';
-  const aria = `${title || 'Chart'}: ${rows.map((r) => `${r.label} ${format(r.value)}`).join(', ')}`;
+  const aria = `${tr(title || 'Chart')}: ${rows.map((r) => `${tr(r.label)} ${format(r.value)}`).join(', ')}`;
   return `<div class="bars" role="img" aria-label="${esc(aria)}">${rows.map((r) => `
     <div class="bar-row"><span class="bar-label">${esc(r.label)}</span>
       <div class="bar-track"><i style="width:${Math.max(2, Math.min(100, (r.value / max) * 100))}%;background:${colorVar(r.hue || 'blue')}"></i></div>
@@ -67,7 +68,7 @@ export function bars(rows, { max = 100, format = (v) => `${v}%`, title } = {}) {
 /** Vertical columns. `cols`: [{ label, value, hue? }]. */
 export function columns(cols, { max = 100, format = (v) => `${v}%`, title } = {}) {
   if (!cols.length) return '';
-  const aria = `${title || 'Chart'}: ${cols.map((c) => `${c.label} ${format(c.value)}`).join(', ')}`;
+  const aria = `${tr(title || 'Chart')}: ${cols.map((c) => `${tr(c.label)} ${format(c.value)}`).join(', ')}`;
   return `<div class="cols-chart" role="img" aria-label="${esc(aria)}">${cols.map((c) => `
     <div class="col-item"><b>${esc(format(c.value))}</b>
       <div class="col-track"><i style="height:${Math.max(2, Math.min(100, (c.value / max) * 100))}%;background:${colorVar(c.hue || 'blue')}"></i></div>

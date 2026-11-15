@@ -300,12 +300,13 @@ export async function fetchBuddyRequests() {
 
 
 // --- M10 ASSISTANT ---
-export async function askAssistant(message, history = []) {
+/** `location` ({ latitude, longitude }) is only given when the person chose to share it with this question. */
+export async function askAssistant(message, history = [], location = null) {
   try {
     const res = await fetch(`${BASE_URL}/v1/m/assistant/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({ message, history, ...(location ? { location } : {}) }),
     });
     return await res.json();
   } catch (err) {

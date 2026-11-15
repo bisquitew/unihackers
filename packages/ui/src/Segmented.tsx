@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { colors, minTarget, radii, shadows } from './tokens';
 import { Text } from './Text';
+import { tr } from './locale';
 
 export type SegmentedOption<T extends string = string> = { id: T; label: string };
 
@@ -19,7 +20,7 @@ type SegmentedProps<T extends string> = {
  */
 export function Segmented<T extends string>({ options, value, onChange, accessibilityLabel }: SegmentedProps<T>) {
   return (
-    <View accessibilityRole="tablist" accessibilityLabel={accessibilityLabel} style={styles.track}>
+    <View accessibilityRole="tablist" accessibilityLabel={tr(accessibilityLabel)} style={styles.track}>
       {options.map((o) => {
         const active = o.id === value;
         return (
@@ -27,7 +28,7 @@ export function Segmented<T extends string>({ options, value, onChange, accessib
             key={o.id}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={o.label}
+            accessibilityLabel={tr(o.label)}
             onPress={() => !active && onChange(o.id)}
             style={({ pressed }) => [styles.item, active && styles.itemActive, pressed && !active && { backgroundColor: colors.hairline }]}
           >

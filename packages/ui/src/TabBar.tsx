@@ -7,6 +7,7 @@ import { colors, radii, shadows } from './tokens';
 import { isDark } from './theme';
 import { Text } from './Text';
 import { House, MapTrifold, ChatsCircle, UserCircle } from './icons';
+import { tr } from './locale';
 
 // Structural subset of React Navigation's BottomTabBarProps, so this package does not depend on it.
 type TabBarProps = {
@@ -65,7 +66,7 @@ export function FloatingTabBar({ state, descriptors, navigation, onTabPress, blu
               key={route.key}
               accessibilityRole="tab"
               accessibilityState={{ selected: focused }}
-              accessibilityLabel={descriptors[route.key]?.options.tabBarAccessibilityLabel ?? cfg.label}
+              accessibilityLabel={tr(descriptors[route.key]?.options.tabBarAccessibilityLabel ?? cfg.label)}
               onPress={onPress}
               style={[styles.item, focused && styles.itemActive]}
             >
@@ -93,7 +94,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     boxShadow: shadows.float,
   } as any,
-  tint: { ...StyleSheet.absoluteFillObject, backgroundColor: isDark ? 'rgba(32, 18, 58, 0.72)' : 'rgba(255, 255, 255, 0.6)' },
+  tint: { ...StyleSheet.absoluteFill, backgroundColor: isDark ? 'rgba(32, 18, 58, 0.72)' : 'rgba(255, 255, 255, 0.6)' },
   item: { minWidth: 64, height: 54, borderRadius: 22, alignItems: 'center', justifyContent: 'center', gap: 3, paddingHorizontal: 4 },
   itemActive: { backgroundColor: colors.navActive },
   label: { fontFamily: 'Figtree_600SemiBold', fontSize: 11, lineHeight: 12 },

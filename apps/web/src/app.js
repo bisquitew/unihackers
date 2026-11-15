@@ -29,7 +29,7 @@ export async function initApp() {
   window.addEventListener('hop-theme', renderHeader);
   // the Profile settings changed the saved theme: apply it, then tell the map and header
   window.addEventListener('hop-set-theme', () => { applyTheme(); window.dispatchEvent(new Event('hop-theme')); });
-  window.addEventListener('hop-lang', renderHeader);
+  window.addEventListener('hop-lang', () => { renderHeader(); show(activeTab, false, true); });
   window.addEventListener('hop-refresh', () => show(activeTab, false, true));
   window.addEventListener('hashchange', () => show(tabFromHash(), false));
   onAuthChange(() => {

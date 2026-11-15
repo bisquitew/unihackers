@@ -1,9 +1,70 @@
-import { TIMISOARA_AREAS } from '../../core/areas.ts';
+import { TIMISOARA_AREAS, calculateDistanceMeters } from '../../core/areas.ts';
+import type { ToolContext } from '../m10-assistant/types.ts';
 import { HOURS_MAX, parseType, resolveArea } from './validation.ts';
 import { TYPE_LABELS, isNight, safetyService } from './service.ts';
 import { SAFETY_TYPES } from './types.ts';
+import { EMERGENCY_NUMBER, SAFE_PLACE_LABEL, describeSafePlace, nearestSafePlaces, safePlaces, type SafePlaceKind } from '../../core/safe-places.ts';
 
 export const safetyAssistantTools = [
+  {
+    name: 'find_safe_places',
+    description:
+      'The safe places in Timișoara where a person can get help: hospitals (with emergency care where known), police stations and fire stations, each with its address where known and how far it is from a given spot. Use it for "where is the nearest hospital / police / fire station", "where can I go if I feel unsafe", "is there a safe place near X". Give a neighbourhood name in "near" to sort by distance. When the user says "near me", "around me" or "where I am", set near_me to true: it uses the approximate location the user chose to share with this question (the tool tells you if they have not). Without near or near_me the list is not sorted by distance. All of them can be reached through the emergency number 112.',
+    parameters: {
+      type: 'object',
+      properties: {
+        kind: { type: 'string', enum: ['hospital', 'police', 'fire'], description: 'Only this kind of place. Leave empty for all three.' },
+        near: { type: 'string', description: 'Neighbourhood name to measure from, e.g. "Iosefin", "Gara de Nord", "Complex Studențesc". Leave empty for the whole city.' },
+        near_me: { type: 'boolean', description: 'true when the user asks about places near them ("near me", "around me", "where I am"). Uses their shared approximate location.' },
+        limit: { type: 'integer', description: 'How many places to return (1–10). Default 3 when "near" or near_me is used, otherwise 10.' },
+      },
+    },
+    handler: async (args: { kind?: string; near?: string; near_me?: boolean; limit?: number }, ctx?: ToolContext) => {
+      if (args.kind && !['hospital', 'police', 'fire'].includes(args.kind)) return { error: 'kind must be hospital, police or fire' };
+      const kind = args.kind as SafePlaceKind | undefined;
+      const wanted = Number.isInteger(args.limit) ? Math.max(1, Math.min(10, args.limit as number)) : undefined;
+      let from: { name: string; lat: number; lng: number } | null = null;
+      let usedMyLocation = false;
+      if (args.near_me && !(args.near && args.near.trim())) {
+        const loc = ctx?.location;
+        if (!loc) {
+          return {
+            needsLocation: true,
+            note: 'The user has not shared their location with this question. Tell them they can turn on "Use my location" in the assistant (it is only used for this question and is never stored), or name a neighbourhood instead. Do not guess where they are.',
+          };
+        }
+        // far from the city: say so instead of listing places that are many kilometres away as if they were close
+        const awayKm = calculateDistanceMeters(loc.latitude, loc.longitude, 45.7537, 21.2257) / 1000;
+        if (awayKm > 30) {
+          return { outsideTimisoara: true, kilometresFromCentre: Math.round(awayKm), note: 'The shared location is not in Timișoara, so these safe places would be far away. Tell the user, and offer to look near a Timișoara neighbourhood instead.' };
+        }
+        from = { name: 'your approximate location', lat: loc.latitude, lng: loc.longitude };
+        usedMyLocation = true;
+      } else if (args.near && args.near.trim()) {
+        const area = resolveArea(args.near);
+        if (!area) return { error: `Unknown area "${args.near}"`, knownAreas: TIMISOARA_AREAS.map((a) => a.name) };
+        from = { name: area.name, lat: area.center_lat, lng: area.center_lng };
+      }
+      const places = from
+        ? nearestSafePlaces(from.lat, from.lng, { kind, limit: wanted ?? 3 })
+        : safePlaces.filter((p) => !kind || p.kind === kind).slice(0, wanted ?? 10).map((p) => ({ ...p, distance_meters: null as number | null }));
+      return {
+        emergencyNumber: EMERGENCY_NUMBER,
+        measuredFrom: from ? (usedMyLocation ? 'your approximate location (shared by you for this question, rounded to about 100 m)' : `the centre of ${from.name}`) : null,
+        places: places.map((p) => ({
+          name: p.name,
+          kind: SAFE_PLACE_LABEL[p.kind],
+          emergencyCare: p.kind === 'hospital' ? p.emergency : undefined,
+          street: p.street,
+          distanceMeters: p.distance_meters,
+          latitude: p.latitude,
+          longitude: p.longitude,
+          summary: describeSafePlace(p),
+        })),
+        note: 'These are the main hospitals, police stations and fire stations inside the city, from OpenStreetMap. In an emergency, call 112 first. They are shown on the map as safe places.',
+      };
+    },
+  },
   {
     name: 'get_safety_reports',
     description:

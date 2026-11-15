@@ -2,6 +2,7 @@ import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { colors, palette } from './tokens';
 import { Text } from './Text';
+import { tr } from './locale';
 
 export type TimelineStep = { state: 'done' | 'now' | 'next'; title: string; note?: string };
 
@@ -10,7 +11,7 @@ export function Timeline({ steps }: { steps: TimelineStep[] }) {
   return (
     <View accessibilityRole="list">
       {steps.map((s, i) => (
-        <View key={i} style={styles.item} accessible accessibilityLabel={`${s.title}${s.note ? ', ' + s.note : ''}, ${s.state === 'done' ? 'done' : s.state === 'now' ? 'in progress' : 'upcoming'}`}>
+        <View key={i} style={styles.item} accessible accessibilityLabel={`${tr(s.title)}${s.note ? ', ' + tr(s.note) : ''}, ${tr(s.state === 'done' ? 'done' : s.state === 'now' ? 'in progress' : 'upcoming')}`}>
           <View style={styles.rail}>
             <View style={[styles.dot, s.state === 'done' && styles.done, s.state === 'now' && styles.now, s.state === 'next' && styles.next]} />
             {i < steps.length - 1 ? <View style={styles.line} /> : null}

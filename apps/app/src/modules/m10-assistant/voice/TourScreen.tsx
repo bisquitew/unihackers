@@ -84,7 +84,7 @@ export function TourScreen() {
       ) : null}
       {!voice && !loading ? (
         <Text variant="rowDetail" color="mutedForeground" style={{ marginTop: 12 }}>
-          {ro ? 'Vocea funcționează deocamdată în browser. Poți citi textul mai jos.' : 'Voice works in the browser for now. You can read the text below.'}
+          {ro ? 'Vocea nu este disponibilă acum. Poți citi textul mai jos.' : 'Voice is not available right now. You can read the text below.'}
         </Text>
       ) : null}
 

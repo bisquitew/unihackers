@@ -177,7 +177,7 @@ export function ForumScreen({ embedded }: { embedded?: boolean }) {
                   <Text variant="body" style={{ marginTop: 4 }}>
                     {post.content}
                   </Text>
-                  {post.photos[0] ? <Image source={{ uri: post.photos[0] }} accessibilityLabel={`Photo for ${post.title}`} style={styles.photo} /> : null}
+                  {post.photos[0] ? <Image source={{ uri: post.photos[0] }} accessibilityLabel={tr(`Photo for ${post.title}`)} style={styles.photo} /> : null}
                   {post.isReported ? (
                     <Text variant="rowDetail" color="warning" style={{ marginTop: 8 }}>
                       {moderation ? `Flagged ${post.reportCount} ${post.reportCount === 1 ? 'time' : 'times'}: ${post.reportReason || 'Flagged by residents'}` : 'Flagged for review'}
@@ -282,7 +282,7 @@ export function ForumScreen({ embedded }: { embedded?: boolean }) {
 function Pill({ label, text, icon, onPress, active }: { label: string; text: string; icon: (color: string) => React.ReactNode; onPress: () => void; active?: boolean }) {
   const fg = active ? colors.inverseForeground : colors.foreground;
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ selected: !!active }} onPress={onPress} hitSlop={{ top: 4, bottom: 4 }} style={({ pressed }) => [styles.pill, active && styles.pillOn, pressed && { opacity: 0.7 }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={tr(label)} accessibilityState={{ selected: !!active }} onPress={onPress} hitSlop={{ top: 4, bottom: 4 }} style={({ pressed }) => [styles.pill, active && styles.pillOn, pressed && { opacity: 0.7 }]}>
       {icon(fg)}
       <Text variant="label" style={{ color: fg }}>
         {text}

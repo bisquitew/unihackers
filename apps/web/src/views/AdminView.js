@@ -4,7 +4,7 @@ import {
   fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
   parseNoticePhoto, confirmNotice, hubGet, askAnalyst,
 } from '../api.js';
-import { getLang } from '../i18n.js';
+import { dateLocale, getLang, tr } from '../i18n.js';
 import { createLotEditor } from '../components/ParkieLotEditor.js';
 import { bars, columns, donut, hueOf, moduleLabel } from '../components/charts.js';
 import { EXAMPLE_ANALYTICS } from '../components/analyticsExample.js';
@@ -45,15 +45,18 @@ export async function render(ctx) {
   </div>`;
 }
 
+let dashOpen = 'overview';
+
 export function mount(ctx, { showToast } = {}) {
   const body = document.getElementById('dashBody');
   const nav = document.querySelectorAll('.dash-nav [data-section]');
-  let open = 'overview';
+  let open = dashOpen; // kept across redraws, so changing the language keeps the section
   let token = 0;
   let sectionCleanup = () => {};
 
   const draw = async () => {
     const mine = ++token;
+    dashOpen = open;
     sectionCleanup();
     sectionCleanup = () => {};
     nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
@@ -413,8 +416,8 @@ const analyst = {
       <h1 class="page-title">Ask the data</h1>
       <p class="page-sub">Ask about parking, air, noise, smells or safety reports. Gemini fetches the real numbers from Tiger Cloud and the city's modules, runs its own Python on them and draws a chart.</p>
       <form class="stack section" id="anForm" style="max-width:760px">
-        <label class="field"><span>Your question</span><textarea id="anQ" rows="3" maxlength="500" required placeholder="${esc(ANALYST_EXAMPLES[0])}"></textarea></label>
-        <div class="chips" id="anExamples">${ANALYST_EXAMPLES.map((q, i) => `<button type="button" class="chip" data-q="${i}">${esc(q)}</button>`).join('')}</div>
+        <label class="field"><span>Your question</span><textarea id="anQ" rows="3" maxlength="500" required placeholder="${esc(tr(ANALYST_EXAMPLES[0]))}"></textarea></label>
+        <div class="chips" id="anExamples">${ANALYST_EXAMPLES.map((q, i) => `<button type="button" class="chip" data-q="${i}">${esc(tr(q))}</button>`).join('')}</div>
         ${mfa ? '' : '<div class="mfa warn"><span>Staff tools need a second check first.</span><button class="btn btn-secondary btn-sm" type="button" id="anMfa">Verify with passkey</button></div>'}
         <div><button class="btn btn-primary" type="submit" id="anAsk">Ask</button></div>
       </form>
@@ -427,7 +430,7 @@ const analyst = {
     let alive = true;
     $('anMfa')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); redraw(); });
     document.querySelectorAll('#anExamples [data-q]').forEach((b) => b.addEventListener('click', () => {
-      $('anQ').value = ANALYST_EXAMPLES[Number(b.dataset.q)];
+      $('anQ').value = tr(ANALYST_EXAMPLES[Number(b.dataset.q)]);
       $('anQ').focus();
     }));
 
@@ -617,7 +620,7 @@ const parking = {
 // The feedback summed up: averages and shares, drawn as charts. Nothing here says how many people answered.
 let showExample = false;
 const oneDecimal = (n) => Number(n).toFixed(1);
-const shortDate = (iso) => new Date(iso).toLocaleDateString([], { day: 'numeric', month: 'short' });
+const shortDate = (iso) => new Date(iso).toLocaleDateString(dateLocale(), { day: 'numeric', month: 'short' });
 
 const analytics = {
   async render() {
@@ -729,7 +732,7 @@ const security = {
       <div class="list section">${logs.map((l) => row({
         title: esc(l.action),
         detail: `${esc(l.user_email || 'Anonymous')} · ${esc(l.user_role || 'guest')}`,
-        side: `<span class="tag ${String(l.outcome).toLowerCase().startsWith('allow') || String(l.outcome).toLowerCase() === 'success' ? 'mint' : 'apricot'}">${esc(statusText(l.outcome || ''))}</span> <span class="muted" style="font-size:13px">${esc(new Date(l.created_at).toLocaleTimeString())}</span>`,
+        side: `<span class="tag ${String(l.outcome).toLowerCase().startsWith('allow') || String(l.outcome).toLowerCase() === 'success' ? 'mint' : 'apricot'}">${esc(statusText(l.outcome || ''))}</span> <span class="muted" style="font-size:13px">${esc(l.created_at && !Number.isNaN(new Date(l.created_at).getTime()) ? new Date(l.created_at).toLocaleTimeString(dateLocale()) : '')}</span>`,
       })).join('') || '<div class="empty">Nothing logged yet.</div>'}</div>`;
   },
 };

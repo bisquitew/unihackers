@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { AccessibilityInfo, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, View, type LayoutChangeEvent } from 'react-native';
+import { AccessibilityInfo, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, View, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -8,12 +8,14 @@ import {
   PinArtByKey,
   type PinArtKey,
   allowedVisibilities,
+  canNavigateTo,
   effectiveVisibility,
   parseMapLink,
   pinKinds,
   userCreatableKinds,
   useCommunityPins,
   usePersonalPins,
+  groupSimilarReports,
   type Coordinate,
   type MapFocus,
   type MapLayer,
@@ -21,13 +23,16 @@ import {
   type PinKind,
   type PinVisibility,
 } from '@hub/map';
-import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, palette, radii, shadows, isDark } from '@hub/ui';
+import { Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, palette, radii, shadows, isDark, tr } from '@hub/ui';
 
 // The hue dot on a switched-on layer chip. Blue = getting around and city information, mint = people and services, ink = yours.
 // the picture shown for each layer in the "Show on the map" list (the same flat artwork as the pins)
-const LAYER_ART: Record<string, PinArtKey> = { mine: 'home', alerts: 'utilities', community: 'buddy', events: 'events' };
-const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500, events: palette.mint500 };
+const LAYER_ART: Record<string, PinArtKey> = { mine: 'home', alerts: 'utilities', community: 'buddy', events: 'events', safe: 'safety', 'm03-safety': 'safety', 'm06-smell': 'smell' };
+const LAYER_DOT: Record<string, string> = { mine: palette.ink900, alerts: palette.blue500, community: palette.mint500, events: palette.mint500, safe: palette.mint500 };
 import { allMapLayers } from '../../src/core/map-layers';
+import { MapSearch, type PlaceMatch } from '../../src/core/MapSearch';
+import { RouteSheet, type Trip } from '../../src/core/RouteSheet';
+import { fetchRoute, type RouteMode } from '../../src/core/directions';
 import { usePrefs } from '../../src/core/prefs';
 import { useMyLocation } from '../../src/core/location';
 import { getMapLayersVersion, onMapLayersChanged } from '../../src/core/map-layers/changes';
@@ -52,21 +57,47 @@ export default function MapScreen() {
   // Re-collect module layers when a module says its pins changed (e.g. fetched after this tab mounted).
   const layersVersion = React.useSyncExternalStore(onMapLayersChanged, getMapLayersVersion, getMapLayersVersion);
   const moduleLayers = React.useMemo(() => allMapLayers(), [layersVersion]);
+  // a place picked from the search box: shown as one temporary pin until the person picks something else
+  const [searchPlace, setSearchPlace] = React.useState<PlaceMatch | null>(null);
+  const searchPin: MapPin | null = React.useMemo(
+    () =>
+      searchPlace
+        ? {
+            id: 'search-result',
+            kind: 'place',
+            layerId: 'search',
+            coordinate: { latitude: searchPlace.latitude, longitude: searchPlace.longitude },
+            title: searchPlace.name,
+            subtitle: searchPlace.detail || undefined,
+            visibility: 'public',
+            owner: 'official',
+            createdAt: new Date().toISOString(),
+          }
+        : null,
+    [searchPlace],
+  );
   const layers: MapLayer[] = React.useMemo(
     () => [
       { id: 'mine', title: 'Your pins', pins: mine.pins, defaultVisible: true },
       ...moduleLayers,
       { id: 'community', title: 'Neighbours', pins: community, defaultVisible: true },
+      { id: 'search', title: 'Search result', pins: searchPin ? [searchPin] : [], defaultVisible: true },
     ],
-    [mine.pins, moduleLayers, community],
+    [mine.pins, moduleLayers, community, searchPin],
   );
   const [hidden, setHidden] = React.useState<Record<string, boolean>>({});
   const visiblePins = React.useMemo(() => layers.filter((l) => !hidden[l.id]).flatMap((l) => l.pins), [layers, hidden]);
+  // several people reporting the same issue close together are shown as one bigger pin with a count
+  const groupedPins = React.useMemo(() => groupSimilarReports(visiblePins), [visiblePins]);
 
   /* ---------- selection, camera, sheets ---------- */
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
-  const selected = React.useMemo(() => layers.flatMap((l) => l.pins).find((p) => p.id === selectedId) ?? null, [layers, selectedId]);
+  const selected = React.useMemo(() => [...layers.flatMap((l) => l.pins), ...groupedPins.filter((p) => p.count)].find((p) => p.id === selectedId) ?? null, [layers, groupedPins, selectedId]);
   const [focus, setFocus] = React.useState<MapFocus | null>(null);
+  // directions to the selected pin: the route line, how long it takes, and what it does about the danger and works zones
+  const [trip, setTrip] = React.useState<Trip | null>(null);
+  const tripTarget = React.useRef<Coordinate | null>(null);
+  const tripAsk = React.useRef(0);
   const camera = React.useRef<Coordinate>(UNIRII);
   const [draft, setDraft] = React.useState<Draft | null>(null);
   // 'new': choosing where a new pin goes. 'move': moving the spot of the pin that is being filled in.
@@ -74,6 +105,7 @@ export default function MapScreen() {
   const [mapHeight, setMapHeight] = React.useState(0);
   const [listOpen, setListOpen] = React.useState(false);
   const [layersOpen, setLayersOpen] = React.useState(false);
+  const { height: windowHeight } = useWindowDimensions();
   const hiddenCount = Object.values(hidden).filter(Boolean).length;
   const [sheetHeight, setSheetHeight] = React.useState(0);
   const [reducedMotion, setReducedMotion] = React.useState(false);
@@ -88,20 +120,68 @@ export default function MapScreen() {
   // Move the camera without changing the zoom (used while choosing a spot).
   const panTo = React.useCallback((c: Coordinate) => setFocus((f) => ({ latitude: c.latitude, longitude: c.longitude, nonce: (f?.nonce ?? 0) + 1 })), []);
 
-  const select = React.useCallback(
-    (pin: MapPin | null) => {
-      setDraft(null);
-      setListOpen(false);
-      setSelectedId(pin?.id ?? null);
-      if (pin) {
-        const zoom = pin.radiusMeters
-          ? (pin.radiusMeters >= 1000 ? 13.8 : pin.radiusMeters >= 600 ? 14.5 : 15.2)
-          : 17;
-        goTo(pin.coordinate, zoom);
+  // how close to come: a zone is framed whole, a single place is zoomed in on
+  const zoomFor = (pin: MapPin) => (pin.radiusMeters ? (pin.radiusMeters >= 1000 ? 13.8 : pin.radiusMeters >= 600 ? 14.5 : 15.2) : 17);
+  const [pickNonce, setPickNonce] = React.useState(0);
+
+  const select = React.useCallback((pin: MapPin | null) => {
+    setDraft(null);
+    setListOpen(false);
+    setSelectedId(pin?.id ?? null);
+    // the camera moves once the details sheet has taken its height (see the effect below), so the pin ends up in the middle
+    // of what is left above the sheet. Moving it now would use the height of the list that is about to close.
+    if (pin) setPickNonce((n) => n + 1);
+  }, []);
+
+  // Centre the picked pin in the part of the map the sheet leaves free. The sheet's height is only known after it has opened,
+  // and the camera's padding follows it, so the move waits for the height to settle (the short delay absorbs the sheet's
+  // opening animation) and runs again if the height changes.
+  React.useEffect(() => {
+    if (!selected || draft || placing || trip) return;
+    const timer = setTimeout(() => goTo(selected.coordinate, zoomFor(selected)), 180);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId, sheetHeight, pickNonce]);
+
+  /* ---------- directions ---------- */
+  const planTrip = React.useCallback(
+    async (to: Coordinate, name: string, mode: RouteMode) => {
+      const ask = ++tripAsk.current;
+      tripTarget.current = to;
+      setTrip({ name, mode, status: 'loading' });
+      const from = me.location ?? (await me.start());
+      if (ask !== tripAsk.current) return;
+      if (!from) {
+        setTrip({ name, mode, status: 'nolocation' });
+        return;
+      }
+      try {
+        const result = await fetchRoute(from, to, mode);
+        if (ask === tripAsk.current) setTrip({ name, mode, status: 'ready', result });
+      } catch (e: any) {
+        if (ask === tripAsk.current) setTrip({ name, mode, status: 'error', error: typeof e?.message === 'string' && e.message.length < 140 ? e.message : undefined });
       }
     },
-    [goTo],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [me.location, me.start],
   );
+  // the line to draw, with where you are at the start so the map pans out to show you and the whole way. Built once per route,
+  // not on every step you take, or the camera would keep re-fitting.
+  const routeLine = React.useMemo(
+    () => (trip?.status === 'ready' && trip.result ? { coordinates: [...(me.location ? [{ latitude: me.location.latitude, longitude: me.location.longitude }] : []), ...trip.result.geometry.map(([lng, lat]) => ({ latitude: lat, longitude: lng }))] } : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [trip?.result],
+  );
+  const endTrip = React.useCallback(() => {
+    tripAsk.current++;
+    tripTarget.current = null;
+    setTrip(null);
+  }, []);
+  // choosing something else on the map ends the trip
+  React.useEffect(() => {
+    if (trip && !selectedId) endTrip();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedId]);
 
   /* ---------- links into the map: ?pin=layer:id  or  ?lat=&lng=&zoom= ---------- */
   const link = parseMapLink(params as Record<string, string | string[] | undefined>);
@@ -151,7 +231,7 @@ export default function MapScreen() {
   };
 
   /* ---------- layout ---------- */
-  const anySheet = !!selected || (!!draft && !placing) || listOpen;
+  const anySheet = !!selected || (!!draft && !placing) || listOpen || !!trip;
   const topSpace = insets.top + 8;
   // Everything that floats at the bottom (sheets, the placement bar) sits just above the tab bar, which itself sits
   // above the phone's bottom safe area. Measured from the real insets so nothing overlaps on phones with a home bar.
@@ -165,7 +245,9 @@ export default function MapScreen() {
     draft && !placing
       ? { id: 'draft', kind: draft.kind, layerId: 'mine', coordinate: draft.coordinate, title: draft.title || pinKinds[draft.kind].label, visibility: 'private', owner: 'me', createdAt: new Date().toISOString() }
       : null;
-  const mapPins = draftPin ? [...visiblePins, draftPin] : visiblePins;
+  // while a route is shown, the map is just you, the way and where you are going (plus the danger and works zones it steers round)
+  const shownPins = trip ? groupedPins.filter((p) => p.id === selectedId || p.radiusMeters) : groupedPins;
+  const mapPins = draftPin ? [...shownPins, draftPin] : shownPins;
   // The placement marker's tip sits on the middle of the visible map (the camera centre, above the bottom inset).
   const markerTop = mapHeight > 0 ? (mapHeight - bottomInset) / 2 - PIN_TIP : 0;
 
@@ -181,11 +263,12 @@ export default function MapScreen() {
         selectedId={selectedId}
         focus={focus}
         userLocation={me.location}
+        route={routeLine}
         reducedMotion={reducedMotion}
         theme={prefs.mapTheme === 'auto' && isDark ? 'night' : prefs.mapTheme}
         insets={{ bottom: bottomInset }}
         onPinPress={(id) => {
-          if (id !== 'draft') select(visiblePins.find((p) => p.id === id) ?? null); // the pin being filled in is not selectable
+          if (id !== 'draft') select(groupedPins.find((p) => p.id === id) ?? null); // the pin being filled in is not selectable
         }}
         onLongPress={placing ? undefined : startDraft}
         onMapPress={(c) => {
@@ -196,6 +279,26 @@ export default function MapScreen() {
           camera.current = { latitude: c.latitude, longitude: c.longitude };
         }}
       />
+
+      {placing ? null : (
+        <MapSearch
+          pins={layers.filter((l) => l.id !== 'search').flatMap((l) => l.pins)}
+          top={topSpace}
+          rightGap={76}
+          onPickPin={(pin) => {
+            setHidden((h) => ({ ...h, [pin.layerId]: false }));
+            setSearchPlace(null);
+            select(pin);
+          }}
+          onPickPlace={(place) => {
+            setSearchPlace(place);
+            setDraft(null);
+            setListOpen(false);
+            setSelectedId('search-result');
+            setPickNonce((n) => n + 1);
+          }}
+        />
+      )}
 
       {/* map controls: one column at the top right. Layers and the list are frosted, the pink "+" is the one main action */}
       {placing ? null : (
@@ -233,9 +336,11 @@ export default function MapScreen() {
           <Text variant="subheading" accessibilityRole="header">
             Show on the map
           </Text>
+          <TextButton label="Done" size="md" onPress={() => setLayersOpen(false)} />
         </View>
+        <ScrollView style={{ maxHeight: Math.round(windowHeight * 0.42) }} showsVerticalScrollIndicator={false}>
         <RowGroup>
-          {layers.map((l) => (
+          {layers.filter((l) => l.id !== 'search').map((l) => (
             <Row key={l.id}>
               <Row.Illustration>
                 {LAYER_ART[l.id] ? <PinArtByKey art={LAYER_ART[l.id]} size={40} /> : <View style={[styles.layerDot, { backgroundColor: LAYER_DOT[l.id] ?? palette.ink900 }]} />}
@@ -250,6 +355,7 @@ export default function MapScreen() {
             </Row>
           ))}
         </RowGroup>
+        </ScrollView>
       </Sheet>
 
       {/* choosing the spot for a pin */}
@@ -277,8 +383,36 @@ export default function MapScreen() {
       ) : null}
 
       {/* a selected pin */}
-      <Sheet visible={!!selected && !draft} scrim={false} bottomOffset={clearance} onHeight={setSheetHeight} onClose={() => setSelectedId(null)} accessibilityLabel="Pin details">
-        {selected ? <PinDetail pin={selected} onOpen={(href) => router.push(href as any)} onDelete={() => { mine.remove(selected.id); setSelectedId(null); }} onToggleShare={(v) => mine.update(selected.id, { visibility: v })} /> : null}
+      <Sheet visible={!!selected && !draft && !trip} scrim={false} bottomOffset={clearance} onHeight={setSheetHeight} onClose={() => setSelectedId(null)} accessibilityLabel="Pin details">
+        {selected ? <PinDetail pin={selected} onDirections={() => planTrip(selected.coordinate, selected.title, 'foot')} onOpen={(href) => router.push(href as any)} onDelete={() => { mine.remove(selected.id); setSelectedId(null); }} onToggleShare={(v) => mine.update(selected.id, { visibility: v })} /> : null}
+        {selected?.layerId === 'search' ? (
+          <View style={{ marginTop: 12 }}>
+            <SecondaryButton
+              label="Save as my pin"
+              size="lg"
+              onPress={() => {
+                const pin = mine.add({ kind: 'favourite', title: selected.title, coordinate: selected.coordinate, visibility: 'private' });
+                setSearchPlace(null);
+                setHidden((h) => ({ ...h, mine: false }));
+                setSelectedId(pin.id);
+              }}
+            />
+          </View>
+        ) : null}
+      </Sheet>
+
+      {/* directions to the selected pin */}
+      <Sheet visible={!!trip && !draft} scrim={false} bottomOffset={clearance} onHeight={setSheetHeight} onClose={endTrip} accessibilityLabel="Directions">
+        {trip ? (
+          <RouteSheet
+            trip={trip}
+            maxHeight={sheetMax}
+            onMode={(m) => tripTarget.current && planTrip(tripTarget.current, trip.name, m)}
+            onRetry={() => tripTarget.current && planTrip(tripTarget.current, trip.name, trip.mode)}
+            onLocation={() => tripTarget.current && planTrip(tripTarget.current, trip.name, trip.mode)}
+            onClose={endTrip}
+          />
+        ) : null}
       </Sheet>
 
       {/* a new pin */}
@@ -294,13 +428,13 @@ export default function MapScreen() {
           </Text>
         </View>
         <ScrollView style={{ maxHeight: Math.min(320, sheetMax) }}>
-          {visiblePins.length === 0 ? (
+          {groupedPins.length === 0 ? (
             <Text variant="body" color="mutedForeground">
               No pins yet. Long-press the map to add one.
             </Text>
           ) : (
             <RowGroup>
-              {visiblePins.map((p) => (
+              {groupedPins.map((p) => (
                 <Row key={p.id} onPress={() => select(p)} accessibilityLabel={`${p.title}, ${pinKinds[p.kind].label}`}>
                   <Row.Illustration>
                     <PinArt kind={p.kind} size={40} />
@@ -331,7 +465,7 @@ function visibilityNote(pin: MapPin) {
   return '';
 }
 
-function PinDetail({ pin, onOpen, onDelete, onToggleShare }: { pin: MapPin; onOpen: (href: string) => void; onDelete: () => void; onToggleShare: (v: PinVisibility) => void }) {
+function PinDetail({ pin, onOpen, onDirections, onDelete, onToggleShare }: { pin: MapPin; onOpen: (href: string) => void; onDirections: () => void; onDelete: () => void; onToggleShare: (v: PinVisibility) => void }) {
   const canChoose = pin.owner === 'me' && allowedVisibilities(pin.kind).length > 1;
   const note = visibilityNote(pin);
   return (
@@ -347,6 +481,11 @@ function PinDetail({ pin, onOpen, onDelete, onToggleShare }: { pin: MapPin; onOp
           </Text>
         </View>
       </View>
+      {pin.count && pin.count > 1 ? (
+        <Text variant="rowDetail" color="warning" style={{ fontWeight: '700' }}>
+          {tr(`Reported ${pin.count} times`)}
+        </Text>
+      ) : null}
       {pin.subtitle ? <Text variant="body">{pin.subtitle}</Text> : null}
       {pin.radiusMeters ? (
         <Text variant="rowDetail" color={pin.zoneType === 'danger' ? 'warning' : 'info'} style={{ fontWeight: '700' }}>
@@ -365,6 +504,7 @@ function PinDetail({ pin, onOpen, onDelete, onToggleShare }: { pin: MapPin; onOp
       ) : null}
       <View style={styles.stack}>
         {pin.href ? <PrimaryButton label="Open" size="lg" onPress={() => onOpen(pin.href!)} /> : null}
+        {!canNavigateTo(pin) ? null : pin.href ? <SecondaryButton label="Directions" size="lg" onPress={onDirections} /> : <PrimaryButton label="Directions" size="lg" onPress={onDirections} />}
         {canChoose ? <SecondaryButton label={pin.visibility === 'public' ? 'Make private' : 'Share with neighbours'} size="lg" onPress={() => onToggleShare(pin.visibility === 'public' ? 'private' : 'public')} /> : null}
         {pin.owner === 'me' ? <TextButton label="Delete pin" size="lg" onPress={onDelete} /> : null}
       </View>

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, ScrollView, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { mapHref } from '@hub/map';
-import { AvatarStack, Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, radii } from '@hub/ui';
+import { AvatarStack, Chip, Field, IconButton, PrimaryButton, Row, RowGroup, SecondaryButton, Sheet, Text, TextButton, colors, icons, radii, tr } from '@hub/ui';
 import { useAuth } from '../../core/auth';
 import { ModulePage } from '../../core/ModulePage';
 import { WhenBlock } from '../../core/WhenBlock';
@@ -246,7 +246,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
             </View>
           ) : (
             <ScrollView style={{ maxHeight: sheetMax }} contentContainerStyle={styles.sheetBody} showsVerticalScrollIndicator={false}>
-              {open.imageUrl ? <Image source={{ uri: open.imageUrl }} accessibilityLabel={`Photo for ${open.title}`} style={styles.photo} /> : null}
+              {open.imageUrl ? <Image source={{ uri: open.imageUrl }} accessibilityLabel={tr(`Photo for ${open.title}`)} style={styles.photo} /> : null}
               <Text variant="heading" accessibilityRole="header">
                 {open.title}
               </Text>
@@ -301,7 +301,7 @@ export function EventsScreen({ embedded, onOpenWallet, onSelectBuddyForEvent, op
             ))}
           </View>
           <View style={styles.stack}>
-            <PrimaryButton label={`Show ${filtered.length} ${filtered.length === 1 ? 'event' : 'events'}`} size="lg" onPress={() => setFilterOpen(false)} />
+            <PrimaryButton label={tr(`Show ${filtered.length} ${filtered.length === 1 ? 'event' : 'events'}`)} size="lg" onPress={() => setFilterOpen(false)} />
             <TextButton
               label="Reset"
               size="lg"
