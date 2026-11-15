@@ -56,6 +56,16 @@ export async function loginWithEmail({ email, password, token } = {}) {
 
 
 
+/** The Auth0 tenant settings the website needs to start the login (domain, audience, client id). */
+export async function fetchAuth0Info() {
+  try {
+    const res = await fetch(`${BASE_URL}/v1/core/auth/auth0-info`);
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchAuthMe(token = 'dev_resident') {
   try {
     const res = await fetch(`${BASE_URL}/v1/core/auth/me`, { headers: getHeaders(token) });

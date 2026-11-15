@@ -639,7 +639,10 @@ async function resolveAuthUserRaw(authHeader?: string): Promise<AuthUser> {
       const hasMfa = rawAmr.includes('mfa') || rawAmr.includes('otp') || rawAmr.includes('webauthn');
       const email = (payload['https://timisoara-hub.ro/email'] || payload.email || '') as string;
       const explicitRole = (payload['https://timisoara-hub.ro/role'] || payload.role) as UserRole;
-      const role = explicitRole || (email && isStaffEmail(email) ? 'admin' : 'resident');
+      // a listed staff email only counts when Auth0 says the address is verified: anyone can sign up with any address
+      // on a database connection, and an unverified one must not become an admin
+      const emailVerified = payload.email_verified === true;
+      const role = explicitRole || (email && emailVerified && isStaffEmail(email) ? 'admin' : 'resident');
       const permissions = (payload.permissions as string[]) || ROLE_PERMISSIONS[role] || [];
       const isM2M = payload.gty === 'client-credentials';
 
