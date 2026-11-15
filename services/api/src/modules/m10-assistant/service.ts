@@ -13,7 +13,7 @@ type GenerateContentResponse = any;
 type Part = any;
 import { getTools, type RegisteredTool } from './tools.ts';
 import { buildSystemInstruction } from './prompt.ts';
-import type { ChatInput, ChatResult, ToolUse } from './types.ts';
+import type { ChatInput, ChatResult, ToolContext, ToolUse } from './types.ts';
 
 /** Stable, fast model (see Gemini models page). Override with GEMINI_MODEL if needed. */
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
@@ -79,7 +79,7 @@ export function toTimisoaraTimes(value: unknown, depth = 0): unknown {
   return value;
 }
 
-async function runTool(call: FunctionCall, tools: Map<string, RegisteredTool>, used: Map<string, ToolUse>): Promise<Part> {
+async function runTool(call: FunctionCall, tools: Map<string, RegisteredTool>, used: Map<string, ToolUse>, ctx: ToolContext): Promise<Part> {
   const name = call.name ?? 'unknown';
   const respond = (response: Record<string, unknown>): Part => ({ functionResponse: { id: call.id, name, response } });
 
@@ -88,7 +88,7 @@ async function runTool(call: FunctionCall, tools: Map<string, RegisteredTool>, u
   used.set(tool.name, { name: tool.name, moduleId: tool.moduleId });
 
   try {
-    const output = await tool.handler(call.args ?? {});
+    const output = await tool.handler(call.args ?? {}, ctx);
     return respond({ output: toTimisoaraTimes(output ?? null) });
   } catch (err) {
     console.warn(`[m10-assistant] Tool "${name}" (${tool.moduleId}) threw: ${safeMessage(err)}`);
@@ -105,7 +105,8 @@ export class AssistantService {
     return [...byModule.entries()].map(([moduleId, tools]) => ({ moduleId, tools }));
   }
 
-  async chat(input: ChatInput): Promise<ChatResult> {
+  /** `ctx` says who is asking (from the request's sign-in); tools about "my tickets" use it. */
+  async chat(input: ChatInput, ctx: ToolContext = { userSub: null }): Promise<ChatResult> {
     const ai = getClient();
     const tools = await getTools();
     const declarations = [...tools.values()].map((t) => t.declaration);
@@ -142,7 +143,7 @@ export class AssistantService {
       contents.push(
         response.candidates?.[0]?.content ?? { role: 'model', parts: calls.map((functionCall) => ({ functionCall })) },
       );
-      const results = await Promise.all(calls.map((call) => runTool(call, tools, used)));
+      const results = await Promise.all(calls.map((call) => runTool(call, tools, used, ctx)));
       contents.push({ role: 'user', parts: results });
     }
 

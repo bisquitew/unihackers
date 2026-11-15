@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { enforceSecurityPolicy, resolveAuthUser } from '../../core/auth.ts';
+import { enforceSecurityPolicy, GUEST_USER, hubClientOf, resolveAuthUser } from '../../core/auth.ts';
 import { clientKey, rateLimit } from '../../core/rate-limit.ts';
 import { utilitiesService } from '../m04-utilities/service.ts';
 import { NOTICE_IMAGE_TYPES, NOTICE_MAX_BYTES, NoticeUnavailableError, parseConfirmedDraft, parseNoticePhoto } from './notice.ts';
@@ -22,7 +22,9 @@ assistantRoutes.post('/chat', async (c) => {
   if (parsed.ok === false) return c.json({ error: parsed.error }, 400); // `=== false` narrows even with strict: false
 
   try {
-    const result = await assistantService.chat(parsed.value);
+    // who is asking: the app and the website send the sign-in token with every request; a guest gets no "my tickets"
+    const user = await resolveAuthUser(c.req.header('Authorization'), hubClientOf(c.req.header('X-Hub-Client')));
+    const result = await assistantService.chat(parsed.value, { userSub: user === GUEST_USER ? null : user.sub });
     return c.json(result);
   } catch (err) {
     if (err instanceof AssistantUnavailableError) return c.json({ error: err.message }, 503);

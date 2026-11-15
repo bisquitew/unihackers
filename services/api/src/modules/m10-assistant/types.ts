@@ -11,6 +11,14 @@ export interface ChatInput {
   language: AssistantLanguage | null;
 }
 
+/**
+ * Passed as the second argument to every module's assistant tool handler. Tools that answer about "my …"
+ * (tickets, badges) use `userSub`; null means a guest (not signed in). Other tools ignore it.
+ */
+export interface ToolContext {
+  userSub: string | null;
+}
+
 export interface ToolUse {
   name: string;
   moduleId: string;
