@@ -17,9 +17,23 @@ export type PinPatch = Partial<Pick<MapPin, 'title' | 'subtitle' | 'coordinate' 
 
 const newId = () => `me-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
+/** How the app keeps a person's pins on the server (the map package knows nothing about the API). */
+export interface PinsSync {
+  load: () => Promise<MapPin[] | null>;
+  save: (pins: MapPin[]) => Promise<void>;
+}
+let sync: PinsSync | null = null;
+/** The app registers this once; pins then follow the account across devices. Returns an unregister. */
+export function registerPinsSync(adapter: PinsSync): () => void {
+  sync = adapter;
+  return () => {
+    if (sync === adapter) sync = null;
+  };
+}
+
 /**
- * The signed-in user's own pins, saved on the device (works offline and in Expo Go).
- * The shape matches MapPin so it can be synced to the server later (P2's /v1/core/user/places).
+ * The signed-in user's own pins. Saved on the device (works offline) and, when the app has registered a PinsSync,
+ * on the server too: on start the server's list is merged in, and every change is sent back.
  */
 export function usePersonalPins() {
   const [pins, setPins] = useState<MapPin[]>([]);
@@ -29,9 +43,17 @@ export function usePersonalPins() {
 
   useEffect(() => {
     let alive = true;
-    void readJson<MapPin[]>(storageKeys.personalPins, []).then((saved) => {
+    void readJson<MapPin[]>(storageKeys.personalPins, []).then(async (saved) => {
       if (!alive) return;
-      setPins(saved);
+      let merged = saved;
+      const remote = sync ? await sync.load().catch(() => null) : null;
+      if (remote) {
+        // the server's pins win; pins made offline on this device are kept and sent up
+        const ids = new Set(remote.map((p) => p.id));
+        merged = [...remote, ...saved.filter((p) => !ids.has(p.id))];
+      }
+      if (!alive) return;
+      setPins(merged);
       setReady(true);
     });
     return () => {
@@ -40,7 +62,11 @@ export function usePersonalPins() {
   }, []);
 
   useEffect(() => {
-    if (ready) void writeJson(storageKeys.personalPins, pins);
+    if (!ready) return;
+    void writeJson(storageKeys.personalPins, pins);
+    // sent to the server shortly after the last change
+    const t = setTimeout(() => void sync?.save(pins).catch(() => {}), 800);
+    return () => clearTimeout(t);
   }, [pins, ready]);
 
   const add = useCallback((input: NewPin): MapPin => {

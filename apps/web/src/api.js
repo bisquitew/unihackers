@@ -49,29 +49,12 @@ export async function loginWithEmail({ email, password, token } = {}) {
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
-    throw new Error(body.error_description || `Autentificare eșuată (${res.status})`);
+    throw new Error(body.error_description || `Sign-in failed (${res.status})`);
   }
   return await res.json();
 }
 
-export async function inspectAccountType(email) {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/core/auth/account-type?email=${encodeURIComponent(email || '')}`);
-    if (!res.ok) return null;
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
 
-export async function fetchAuth0Info() {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/core/auth/auth0-info`);
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
 
 export async function fetchAuthMe(token = 'dev_resident') {
   try {
@@ -82,14 +65,6 @@ export async function fetchAuthMe(token = 'dev_resident') {
   }
 }
 
-export async function fetchDevTokens() {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/core/auth/dev-tokens`);
-    return await res.json();
-  } catch {
-    return { tokens: [] };
-  }
-}
 
 export async function fetchAuditLogs(limit = 10) {
   try {
@@ -100,18 +75,6 @@ export async function fetchAuditLogs(limit = 10) {
   }
 }
 
-export async function simulateLocationAnomaly(city, country, ip) {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/core/auth/simulate-login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ city, country, ip }),
-    });
-    return await res.json();
-  } catch (err) {
-    return { error: err.message };
-  }
-}
 
 // --- TIGER DATA & TIMESCALEDB ---
 export async function fetchTigerStatus() {
@@ -123,23 +86,7 @@ export async function fetchTigerStatus() {
   }
 }
 
-export async function fetchTigerCompression() {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/core/tiger/compression`);
-    return await res.json();
-  } catch {
-    return { compression: [] };
-  }
-}
 
-export async function fetchAnalyticsHeatmap() {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/core/analytics/heatmap`);
-    return await res.json();
-  } catch {
-    return { heatpoints: [] };
-  }
-}
 
 // --- AREA DANGER & CONSTRUCTION ALERTS (RADIUS MAPPING & NEIGHBOUR SIGNALING) ---
 export async function fetchAreaAlerts(filter = {}) {
@@ -156,14 +103,6 @@ export async function fetchAreaAlerts(filter = {}) {
   }
 }
 
-export async function fetchAreaAlertById(id) {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/core/area-alerts/${id}`);
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
 
 export async function createAreaAlert(token, alertData) {
   const res = await fetch(`${BASE_URL}/v1/core/area-alerts`, {
@@ -233,6 +172,38 @@ export async function createOutage(token, outageData) {
   return data;
 }
 
+// --- M10 NOTICE SCANNER (P4): photo of a printed notice -> Gemini draft -> staff publish ---
+/** Sends a photo; Gemini returns { isNotice, reason, draft, warnings }. Nothing is saved. */
+export async function parseNoticePhoto(file) {
+  const form = new FormData();
+  form.append('image', file, file.name || 'notice.jpg');
+  const res = await fetch(`${BASE_URL}/v1/m/assistant/notice/parse`, { method: 'POST', body: form });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+/** Publishes the checked draft as an outage. Needs a staff session with the second check (MFA). */
+export async function confirmNotice(token, draft) {
+  const res = await fetch(`${BASE_URL}/v1/m/assistant/notice/confirm`, {
+    method: 'POST',
+    headers: getHeaders(token),
+    body: JSON.stringify(draft),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const err = new Error(data.error_description || data.message || data.error || `HTTP ${res.status}`);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
+  return data;
+}
+
 // --- M05 TRANSIT ---
 export async function fetchTransitLines() {
   try {
@@ -266,23 +237,7 @@ export async function fetchSmellPins() {
   }
 }
 
-export async function fetchSmellWind() {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/m/smell/wind`);
-    return await res.json();
-  } catch {
-    return { speedKmh: 12, directionDeg: 310, compass: 'NW' };
-  }
-}
 
-export async function submitSmellReport(data) {
-  const res = await fetch(`${BASE_URL}/v1/m/smell/reports`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return await res.json();
-}
 
 // --- M01 EVENTS & COMMUNITY ---
 export async function fetchEvents() {
@@ -315,14 +270,6 @@ export async function fetchBuddyRequests() {
   }
 }
 
-export async function fetchSolanaStatus() {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/m/solana/status`);
-    return await res.json();
-  } catch {
-    return { online: true, cluster: 'devnet' };
-  }
-}
 
 // --- M10 ASSISTANT ---
 export async function askAssistant(message, history = []) {
@@ -334,28 +281,12 @@ export async function askAssistant(message, history = []) {
     });
     return await res.json();
   } catch (err) {
-    return { reply: 'Asistentul nu este disponibil momentan.', error: err.message };
+    return { reply: 'The assistant is not available right now.', error: err.message };
   }
 }
 
 // --- M11 FEEDBACK ---
-export async function fetchFeedbackSummary() {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/m/feedback/summary`);
-    return await res.json();
-  } catch {
-    return { count: 0, byCategory: {} };
-  }
-}
 
-export async function submitFeedback(data) {
-  const res = await fetch(`${BASE_URL}/v1/m/feedback`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  return await res.json();
-}
 
 // --- M12 DASHBOARD ---
 export async function fetchDashboardOverview() {
@@ -377,14 +308,6 @@ export async function fetchLots() {
   }
 }
 
-export async function fetchLotById(id) {
-  try {
-    const res = await fetch(`${BASE_URL}/v1/m/parkie/lots/${id}`);
-    return await res.json();
-  } catch {
-    return null;
-  }
-}
 
 export async function saveLotPlots(id, payload) {
   const res = await fetch(`${BASE_URL}/v1/m/parkie/lots/${id}/plots`, {
@@ -396,24 +319,7 @@ export async function saveLotPlots(id, payload) {
   return await res.json();
 }
 
-export async function sendDetection(lotId, detectedCars) {
-  const res = await fetch(`${BASE_URL}/v1/m/parkie/detections`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ lot_id: lotId, detected_cars: detectedCars }),
-  });
-  return await res.json();
-}
 
-export async function captureCameraFrame(cameraUrl) {
-  const res = await fetch(`${BASE_URL}/v1/m/parkie/capture-frame`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ camera_url: cameraUrl }),
-  });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.json();
-}
 
 // --- FORUM MODERATION (staff) ---
 export async function fetchReportedPosts() {

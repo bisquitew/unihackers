@@ -7,8 +7,8 @@
 import { McpError, McpHttpClient } from '../../core/mcp-client.ts';
 import { getAccountExplorerUrl, getSolanaExplorerUrl, ORGANIZER_WALLET_ADDRESS } from '../../../../../packages/solana/src/config.ts';
 import { normalizePlace } from '../../core/text.ts';
-import { DEMO_WALLET } from './seed.ts';
-import { walletService } from './service.ts';
+import type { ToolContext } from '../m10-assistant/types.ts';
+import { walletFor } from './assistant-tools.ts';
 
 export const EXPLORER_MCP_URL = process.env.SOLANA_EXPLORER_MCP_URL || 'https://explorer.solana.com/mcp';
 export const DOCS_MCP_URL = process.env.SOLANA_DOCS_MCP_URL || 'https://mcp.solana.com/mcp';
@@ -55,11 +55,13 @@ interface WalletItem {
   signature: string;
 }
 
-async function walletItems(): Promise<WalletItem[]> {
-  const [tickets, poaps] = await Promise.all([walletService.listUserTickets(DEMO_WALLET), walletService.listUserPoaps(DEMO_WALLET)]);
+/** The signed-in person's tickets and badges (the wallet the app and website show); empty for a guest. */
+function walletItems(ctx?: ToolContext): WalletItem[] {
+  const wallet = walletFor(ctx);
+  if (!wallet) return [];
   return [
-    ...tickets.map((t) => ({ kind: 'ticket' as const, id: t.ticketId, event: t.eventTitle, signature: t.txSignature })),
-    ...poaps.map((p) => ({ kind: 'poap' as const, id: p.poapId, event: p.eventTitle, signature: p.txSignature })),
+    ...wallet.tickets.filter((t) => t?.txSignature).map((t) => ({ kind: 'ticket' as const, id: t.ticketId, event: t.eventTitle, signature: t.txSignature })),
+    ...wallet.poaps.filter((p) => p?.txSignature).map((p) => ({ kind: 'poap' as const, id: p.poapId, event: p.eventTitle, signature: p.txSignature })),
   ];
 }
 
@@ -144,8 +146,11 @@ export const solanaMcpTools = [
         id: { type: 'string', description: 'A Solana transaction signature or account address the user pasted.' },
       },
     },
-    handler: async (args: { ticket?: string; id?: string }) => {
-      const items = await walletItems();
+    handler: async (args: { ticket?: string; id?: string }, ctx?: ToolContext) => {
+      const items = walletItems(ctx);
+      if (!ctx?.userSub && args.ticket?.trim() && !args.id?.trim()) {
+        return { found: false, signedIn: false, reason: 'The user is not signed in, so there are no tickets to check. Tell them to sign in, or paste a transaction signature to check.' };
+      }
       let item: WalletItem | null = null;
       let identifier = args.id?.trim() ?? '';
       if (!identifier && args.ticket?.trim()) {
@@ -229,7 +234,7 @@ async function inspect(identifier: string, item: WalletItem | null) {
     const note =
       summary.matchesApp && (!summary.matchesApp.sameId || !summary.matchesApp.sameEvent)
         ? 'The transaction exists and is confirmed, but the data written on-chain does not match the app\'s ticket (different id or event). Tell the user honestly; it is a demo record that points at another test transaction.'
-        : 'Explain in plain words: confirmed on Solana devnet, when, signed by the event organizer, and what the on-chain note says. Times are UTC: convert to Timișoara time.';
+        : 'Explain in plain words: confirmed on Solana devnet, when, signed by the event organizer, and what the on-chain note says.';
     return { ...base, ...summary, note };
   }
   // an account: keep the useful top-level fields only

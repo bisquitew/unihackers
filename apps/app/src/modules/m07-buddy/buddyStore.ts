@@ -3,6 +3,8 @@
 import { api } from '../../core/api';
 export interface BuddyListing {
   id: string;
+  /** the account of the person who posted the request, used to start a chat with them */
+  userId?: string;
   eventId: string;
   eventTitle: string;
   userName: string;
@@ -62,6 +64,7 @@ const SEED: BuddyListing[] = [
 
 const fromApi = (r: any): BuddyListing => ({
   id: r.id,
+  userId: r.userId,
   eventId: r.eventId,
   eventTitle: r.eventTitle ?? 'An event',
   userName: r.userName,

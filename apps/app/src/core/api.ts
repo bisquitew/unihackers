@@ -25,8 +25,16 @@ export function apiBaseUrl(): string {
 
 // The session token, kept here (not in React state) so any module can attach it without being a component.
 let sessionToken: string | null = null;
+const sessionListeners = new Set<(token: string | null) => void>();
 export const setSessionToken = (token: string | null) => {
+  if (token === sessionToken) return;
   sessionToken = token;
+  sessionListeners.forEach((fn) => fn(token));
+};
+/** Called whenever someone signs in or out (e.g. to load their wallet). Returns an unsubscribe. */
+export const onSessionToken = (fn: (token: string | null) => void) => {
+  sessionListeners.add(fn);
+  return () => sessionListeners.delete(fn);
 };
 export const getSessionToken = () => sessionToken;
 

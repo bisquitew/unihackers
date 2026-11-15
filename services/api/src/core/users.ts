@@ -21,7 +21,7 @@ SAVED_PLACES_STORE.set(TEST_RESIDENT_ID, [
   {
     id: 'place-home-01',
     user_id: TEST_RESIDENT_ID,
-    label: 'Acasă',
+    label: 'Home',
     address: 'Strada Circumvalațiunii 14, Timișoara',
     latitude: 45.7618,
     longitude: 21.2185,

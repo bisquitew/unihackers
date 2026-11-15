@@ -21,8 +21,8 @@ function toMapPin(p: SafetyPin): MapPin {
     kind: 'safety',
     layerId: LAYER_ID,
     coordinate: { latitude: p.lat, longitude: p.lng },
-    title: `Siguranță: ${t.label.toLowerCase()}`,
-    subtitle: `${t.label}, sesizare a unui locuitor`,
+    title: t.label,
+    subtitle: 'Reported by a resident',
     visibility: 'public',
     owner: 'community',
     href: '/m/safety',
@@ -52,7 +52,7 @@ export function refreshSafetyPins(): Promise<void> {
 /** What manifest.mapLayer returns: synchronous, from the cache. */
 export function safetyMapLayer(): MapLayer {
   if (Date.now() - fetchedAt > MAX_AGE_MS) void refreshSafetyPins();
-  return { id: LAYER_ID, title: 'Siguranță', moduleId: 'm03-safety', pins, defaultVisible: true };
+  return { id: LAYER_ID, title: 'Safety reports', moduleId: 'm03-safety', pins, defaultVisible: true };
 }
 
 // Start loading as soon as the app starts (not during web static rendering, where there is no window).

@@ -4,6 +4,11 @@ import { notify } from './notifications.ts';
 import { eventBus } from './events.ts';
 import { DEV_USERS } from './auth.ts';
 import { placeMatches } from './text.ts';
+import { db } from './db.ts';
+
+// Alerts published by staff are written to core_area_alerts and loaded back at start (the seed alerts are not stored).
+const AREA_ALERTS_SCHEMA = `CREATE TABLE IF NOT EXISTS core_area_alerts (
+  id VARCHAR(128) PRIMARY KEY, data JSONB NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`;
 
 // Initial seeded danger & construction radius events in Timișoara
 const SEED_AREA_ALERTS: AreaAlert[] = [
@@ -122,8 +127,8 @@ export async function signalNearestNeighbours(alert: AreaAlert): Promise<number>
       await notify({
         userId: user.sub,
         moduleId: 'm03-safety',
-        title: `${alert.type === 'danger' ? '🚨 PERICOL IMINENT' : '🚧 ALERTĂ ȘANTIER / CONSTRUCȚIE'}: ${alert.title}`,
-        body: `Atenție! Cartierul dumneavoastră (${userNeighbourhood}) se află în raza de ${alert.radius_meters}m a incidentului. Recomandare: ${alert.description.slice(0, 120)}...`,
+        title: `${alert.type === 'danger' ? 'Danger zone' : 'Works zone'}: ${alert.title}`,
+        body: `Your neighbourhood (${userNeighbourhood}) is within ${alert.radius_meters} m. ${alert.description.slice(0, 160)}`,
         category: 'safety',
         data: {
           alertId: alert.id,
@@ -141,8 +146,8 @@ export async function signalNearestNeighbours(alert: AreaAlert): Promise<number>
   await notify({
     userId: 'all-residents-in-radius',
     moduleId: 'm03-safety',
-    title: `📡 Alertă Radiată: ${alert.title}`,
-    body: `Zone și vecini semnalați: ${affectedNeighbourhoods.join(', ')} (Rază de impact: ${alert.radius_meters} metri).`,
+    title: `Alert sent: ${alert.title}`,
+    body: `Neighbourhoods told: ${affectedNeighbourhoods.join(', ')} (${alert.radius_meters} m around).`,
     category: 'safety',
     data: { alertId: alert.id }
   });
@@ -151,6 +156,20 @@ export async function signalNearestNeighbours(alert: AreaAlert): Promise<number>
 }
 
 export const areaAlertsService = {
+  /** Lays the alerts saved in the database over the seed alerts. Run once at start. */
+  async loadFromDb(): Promise<number> {
+    if (!db.isTigerConnected()) return 0;
+    try {
+      await db.query(AREA_ALERTS_SCHEMA);
+      const rows = await db.query<any>(`SELECT data FROM core_area_alerts ORDER BY created_at`);
+      for (const r of rows) if (!areaAlerts.some((a) => a.id === r.data.id)) areaAlerts.unshift(r.data);
+      return rows.length;
+    } catch (err: any) {
+      console.warn('[area-alerts] could not load:', err.message);
+      return 0;
+    }
+  },
+
   getAll(filter?: { type?: AreaAlertType; status?: string; neighbourhood?: string }): AreaAlert[] {
     return areaAlerts.filter(a => {
       if (filter?.type && a.type !== filter.type) return false;
@@ -205,6 +224,11 @@ export const areaAlertsService = {
     newAlert.affected_residents_count = count;
 
     areaAlerts.unshift(newAlert);
+    if (db.isTigerConnected()) {
+      db.query(AREA_ALERTS_SCHEMA)
+        .then(() => db.query(`INSERT INTO core_area_alerts (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data`, [newAlert.id, JSON.stringify(newAlert)]))
+        .catch((err: any) => console.warn('[area-alerts] could not save:', err.message));
+    }
     await eventBus.emit('area_alert.created', { alert: newAlert });
 
     return newAlert;
@@ -253,11 +277,11 @@ export const areaAlertsService = {
 
       if (inside) {
         statusMsg = alert.type === 'danger'
-          ? `⚠️ SUNTEȚI ÎN PERIMETRUL DE PERICOL! Zona dumneavoastră este semnalată direct (${distance}m de focar, perimetru: ${alert.radius_meters}m). Respectați recomandările de siguranță.`
-          : `🚧 SUNTEȚI ÎN ZONA DE ȘANTIER! Zona dumneavoastră este afectată direct de lucrări (${distance}m distanță, perimetru marcat: ${alert.radius_meters}m). Posibil trafic restricționat și zgomot.`;
+          ? `You are inside a danger zone: ${distance} m from its centre, which reaches ${alert.radius_meters} m. Follow the safety advice.`
+          : `You are inside a works zone: ${distance} m from its centre, which reaches ${alert.radius_meters} m. Expect closed roads and noise.`;
       } else {
         const delta = distance - alert.radius_meters;
-        statusMsg = `Sunteți în afara perimetrului direct (${distance}m distanță, la ${delta}m de limita perimetrului de ${alert.radius_meters}m).`;
+        statusMsg = `You are outside the zone: ${distance} m from its centre, ${delta} m beyond its ${alert.radius_meters} m edge.`;
       }
 
       return {

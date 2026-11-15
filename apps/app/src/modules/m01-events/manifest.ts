@@ -14,7 +14,7 @@ export interface ModuleManifest {
 
 export const manifest: ModuleManifest = {
   id: 'm01-events',
-  title: 'Evenimente Culturale',
+  title: 'Events',
   owner: 'P3',
   status: 'live',
   icon: 'calendar',

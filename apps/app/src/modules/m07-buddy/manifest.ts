@@ -9,7 +9,7 @@ export interface ModuleManifest {
 
 export const manifest: ModuleManifest = {
   id: 'm07-buddy',
-  title: 'Cu Cine? (Event Buddy)',
+  title: 'Buddies',
   owner: 'P3',
   status: 'live',
   icon: 'users',

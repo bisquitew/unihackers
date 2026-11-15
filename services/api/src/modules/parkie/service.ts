@@ -12,14 +12,43 @@ import { db } from '../../core/db.ts';
 // In-memory parking lot store initialized with Timișoara lots
 let parkingLots: ParkingLot[] = [...PARKIE_SEED_LOTS];
 
+/**
+ * Parkie's marker colour (backend_api/app/services/lot_service.py, get_status_color), by occupancy:
+ * below 70% occupied green, 70-85% yellow, above 85% red; a lot without capacity is gray.
+ */
 export function computeStatusColor(available: number, capacity: number): ParkingLotStatusColor {
-  if (capacity <= 0 || available <= 0) return 'red';
-  const ratio = available / capacity;
-  if (ratio <= 0.25) return 'yellow';
-  return 'green';
+  if (capacity <= 0) return 'gray' as ParkingLotStatusColor;
+  const occupancyRate = ((capacity - available) / capacity) * 100;
+  if (occupancyRate < 70) return 'green';
+  if (occupancyRate <= 85) return 'yellow';
+  return 'red';
 }
 
 export const parkieService = {
+  /** Lays the lots saved in the database (slots drawn by staff, live occupancy) over the seed lots. Run once at start. */
+  async loadLotsFromDb(): Promise<number> {
+    if (!db.isTigerConnected()) return 0;
+    try {
+      const rows = await db.query<any>(`SELECT id, camera_url, slots_data, capacity, available_spots, status_color, updated_at FROM parking_lots`);
+      let n = 0;
+      for (const r of rows) {
+        const lot = parkingLots.find((l) => l.id === r.id);
+        if (!lot) continue;
+        lot.camera_url = r.camera_url ?? lot.camera_url;
+        lot.slots_data = Array.isArray(r.slots_data) ? r.slots_data : lot.slots_data;
+        lot.capacity = Number(r.capacity ?? lot.capacity);
+        lot.available_spots = Number(r.available_spots ?? lot.available_spots);
+        lot.status_color = computeStatusColor(lot.available_spots, lot.capacity);
+        if (r.updated_at) lot.last_updated = new Date(r.updated_at).toISOString();
+        n++;
+      }
+      return n;
+    } catch (err: any) {
+      console.warn('[PARKIE] could not load lots from the database:', err.message);
+      return 0;
+    }
+  },
+
   getAllLots(filter?: { min_available?: number; status_color?: string; verified_only?: boolean }): ParkingLot[] {
     return parkingLots.filter((lot) => {
       if (filter?.verified_only !== false && !lot.is_verified) return false;
@@ -112,6 +141,12 @@ export const parkieService = {
       });
     }
 
+    // 1b. Parkie's /vision/update_lot: the lot's own row changes live
+    if (db.isTigerConnected()) {
+      db.query(`UPDATE parking_lots SET available_spots = $1, status_color = $2, updated_at = NOW() WHERE id = $3;`,
+        [lot.available_spots, lot.status_color, lot.id]).catch((err) => console.warn('⚠️ parking_lots live update error:', err.message));
+    }
+
     // 2. Emit internal system event
     await eventBus.emit('parkie.detection_updated', {
       lotId: lot.id,
@@ -195,13 +230,8 @@ export const parkieService = {
       lot.capacity = payload.slots_data.length;
     }
 
-    // Recompute available spots based on slots_data status
-    if (Array.isArray(lot.slots_data) && lot.slots_data.length > 0) {
-      const occupiedCount = lot.slots_data.filter((slot: any) => 
-        slot && (slot.status === 'occupied' || slot.occupied === true)
-      ).length;
-      lot.available_spots = Math.max(0, lot.capacity - occupiedCount);
-    }
+    // Parkie's setup (PUT /lots/{id}/setup): a new slot layout starts with every slot free; the agent reports next
+    lot.available_spots = lot.capacity;
     lot.status_color = computeStatusColor(lot.available_spots, lot.capacity);
     lot.last_updated = new Date().toISOString();
 

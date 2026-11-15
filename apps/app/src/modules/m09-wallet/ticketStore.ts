@@ -1,13 +1,7 @@
-// Shared ticket & POAP store for M09 Wallet & M01 Events
-import { api } from '../../core/api';
-import {
-  mintDevnetTicket,
-  mintDevnetPoap,
-  MintedTicketResult,
-  PoapResult,
-  ORGANIZER_WALLET_ADDRESS,
-  getLiveDevnetStatus,
-} from '@hub/solana';
+// The signed-in person's tickets and attendance badges (M09 Wallet, used by M01 Events). They live on the server
+// (GET /v1/m/solana/tickets/mine), so the app and the website show the same wallet and nothing is lost on a new phone.
+import { api, onSessionToken } from '../../core/api';
+import { MintedTicketResult, PoapResult, ORGANIZER_WALLET_ADDRESS, getLiveDevnetStatus } from '@hub/solana';
 
 export interface WalletState {
   walletAddress: string;
@@ -17,75 +11,9 @@ export interface WalletState {
   isLiveConnected: boolean;
   tickets: MintedTicketResult[];
   poaps: PoapResult[];
+  /** false until the wallet has been read from the server once */
+  loaded: boolean;
 }
-
-// Real, confirmed, finalized on-chain transactions on Solana Devnet
-const INITIAL_TICKETS: MintedTicketResult[] = [
-  {
-    ticketId: 'tkt-sol-faber-001',
-    eventId: 'evt-001',
-    eventTitle: 'Underground Indie Cinema Night',
-    ownerWallet: ORGANIZER_WALLET_ADDRESS,
-    attendeeName: 'Andrei Timișan',
-    txSignature: '4zWVYbV8WBq4nkti5tBkMDbhMbcEMjS2YJU1z1LmJTEi4mtHYibj9CX7Qejwwkezp86QPNGigfR6vP9Gv1EzWjBc',
-    explorerUrl: 'https://explorer.solana.com/tx/4zWVYbV8WBq4nkti5tBkMDbhMbcEMjS2YJU1z1LmJTEi4mtHYibj9CX7Qejwwkezp86QPNGigfR6vP9Gv1EzWjBc?cluster=devnet',
-    isCheckedIn: false,
-    mintedAt: '2026-11-14T07:45:00Z',
-    qrPayload: JSON.stringify({
-      hub: 'TimisoaraHub',
-      ticketId: 'tkt-sol-faber-001',
-      eventId: 'evt-001',
-      wallet: ORGANIZER_WALLET_ADDRESS,
-      sig: '4zWVYbV8WBq4nkti',
-      venue: 'Faber Community Yard',
-    }),
-  },
-  {
-    ticketId: 'tkt-sol-jazz-002',
-    eventId: 'evt-003',
-    eventTitle: 'Sunset Acoustic & Jazz Session',
-    ownerWallet: ORGANIZER_WALLET_ADDRESS,
-    attendeeName: 'Andrei Timișan',
-    txSignature: '5DzSd1e7Qs9SJtfn94G9rNQ76huCb6cZakgVktq4xtkmTwAavQNQ4nUYjPkrDYk5xJBfDpdaST8VRe3DdPEHLkBW',
-    explorerUrl: 'https://explorer.solana.com/tx/5DzSd1e7Qs9SJtfn94G9rNQ76huCb6cZakgVktq4xtkmTwAavQNQ4nUYjPkrDYk5xJBfDpdaST8VRe3DdPEHLkBW?cluster=devnet',
-    isCheckedIn: true,
-    mintedAt: '2026-11-14T07:30:00Z',
-    qrPayload: JSON.stringify({
-      hub: 'TimisoaraHub',
-      ticketId: 'tkt-sol-jazz-002',
-      eventId: 'evt-003',
-      wallet: ORGANIZER_WALLET_ADDRESS,
-      sig: '5DzSd1e7Qs9SJtfn',
-      venue: 'D’arc pe Mal',
-    }),
-  },
-];
-
-const INITIAL_POAPS: PoapResult[] = [
-  {
-    poapId: 'poap-evt-003-seed',
-    eventId: 'evt-003',
-    eventTitle: 'Sunset Acoustic & Jazz Session',
-    attendeeWallet: ORGANIZER_WALLET_ADDRESS,
-    badgeName: 'Culture Explorer: Bega Jazz Session',
-    txSignature: '3XmuCJr2h7XCU3NKkwiN96ocrhSy9b2d56d8KdvvRMMwcayZ9i2nJd6Mcpky2m17AGWF6tiPpRzGD5twXZUhuSXr',
-    explorerUrl: 'https://explorer.solana.com/tx/3XmuCJr2h7XCU3NKkwiN96ocrhSy9b2d56d8KdvvRMMwcayZ9i2nJd6Mcpky2m17AGWF6tiPpRzGD5twXZUhuSXr?cluster=devnet',
-    issuedAt: '2026-11-14T07:35:00Z',
-  },
-  {
-    poapId: 'poap-evt-001-cinema',
-    eventId: 'evt-001',
-    eventTitle: 'Underground Indie Cinema Night',
-    attendeeWallet: ORGANIZER_WALLET_ADDRESS,
-    badgeName: 'Culture Explorer: Faber Cinema Night',
-    txSignature: 'GPq2W9MujbkVC2cqoRpwuNUwsbQaRbd61DVmxHeH9ZHQ1KYuKXerNvSqgqBXMNaevwPqZ4qPP24p9jP1tHBAsdJ',
-    explorerUrl: 'https://explorer.solana.com/tx/GPq2W9MujbkVC2cqoRpwuNUwsbQaRbd61DVmxHeH9ZHQ1KYuKXerNvSqgqBXMNaevwPqZ4qPP24p9jP1tHBAsdJ?cluster=devnet',
-    issuedAt: '2026-11-14T08:49:00Z',
-  },
-];
-
-const TICKET_STORAGE_KEY = 'timisoara_hub_tickets_v1';
-const POAP_STORAGE_KEY = 'timisoara_hub_poaps_v1';
 
 class TicketStore {
   private state: WalletState = {
@@ -94,49 +22,23 @@ class TicketStore {
     liveSlot: 0,
     latestBlockhash: '',
     isLiveConnected: false,
-    tickets: [...INITIAL_TICKETS],
-    poaps: [...INITIAL_POAPS],
+    tickets: [],
+    poaps: [],
+    loaded: false,
   };
 
   private listeners: (() => void)[] = [];
 
   constructor() {
-    this.loadFromStorage();
-    this.syncWithLiveDevnet();
-  }
-
-  private loadFromStorage() {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        const rawT = window.localStorage.getItem(TICKET_STORAGE_KEY);
-        if (rawT) {
-          const parsed = JSON.parse(rawT);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            this.state.tickets = parsed;
-          }
-        }
-        const rawP = window.localStorage.getItem(POAP_STORAGE_KEY);
-        if (rawP) {
-          const parsedP = JSON.parse(rawP);
-          if (Array.isArray(parsedP) && parsedP.length > 0) {
-            this.state.poaps = parsedP;
-          }
-        }
+    // load the wallet when someone signs in, empty it when they sign out
+    onSessionToken((token) => {
+      if (token) void this.refresh();
+      else {
+        this.state = { ...this.state, tickets: [], poaps: [], loaded: false };
+        this.notify();
       }
-    } catch (e) {
-      console.warn('[TicketStore] Storage load fallback:', e);
-    }
-  }
-
-  private saveToStorage() {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(TICKET_STORAGE_KEY, JSON.stringify(this.state.tickets));
-        window.localStorage.setItem(POAP_STORAGE_KEY, JSON.stringify(this.state.poaps));
-      }
-    } catch (e) {
-      console.warn('[TicketStore] Storage write fallback:', e);
-    }
+    });
+    void this.syncWithLiveDevnet();
   }
 
   getState(): WalletState {
@@ -151,8 +53,18 @@ class TicketStore {
   }
 
   private notify() {
-    this.saveToStorage();
     this.listeners.forEach((l) => l());
+  }
+
+  /** Reads the wallet from the server. Keeps what is shown if the server cannot be reached. */
+  async refresh(): Promise<void> {
+    try {
+      const data = await api.get<{ tickets: MintedTicketResult[]; poaps: PoapResult[] }>('/v1/m/solana/tickets/mine');
+      this.state = { ...this.state, tickets: data.tickets ?? [], poaps: data.poaps ?? [], loaded: true };
+      this.notify();
+    } catch (e) {
+      console.warn('[wallet] could not load the wallet:', e);
+    }
   }
 
   async syncWithLiveDevnet(): Promise<WalletState> {
@@ -169,86 +81,38 @@ class TicketStore {
     return this.state;
   }
 
-  async addTicketFromRsvp(
-    eventId: string,
-    eventTitle: string,
-    attendeeName: string = 'Andrei Timișan'
-  ): Promise<MintedTicketResult> {
-    try {
-      // the server mints the ticket on Solana devnet for the signed-in person
-      const data = await api.post<MintedTicketResult>('/v1/m/solana/tickets/mint', {
-        eventId,
-        eventTitle,
-        attendeeName,
-        attendeeWallet: this.state.walletAddress,
-      });
-      this.state.tickets.unshift(data);
-      this.notify();
-      return data;
-    } catch (e) {
-      console.warn('Backend ticket mint unreachable, creating local verified ticket:', e);
-    }
-
-    const newTicket = mintDevnetTicket({
+  /** The server mints the ticket on Solana devnet for the signed-in person. Throws when it cannot. */
+  async addTicketFromRsvp(eventId: string, eventTitle: string, attendeeName?: string): Promise<MintedTicketResult> {
+    const data = await api.post<MintedTicketResult>('/v1/m/solana/tickets/mint', {
       eventId,
       eventTitle,
       attendeeName,
-      userWallet: this.state.walletAddress,
+      attendeeWallet: this.state.walletAddress,
     });
-
-    this.state.tickets.unshift(newTicket);
+    this.state.tickets = [data, ...this.state.tickets];
     this.notify();
-    return newTicket;
+    return data;
   }
 
+  /** Door check-in: the server gives the attendance badge for a ticket in this wallet. */
   async checkInTicket(ticketId: string): Promise<{ success: boolean; poap?: PoapResult; error?: string }> {
     const ticket = this.state.tickets.find((t) => t.ticketId === ticketId);
-    if (!ticket) {
-      return { success: false, error: 'Ticket not found in wallet system!' };
-    }
-    if (ticket.isCheckedIn) {
-      return { success: false, error: 'This ticket has already been used for check-in!' };
-    }
-
-    ticket.isCheckedIn = true;
-
+    if (!ticket) return { success: false, error: 'This ticket is not in your wallet.' };
+    if (ticket.isCheckedIn) return { success: false, error: 'This ticket was already used at the door.' };
     try {
-      const poapData = await api.post<any>('/v1/m/solana/poap/mint', {
+      const poap = await api.post<PoapResult>('/v1/m/solana/poap/mint', {
         eventId: ticket.eventId,
         eventTitle: ticket.eventTitle,
         attendeeWallet: this.state.walletAddress,
         ticketId: ticket.ticketId,
       });
-      {
-        const poap: PoapResult = {
-          poapId: poapData.poapId,
-          eventId: poapData.eventId,
-          eventTitle: poapData.eventTitle,
-          attendeeWallet: poapData.attendeeWallet,
-          badgeName: poapData.badgeName,
-          txSignature: poapData.txSignature,
-          explorerUrl: poapData.explorerUrl,
-          issuedAt: poapData.issuedAt,
-        };
-        this.state.poaps.unshift(poap);
-        this.notify();
-        return { success: true, poap };
-      }
-    } catch (e) {
-      console.warn('Backend POAP mint unreachable, minting locally:', e);
+      this.state.tickets = this.state.tickets.map((t) => (t.ticketId === ticketId ? { ...t, isCheckedIn: true } : t));
+      this.state.poaps = [poap, ...this.state.poaps];
+      this.notify();
+      return { success: true, poap };
+    } catch (e: any) {
+      return { success: false, error: e?.message || 'We could not check this ticket. Try again.' };
     }
-
-    // Local fallback
-    const poap = mintDevnetPoap({
-      eventId: ticket.eventId,
-      eventTitle: ticket.eventTitle,
-      attendeeWallet: this.state.walletAddress,
-      checkInLocation: 'Cultural Hub Door Check-in',
-    });
-
-    this.state.poaps.unshift(poap);
-    this.notify();
-    return { success: true, poap };
   }
 }
 

@@ -49,13 +49,15 @@ eventsRoutes.post('/:id/rsvp', async (c) => {
   const id = c.req.param('id');
   try {
     const body = await c.req.json<Omit<RSVPInput, 'eventId'>>();
-    if (!body.userName) {
+    const me = c.get('user' as never) as any;
+    const userName = me?.name || body.userName;
+    if (!userName) {
       return c.json({ error: 'userName is required' }, 400);
     }
     const rsvpRecord = await eventsService.rsvp({
       eventId: id,
-      userId: body.userId || `usr-${Date.now()}`,
-      userName: body.userName,
+      userId: me?.sub || `usr-${Date.now()}`,
+      userName,
       userWallet: body.userWallet,
       lookingForBuddy: body.lookingForBuddy,
     });

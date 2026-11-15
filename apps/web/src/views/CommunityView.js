@@ -1,5 +1,5 @@
 import { fetchBuddyRequests, fetchEvents, fetchForumPosts, hubGet, hubPost } from '../api.js';
-import { art, esc, row, when } from '../ui.js';
+import { trapDialog, art, esc, row, when } from '../ui.js';
 import { CITY } from '../city.js';
 
 // the neighbourhoods an event or post can belong to, with the middle of each (used when a venue cannot be found on the map)
@@ -25,7 +25,7 @@ const eventRows = (events, canAct) => events.map((e) => row({
   art: art('events', 52), title: esc(e.title),
   detail: `${esc((e.description || '').slice(0, 110))}<br><span class="muted">${esc(e.locationName || e.location || CITY.name)} · ${esc(when(e.dateTime || e.date))}${e.attendeeCount ? ` · ${e.attendeeCount} going` : ''}</span>`,
   side: `<div style="display:grid;gap:6px;justify-items:end">${e.isFree ? '<span class="tag mint">Free</span>' : `<span class="tag">${esc(e.priceAmount ?? '')} RON</span>`}
-    <span><button class="pill" data-map-event="${esc(e.id)}">On the map</button>${canAct ? ` <button class="pill on" data-rsvp="${esc(e.id)}">Get a ticket</button>` : ''}</span></div>`,
+    <span><button class="pill" data-map-event="${esc(e.id)}">On the map</button>${canAct ? ` <button class="pill on" data-rsvp="${esc(e.id)}" data-title="${esc(e.title)}">Get a ticket</button>` : ''}</span></div>`,
 })).join('') || '<div class="empty">No events yet.</div>';
 
 const postBlock = (p, canAct) => `
@@ -72,7 +72,7 @@ export async function render(ctx) {
       </div>
     </div>`;
   const wallet = `<div class="section"><div class="section-head"><h2>Wallet</h2></div>
-    <div class="list">${row({ art: art('wallet', 52), title: 'Tickets and badges on Solana devnet', detail: 'A ticket you get here is kept in your wallet in the app. Open the app to scan it at the door.' })}</div></div>`;
+    <div class="list">${row({ art: art('wallet', 52), title: 'Tickets and badges on Solana devnet', detail: 'A ticket you get here is in your wallet, on the website and in the app. Show its code at the door.' })}</div></div>`;
   return `<div class="page">
     <h1 class="page-title">Community</h1>
     <p class="page-sub">Events, neighbours and people to go with.</p>
@@ -89,7 +89,8 @@ const input = (id, label, attrs = '') => `<label class="field"><span>${label}</s
 /** A form in a dialog. `onSubmit` returns after the work is done; throwing shows the message inside the dialog. */
 function openForm({ title, lead, body, submitLabel, onSubmit }) {
   const host = document.getElementById('modalContainer');
-  const close = () => { host.innerHTML = ''; };
+  let release = () => {};
+  const close = () => { release(); host.innerHTML = ''; };
   host.innerHTML = `<div class="scrim" id="formBackdrop"><div class="dialog" role="dialog" aria-modal="true" aria-label="${esc(title)}">
     <h2>${esc(title)}</h2>${lead ? `<p class="lead">${esc(lead)}</p>` : '<div style="height:14px"></div>'}
     <form class="stack" id="dialogForm">${body}<p class="error" id="formError" role="alert" hidden></p>
@@ -112,6 +113,7 @@ function openForm({ title, lead, body, submitLabel, onSubmit }) {
     }
   });
   document.querySelector('#dialogForm input, #dialogForm select')?.focus();
+  release = trapDialog(host.querySelector('.dialog'), close);
 }
 
 const refresh = () => window.dispatchEvent(new Event('hop-refresh'));
@@ -131,7 +133,10 @@ export function mount(ctx, { showToast } = {}) {
   };
 
   root.querySelectorAll('[data-map-event]').forEach((b) => b.addEventListener('click', () => { location.hash = `#/map/evt-${b.dataset.mapEvent}`; }));
-  root.querySelectorAll('[data-rsvp]').forEach((b) => b.addEventListener('click', () => run(() => hubPost(`/v1/m/events/${encodeURIComponent(b.dataset.rsvp)}/rsvp`, { userName: me.name }), 'You have a ticket. It is in your wallet in the app.')));
+  root.querySelectorAll('[data-rsvp]').forEach((b) => b.addEventListener('click', () => run(async () => {
+    await hubPost(`/v1/m/events/${encodeURIComponent(b.dataset.rsvp)}/rsvp`, { userName: me.name });
+    await hubPost('/v1/m/solana/tickets/mint', { eventId: b.dataset.rsvp, eventTitle: b.dataset.title, attendeeName: me.name });
+  }, 'You have a ticket. See it in Profile, under Wallet.')));
   root.querySelectorAll('[data-upvote]').forEach((b) => b.addEventListener('click', () => run(() => hubPost(`/v1/m/forum/${encodeURIComponent(b.dataset.upvote)}/upvote`))));
   root.querySelectorAll('[data-report]').forEach((b) => b.addEventListener('click', () => run(() => hubPost(`/v1/m/forum/${encodeURIComponent(b.dataset.report)}/report`, { reason: 'inappropriate' }), 'Thanks. A moderator will look at it.')));
   root.querySelectorAll('[data-togglec]').forEach((b) => b.addEventListener('click', () => { const id = b.dataset.togglec; openComments.has(id) ? openComments.delete(id) : openComments.add(id); refresh(); }));

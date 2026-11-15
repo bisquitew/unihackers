@@ -86,6 +86,8 @@ function fromArea(a: any): AlertItem {
       { state: 'next', title: until ? `Expected to end ${until}` : 'End date to be confirmed' },
     ],
     confirmedBy: a.affected_residents_count ?? 0,
+    radiusMeters: a.radius_meters,
+    zoneType: danger ? 'danger' : 'construction',
   };
 }
 
@@ -101,8 +103,9 @@ export async function refreshAlerts(): Promise<void> {
       api.get<any[]>('/v1/m/transit/lines'),
       api.get<any[]>('/v1/core/area-alerts', { status: 'active' }).catch(() => [] as any[]),
     ]);
-    const live = [...(Array.isArray(areas) ? areas.map(fromArea) : []), ...(Array.isArray(outages) ? outages.map(fromOutage) : []), ...(Array.isArray(lines) ? lines.filter((l) => l.status !== 'normal').map(fromLine) : [])];
-    current = live;
+    const live: AlertItem[] = [...(Array.isArray(areas) ? areas.map(fromArea) : []), ...(Array.isArray(outages) ? outages.map(fromOutage) : []), ...(Array.isArray(lines) ? lines.filter((l) => l.status !== 'normal').map(fromLine) : [])];
+    const stamp = (x: AlertItem, raw: any) => ({ ...x, live: true, startedAt: raw?.start_time ?? raw?.created_at ?? raw?.detour_alert?.start_time ?? undefined });
+    current = live.map((x) => stamp(x, [...(areas || []), ...(outages || []), ...(lines || [])].find((r: any) => String(r.id) === x.id)));
     version += 1;
     listeners.forEach((fn) => fn());
     notifyMapLayersChanged();

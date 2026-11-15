@@ -91,11 +91,11 @@ export const transitService = {
 
     const isAffected = matchedAlerts.length > 0;
 
-    let guidance = `Stația "${stopName}" funcționează normal.`;
+    let guidance = `"${stopName}" has normal service.`;
     if (isAffected) {
-      guidance = `Atenție! Stația "${stopName}" este afectată de lucrările 2026. Liniile ${suspendedLines.join(', ')} sunt suspendate sau deviate.`;
+      guidance = `"${stopName}" is affected by works. ${suspendedLines.length ? `Lines ${suspendedLines.join(', ')} are suspended or on a detour.` : 'Some lines are on a detour.'}`;
       if (suspendedLines.includes('5')) {
-        guidance += ' Folosiți linia temporară de autobuz 5C din Piața Sf. Gheorghe.';
+        guidance += ' Take the temporary bus 5C from Piața Sf. Gheorghe.';
       }
     }
 
@@ -146,7 +146,7 @@ export const transitService = {
     await notify({
       userId: 'all-passengers',
       moduleId: 'm05-transit',
-      title: `Deviere STPT Linia ${alert.line_number}`,
+      title: `Line ${alert.line_number} detour`,
       body: alert.title,
       category: 'transit_detour',
       data: { lineNumber: alert.line_number, detourId: alert.id }

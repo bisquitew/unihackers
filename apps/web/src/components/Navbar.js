@@ -28,13 +28,7 @@ export function renderNavbar(activeTab) {
         <button class="icon-btn" id="themeBtn" aria-label="Switch to ${isDark() ? 'light' : 'dark'} mode">${isDark() ? icons.sun : icons.moon}</button>
         <button class="icon-btn" data-tab="alerts" aria-label="City alerts">${icons.bell}<i class="dot"></i></button>
         ${isLoggedIn()
-          ? `<button class="user-btn" id="userBtn" aria-haspopup="true" aria-label="Account menu">
-               <span class="avatar ${tone(user.sub)}">${esc(initials(user.name))}</span>
-               <span class="user-name-text">${esc(user.name.split(' ')[0])}</span>
-               <span class="topbar-role-badge ${staff ? 'badge-admin-top' : 'badge-resident-top'}">
-                 ${staff ? '🛡️ Admin Primărie' : '👤 Cetățean'}
-               </span>
-             </button>`
+          ? `<button class="user-btn" id="userBtn" aria-haspopup="true" aria-expanded="false" aria-label="Account menu"><span class="avatar ${tone(user.sub)}">${esc(initials(user.name))}</span>${esc(user.name.split(' ')[0])}</button>`
           : `<button class="btn btn-primary btn-md" id="loginBtn">Log in</button>`}
       </div>
     </header>`;
@@ -45,15 +39,12 @@ export function renderMenu() {
   const staff = isAdmin();
   return `
     <div class="menu" role="menu" id="userMenu">
-      <div class="who">
-        <strong>${esc(user.name)}</strong>
-        <span class="muted">${esc(user.email)}</span>
-        <div class="menu-role-box ${staff ? 'role-box-admin' : 'role-box-resident'}">
-          <div class="role-box-title">${staff ? '🏛️ Administrator Municipal' : '👤 Cetățean Rezident'}</div>
-          <div class="role-box-desc">${staff ? 'Nivel 2 Securitate • MFA Verificat • Acces Dashboard' : 'Nivel 1 Standard • Acces Servicii & Comunitate'}</div>
-        </div>
-      </div>
-      ${staff ? `<button role="menuitem" data-tab="admin">📊 Dashboard Administrare</button>` : `<button role="menuitem" data-tab="community">👥 Comunitate Cetățeni</button>`}
+      <div class="who"><strong>${esc(user.name)}</strong><span class="muted">${esc(user.email)} · ${staff ? 'City staff' : 'Resident'}</span></div>
+      ${staff ? '<button role="menuitem" data-tab="admin">Dashboard</button>' : ''}
+      <button role="menuitem" data-tab="profile">Profile</button>
+      <button role="menuitem" data-tab="report">Report a problem</button>
+      <button role="menuitem" data-tab="info">Visitor info</button>
+      <button role="menuitem" data-tab="feedback">Send feedback</button>
       <button role="menuitem" id="logoutBtn">${icons.out} Log out</button>
     </div>`;
 }

@@ -9,7 +9,7 @@ export interface ModuleManifest {
 
 export const manifest: ModuleManifest = {
   id: 'm09-wallet',
-  title: 'Portofel Solana Devnet',
+  title: 'Wallet',
   owner: 'P3',
   status: 'live',
   icon: 'credit-card',

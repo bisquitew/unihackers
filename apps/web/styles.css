@@ -311,37 +311,10 @@ button.row:hover, .row.link-row:hover { background: var(--tint); border-radius: 
 @media (max-width: 1080px) { .dash { grid-template-columns: minmax(0, 1fr); gap: 24px; } .dash-nav { position: static; grid-auto-flow: column; overflow-x: auto; } .dash-nav .who { display: none; } }
 
 /* ---------- staff dashboard parts ---------- */
-.admin-subnav { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 2px; border-radius: 999px; background: var(--tint); margin-bottom: 28px; }
-.admin-sublink { min-height: 40px; padding: 0 20px; border: 0; border-radius: 999px; background: none; font-weight: 600; font-size: 14px; color: var(--muted); }
 .admin-sublink.active { background: var(--surface); color: var(--ink); font-weight: 700; box-shadow: var(--ring), var(--lift); }
-.workspace-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
 .toolbar-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.viewport-container { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
-.camera-stage { border-radius: 24px; overflow: hidden; background: #0b0614; box-shadow: var(--ring); }
-.camera-feed-wrapper { position: relative; }
-.camera-feed-wrapper canvas { width: 100%; height: auto; display: block; }
-.camera-overlay-info { position: absolute; left: 14px; top: 12px; right: 14px; display: flex; justify-content: space-between; color: #fff; font: 700 11px var(--ui); letter-spacing: 0.06em; }
-.inspector-panel { display: grid; gap: 20px; align-content: start; }
-.inspector-title { font-family: var(--display); font-weight: 800; font-size: 18px; margin-bottom: 10px; }
-.form-group { margin-bottom: 12px; }
-.form-group label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
-.form-control { width: 100%; min-height: 48px; padding: 10px 16px; border: 0; border-radius: 16px; background: var(--tint); color: var(--ink); font: 600 15px var(--ui); }
-.form-control:focus { outline: 0; box-shadow: 0 0 0 2.5px var(--ink); }
 .btn-sm { height: 40px; padding: 0 16px; font-size: 14px; }
 .btn-danger { background: none; color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--danger); }
-.btn-active { background: var(--inverse); color: var(--on-inverse); }
-.form-panel-card { max-width: 720px; }
-.panel-header h3 { font-size: 22px; } .panel-header p { color: var(--muted); margin: 6px 0 20px; }
-.mfa-status-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 0; margin-bottom: 20px; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); font-weight: 600; }
-.banner-verified { color: var(--mint); } .banner-warning { color: var(--apricot); }
-.audit-row { display: flex; gap: 16px; align-items: center; padding: 14px 0; border-bottom: 1px solid var(--hair); }
-.audit-badge { font-size: 12px; font-weight: 800; min-width: 84px; }
-.badge-allow { color: var(--mint); } .badge-challenge { color: var(--apricot); }
-.audit-meta { color: var(--muted); font-size: 13px; } .audit-time { margin-left: auto; color: var(--muted); font-size: 13px; }
-.audit-details code, .panel-header code { background: var(--tint); padding: 1px 6px; border-radius: 6px; font-size: 13px; }
-.tiger-grid, .stat-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--hair); border-bottom: 1px solid var(--hair); margin: 16px 0; }
-.tiger-grid > *, .stat-grid > * { padding: 18px 16px; border-left: 1px solid var(--hair); }
-.tiger-grid > *:first-child, .stat-grid > *:first-child { border-left: 0; }
 
 /* ---------- log-in window ---------- */
 .auth-dialog { width: min(440px, 100%); }
@@ -389,3 +362,31 @@ a.row { color: inherit; text-decoration: none; }
 @media (max-width: 1000px) { .checker { position: static; } }
 
 .google-login-button { display: flex; align-items: center; justify-content: center; gap: 10px; }
+
+/* profile, wallet, report, info, feedback pages */
+.pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.ticket-card { display: flex; gap: 20px; align-items: center; padding: 20px 0; border-top: 1px solid var(--hair); }
+.ticket-card .qr { width: 160px; height: 160px; flex: none; padding: 10px; border-radius: 20px; background: #fff; box-shadow: var(--ring); }
+.ticket-card .qr svg { width: 100%; height: 100%; display: block; }
+.ticket-card h3 { font-size: 20px; line-height: 26px; }
+.stars { display: flex; gap: 4px; }
+.stars button { border: 0; background: none; font-size: 34px; line-height: 1; color: var(--hair-strong, #cfc8de); padding: 2px; }
+.stars button.on { color: var(--apricot); }
+.info-entry summary::-webkit-details-marker { display: none; }
+@media (max-width: 720px) { .ticket-card { flex-direction: column; align-items: flex-start; } }
+
+/* staff dashboard: parking camera (Parkie) */
+.park-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; margin-top: 24px; }
+.park-stats { display: flex; gap: 28px; }
+.park-stats div { display: grid; }
+.park-stats b { font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 36px; }
+.park-stats span { color: var(--muted); font-size: 13px; font-weight: 600; }
+.park-stream, .park-canvas canvas { display: block; width: 100%; height: auto; border-radius: 20px; background: #000; }
+.park-canvas canvas { cursor: crosshair; user-select: none; }
+.park-canvas canvas[width="0"] { display: none; }
+.park-canvas .empty { border-radius: 20px; background: var(--tint); }
+.park-canvas .empty[hidden] { display: none; }
+.live-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--apricot); }
+.live-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--apricot); animation: live-pulse 1.6s ease-in-out infinite; }
+.live-tag[hidden] { display: none; }
+@keyframes live-pulse { 50% { opacity: 0.3; } }

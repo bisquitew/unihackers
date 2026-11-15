@@ -9,7 +9,7 @@ export type { CityMapProps, EnginePin } from './bridge';
 export * from './types';
 export * from './kinds';
 export * from './link';
-export { usePersonalPins, type NewPin, type PinPatch } from './usePersonalPins';
+export { usePersonalPins, registerPinsSync, type NewPin, type PinPatch, type PinsSync } from './usePersonalPins';
 export { useCommunityPins, registerShareAdapter, sharePin, unsharePin, toSharedCopy, type ShareAdapter } from './community';
 export { PIN_ART_KEYS, type PinArtKey } from './engine.generated';
 export { PinArt, PinArtByKey } from './PinArt';

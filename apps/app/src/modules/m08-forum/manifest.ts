@@ -9,7 +9,7 @@ export interface ModuleManifest {
 
 export const manifest: ModuleManifest = {
   id: 'm08-forum',
-  title: 'Comunitate & Forum',
+  title: 'Forum',
   owner: 'P3',
   status: 'live',
   icon: 'message-square',

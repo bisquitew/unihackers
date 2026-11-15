@@ -44,6 +44,19 @@ app.use('/v1/m/*', async (c, next) => {
   if (/^\/v1\/m\/(events|m01-events|buddy|m07-buddy|forum|m08-forum|wallet|m09-wallet)(\/|$)/.test(path) && !signedIn) {
     return c.json({ error: 'login_required', error_description: 'Sign in to do this.' }, 401);
   }
+  // confirming an outage counts once per person, so it needs an account
+  if (/^\/v1\/m\/(utilities|m04-utilities)\/confirm\//.test(path) && !signedIn) {
+    return c.json({ error: 'login_required', error_description: 'Sign in to confirm an outage.' }, 401);
+  }
+  // publishing outages and detours is for staff, also when this app runs on its own (index.ts on port 3001)
+  if (/^\/v1\/m\/(utilities|m04-utilities)\/outages(\/|$)|^\/v1\/m\/(transit|m05-transit)\/detours(\/|$)/.test(path)
+      && !(signedIn && user.role === 'admin')) {
+    return c.json({ error: 'insufficient_role', error_description: 'Publishing needs a staff account.' }, 403);
+  }
+  // letting people in at the door is for event hosts and staff
+  if (/^\/v1\/m\/(wallet|m09-wallet)\/check-in(\/|$)/.test(path) && !(signedIn && ['admin', 'moderator', 'organizer'].includes(user.role))) {
+    return c.json({ error: 'insufficient_role', error_description: 'Checking in tickets is for event hosts.' }, 403);
+  }
   return next();
 });
 
@@ -116,9 +129,11 @@ core.get('/notifications', (c) => {
 });
 
 core.patch('/notifications/:id/read', (c) => {
-  const id = c.req.param('id');
-  const ok = markNotificationAsRead(id);
-  return c.json({ success: ok });
+  const user = c.get('user');
+  if (!user || user.sub === GUEST_SUB) return c.json({ error: 'Not authenticated' }, 401);
+  // only the person a notification was sent to can mark it read
+  const ok = markNotificationAsRead(c.req.param('id'), user.sub);
+  return c.json({ success: ok }, ok ? 200 : 404);
 });
 
 app.route('/v1/core', core);

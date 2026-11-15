@@ -3,7 +3,7 @@ import { smellMapLayer } from './mapLayer';
 
 export const manifest: ModuleManifest = {
   id: 'm06-smell',
-  title: 'Sesizări de Miros',
+  title: 'Smell reports',
   owner: 'P4',
   status: 'beta',
   icon: 'wind',

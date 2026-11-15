@@ -54,22 +54,29 @@ buddyRoutes.post('/chats', async (c) => {
       participantIds: string[];
       participantNames: string[];
     }>();
-    const chat = await buddyService.getOrCreateChat(
-      body.eventId,
-      body.eventTitle,
-      body.participantIds || [],
-      body.participantNames || []
-    );
+    const me = c.get('user' as never) as any;
+    // whoever opens the chat is always one of its participants
+    const ids = [me.sub, ...(body.participantIds || []).filter((x) => x !== me.sub)];
+    const names = [me.name, ...(body.participantNames || []).filter((_, i) => (body.participantIds || [])[i] !== me.sub)];
+    const chat = await buddyService.getOrCreateChat(body.eventId, body.eventTitle, ids, names);
     return c.json({ chat });
   } catch {
     return c.json({ error: 'Failed to create chat' }, 400);
   }
 });
 
-// Get chats for an event
+// The signed-in person's chats (must come before /chats/:eventId)
+buddyRoutes.get('/chats/mine', async (c) => {
+  const me = c.get('user' as never) as any;
+  if (!me || me.sub === 'guest|unauthenticated') return c.json({ error: 'login_required' }, 401);
+  return c.json({ chats: await buddyService.getChatsFor(me.sub), me: me.sub });
+});
+
+// Get chats for an event (only the ones you are in: chats are private)
 buddyRoutes.get('/chats/:eventId', async (c) => {
   const eventId = c.req.param('eventId');
-  const chats = await buddyService.getChatsForEvent(eventId);
+  const me = c.get('user' as never) as any;
+  const chats = (await buddyService.getChatsForEvent(eventId)).filter((ch) => !!me && ch.participantIds.includes(me.sub));
   return c.json({ chats });
 });
 
@@ -77,16 +84,17 @@ buddyRoutes.get('/chats/:eventId', async (c) => {
 buddyRoutes.post('/chats/:chatId/messages', async (c) => {
   const chatId = c.req.param('chatId');
   try {
-    const body = await c.req.json<{ senderId: string; senderName: string; content: string }>();
-    if (!body.content || !body.senderName) {
-      return c.json({ error: 'senderName and content are required' }, 400);
+    const body = await c.req.json<{ content: string }>();
+    if (!body.content || typeof body.content !== 'string' || body.content.length > 1000) {
+      return c.json({ error: 'A message needs some text, at most 1000 characters.' }, 400);
     }
-    const msg = await buddyService.sendMessage(
-      chatId,
-      body.senderId || 'usr-anon',
-      body.senderName,
-      body.content
-    );
+    const me = c.get('user' as never) as any;
+    const chat = await buddyService.getChat(chatId);
+    if (!chat) return c.json({ error: 'Chat not found' }, 404);
+    if (!chat.participantIds.includes(me.sub)) {
+      return c.json({ error: 'not_a_participant', error_description: 'Only people in this chat can write in it.' }, 403);
+    }
+    const msg = await buddyService.sendMessage(chatId, me.sub, me.name, body.content);
     if (!msg) {
       return c.json({ error: 'Chat not found' }, 404);
     }
