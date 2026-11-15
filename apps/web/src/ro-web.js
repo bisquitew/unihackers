@@ -81,4 +81,14 @@ export const RO_WEB = {
   'Fetching the data…': 'Aduc datele…', 'Gemini is writing and running Python…': 'Gemini scrie și rulează cod Python…', 'Checking the numbers and drawing the chart…': 'Verific cifrele și desenez graficul…',
   'Could not answer.': 'Nu am putut răspunde.', 'Verify with your passkey, then ask again.': 'Verifică-te cu cheia de acces, apoi întreabă din nou.',
   'Gemini is busy right now. Wait a few seconds and try again.': 'Gemini este ocupat acum. Așteaptă câteva secunde și încearcă din nou.',
+  // Incident radar (P4)
+  'Incident radar': 'Radar de incidente', 'Incidents': 'Incidente', 'Resident reports': 'Sesizări ale locuitorilor', 'Forum posts read': 'Postări de forum citite',
+  'Links found by embeddings': 'Legături găsite prin embeddings', 'How Gemini grouped these': 'Cum le-a grupat Gemini', 'Ask the data about this': 'Întreabă datele despre asta',
+  "Residents' reports, forum posts and official outages about the same problem, grouped by Gemini embeddings. Gemini writes each card and double-checks every link.": 'Sesizări ale locuitorilor, postări de pe forum și avarii oficiale despre aceeași problemă, grupate cu embeddings Gemini. Gemini scrie fiecare fișă și verifică fiecare legătură.',
+  "Gemini is reading the city's signals…": 'Gemini citește semnalele din oraș…', 'Suggested next step:': 'Pasul următor propus:', 'High': 'Ridicată', 'Medium': 'Medie', 'Low': 'Scăzută',
+  '{} smell reports': '{} sesizări de miros', '{} smell report': '{} sesizare de miros', '{} safety reports': '{} sesizări de siguranță', '{} safety report': '{} sesizare de siguranță',
+  '{} forum posts': '{} postări pe forum', '{} forum post': '{} postare pe forum', 'Official outage': 'Avarie oficială', '{} official outages': '{} avarii oficiale', '{} demo': '{} demo',
+  'similarity {}': 'similaritate {}', 'No incidents in this time window.': 'Niciun incident în acest interval.', 'No links in this time window': 'Nicio legătură în acest interval',
+  'No forum post or outage matched a group of reports closely enough.': 'Nicio postare sau avarie nu s-a potrivit suficient de bine cu un grup de sesizări.',
+  'Time window': 'Interval', '7 days': '7 zile', 'Refresh': 'Reîmprospătează',
 };
