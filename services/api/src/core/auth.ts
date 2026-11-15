@@ -661,9 +661,14 @@ async function resolveAuthUserRaw(authHeader?: string): Promise<AuthUser> {
     try {
       const domain = getAuth0Domain();
       const audience = getAuth0Audience();
+      const validAudiences = [
+        audience,
+        process.env.AUTH0_CLIENT_ID || 'nX2Hf4pmmdeTk73ydXFmg2S632Bh966D',
+        'nX2Hf4pmmdeTk73ydXFmg2S632Bh966D'
+      ];
       const { payload } = await jwtVerify(token, remoteJwks, {
         issuer: `https://${domain}/`,
-        audience
+        audience: validAudiences
       });
 
       const rawAmr = Array.isArray(payload.amr) ? (payload.amr as string[]) : [];

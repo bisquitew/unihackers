@@ -5,7 +5,7 @@ import { tr } from './locale';
 import { colors, fonts, radii } from './tokens';
 import { Text } from './Text';
 
-type FieldProps = Pick<TextInputProps, 'value' | 'onChangeText' | 'placeholder' | 'maxLength' | 'autoFocus' | 'returnKeyType' | 'onSubmitEditing' | 'autoCapitalize' | 'multiline' | 'keyboardType'> & {
+type FieldProps = Pick<TextInputProps, 'value' | 'onChangeText' | 'placeholder' | 'maxLength' | 'autoFocus' | 'returnKeyType' | 'onSubmitEditing' | 'autoCapitalize' | 'multiline' | 'keyboardType' | 'secureTextEntry'> & {
   label: string;
 };
 

@@ -273,6 +273,9 @@ def main():
         # 6. [PARKIE] Parking Lots & CV Detections
         status, lots = get("/v1/m/parkie/lots")
         print(f"✅ [PARKIE] /v1/m/parkie/lots -> {len(lots)} Timișoara parking lots loaded")
+        # test against a lot that exists (the seed list changes; lot-unirii-01 was removed in f7204a8)
+        lot_id = lots[0]["id"]
+        lot_name = lots[0].get("name", lot_id)
 
         status, colors = get("/v1/m/parkie/lots/colors")
         print(f"✅ [PARKIE] /v1/m/parkie/lots/colors -> {len(colors)} lightweight color items streamed")
@@ -284,17 +287,17 @@ def main():
         print(f"   📸 Camera Frame Captured: {len(frame_resp['image'])} bytes base64 payload ready for Canvas calibration")
 
         # Lot Config retrieval for Vision Agent
-        status, lot_cfg = get("/v1/m/parkie/lots/lot-unirii-01/config")
+        status, lot_cfg = get(f"/v1/m/parkie/lots/{lot_id}/config")
         assert status == 200, f"Expected 200 from lot config, got {status}: {lot_cfg}"
-        print(f"   ⚙️ Lot Config (Piața Unirii): {len(lot_cfg.get('slots_data', []))} slots mapped, Camera: {lot_cfg.get('camera_url') or 'default CCTV'}")
+        print(f"   ⚙️ Lot Config ({lot_name}): {len(lot_cfg.get('slots_data', []))} slots mapped, Camera: {lot_cfg.get('camera_url') or 'default CCTV'}")
 
         # Update detection via CV agent simulation (camera detections are staff-only since 1387d78)
-        status, updated_lot = post("/v1/m/parkie/detections", {"lot_id": "lot-unirii-01", "detected_cars": 42}, token="dev_admin")
+        status, updated_lot = post("/v1/m/parkie/detections", {"lot_id": lot_id, "detected_cars": 4}, token="dev_admin")
         assert status == 200, f"Expected 200 from parkie detections, got {status}: {updated_lot}"
-        print(f"   🚗 CV Detection Update (Piața Unirii): {updated_lot.get('available_spots')}/{updated_lot.get('capacity')} spots left [{updated_lot.get('status_color').upper()}]")
+        print(f"   🚗 CV Detection Update ({lot_name}): {updated_lot.get('available_spots')}/{updated_lot.get('capacity')} spots left [{updated_lot.get('status_color').upper()}]")
 
         # Parkie Compatibility Endpoint: /vision/update_lot (camera detections are staff-only)
-        status, compat_lot = post("/vision/update_lot", {"lot_id": "lot-unirii-01", "detected_cars": 20}, token="dev_admin")
+        status, compat_lot = post("/vision/update_lot", {"lot_id": lot_id, "detected_cars": 2}, token="dev_admin")
         assert status == 200, f"Expected 200 from /vision/update_lot, got {status}: {compat_lot}"
         print(f"   📡 /vision/update_lot compat: {compat_lot.get('available_spots')}/{compat_lot.get('capacity')} spots left [{compat_lot.get('status_color').upper()}]")
 
