@@ -2,9 +2,9 @@ import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
 import {
   approveReportedPost, createAreaAlert, createOutage, fetchAreaAlerts, fetchAuditLogs, fetchDashboardOverview, fetchLots,
   captureCameraFrame, fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
-  parseNoticePhoto, confirmNotice,
+  parseNoticePhoto, confirmNotice, hubGet,
 } from '../api.js';
-import { CameraCanvas } from '../components/CameraCanvas.js';
+import { createLotEditor } from '../components/ParkieLotEditor.js';
 import { art, cap, esc, row, statusText } from '../ui.js';
 
 let adminCanvas = null;
@@ -49,9 +49,12 @@ export function mount(ctx, { showToast } = {}) {
   const nav = document.querySelectorAll('.dash-nav [data-section]');
   let open = 'overview';
   let token = 0;
+  let sectionCleanup = () => {};
 
   const draw = async () => {
     const mine = ++token;
+    sectionCleanup();
+    sectionCleanup = () => {};
     nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
     body.innerHTML = '<p class="muted">Loading…</p>';
     adminCanvas = null;
@@ -65,11 +68,12 @@ export function mount(ctx, { showToast } = {}) {
     }
     if (mine !== token) return;
     body.innerHTML = html;
-    section.mount?.(ctx, showToast, draw);
+    const cleanup = section.mount?.(ctx, showToast, draw);
+    if (typeof cleanup === 'function') sectionCleanup = cleanup;
   };
   nav.forEach((b) => b.addEventListener('click', () => { open = b.dataset.section; draw(); }));
   draw();
-  return () => { token += 1; adminCanvas = null; };
+  return () => { token += 1; adminCanvas = null; sectionCleanup(); };
 }
 
 /* ---------------------------------------------------------------- Overview */
@@ -366,108 +370,136 @@ const notice = {
 };
 
 /* ----------------------------------------------------------------- Parking */
+// The live camera of a lot (Parkie's vision agent) and Parkie's slot editor. The agent reports occupancy every 15 s.
 const parking = {
   async render() {
-    const lots = await fetchLots();
+    const [lots, feed] = await Promise.all([fetchLots(), hubGet('/v1/m/parkie/feed').catch(() => null)]);
+    const lotId = feed?.lotId || lots[0]?.id;
     return `
       <h1 class="page-title">Parking cameras</h1>
-      <p class="page-sub">Mark each parking spot on the camera picture so free spots are counted correctly.</p>
-      <div class="workspace-toolbar" style="margin-top:24px">
-        <div class="toolbar-group">
-          <select id="adminLotSelect" class="form-control" style="width:260px" aria-label="Parking lot">${lots.map((l) => `<option value="${esc(l.id)}">${esc(l.name)} (${l.available_spots}/${l.capacity})</option>`).join('')}</select>
-          <button class="btn btn-secondary btn-md btn-active" id="adminSelectModeBtn">Select</button>
-          <button class="btn btn-secondary btn-md" id="adminDrawModeBtn">Draw a spot</button>
-          <button class="btn btn-secondary btn-md" id="adminAddGridBtn">Add 5 in a row</button>
-        </div>
-        <button class="btn btn-primary btn-md" id="adminSavePlotsBtn">Save</button>
+      <p class="page-sub">The camera feed of a lot, read by the vision model. Draw each parking spot on a frame; the model counts the cars in them.</p>
+      <div class="park-head">
+        <label class="field" style="min-width:280px"><span>Parking lot</span><select id="parkLot">${lots.map((l) => `<option value="${esc(l.id)}" ${l.id === lotId ? 'selected' : ''}>${esc(l.name)}</option>`).join('')}</select></label>
+        <div class="park-stats" id="parkStats"></div>
       </div>
-      <div class="viewport-container">
-        <div class="camera-stage"><div class="camera-feed-wrapper"><canvas id="adminCameraCanvas" width="800" height="450"></canvas></div></div>
-        <aside class="inspector-panel">
-          <div>
-            <div class="inspector-title" id="adminInspectorTitle">No spot selected</div>
-            <div class="form-group"><label for="adminPlotId">Spot name</label><input type="text" id="adminPlotId" class="form-control" disabled></div>
-            <div class="form-group"><label for="adminPlotType">Type</label><select id="adminPlotType" class="form-control" disabled><option value="standard">Standard</option><option value="ev">EV charging</option><option value="disabled">Accessible</option></select></div>
-            <div class="form-group"><label for="adminPlotStatus">Status</label><select id="adminPlotStatus" class="form-control" disabled><option value="available">Free</option><option value="occupied">Occupied</option></select></div>
-            <div class="stack"><button class="btn btn-secondary btn-md btn-block" id="adminToggleOccupancyBtn" disabled>Test occupancy</button><button class="btn btn-danger btn-md btn-block" id="adminDeletePlotBtn" disabled>Delete spot</button></div>
-          </div>
-          <div>
-            <div class="inspector-title">Camera address</div>
-            <input type="text" id="adminCameraUrl" class="form-control" placeholder="rtsp://camera.example/live" aria-label="Camera address">
-            <button class="btn btn-secondary btn-md btn-block" id="adminCaptureFrameBtn" style="margin-top:8px">Capture a live frame</button>
-            <div id="adminCaptureStatus" class="muted" style="font-size:13px;margin-top:6px"></div>
-          </div>
-        </aside>
+
+      <div class="park-feed section">
+        <div class="section-head"><h2>Live feed</h2><span class="live-tag" id="parkLive" hidden><i></i>Live</span></div>
+        <div id="parkFeedBox"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head"><h2>Parking spots</h2><span class="muted" id="parkCount"></span></div>
+        <p class="muted" style="font-size:14px;margin-bottom:12px">Step 1: capture a frame from the camera. Step 2: click the 4 corners of each parking spot on it. Drag a corner to move it.</p>
+        <div class="toolbar-group" style="margin-bottom:12px">
+          <button class="btn btn-secondary btn-md" id="parkCapture">Capture frame</button>
+          <span class="muted" id="parkCaptureStatus" aria-live="polite"></span>
+        </div>
+        <div class="park-canvas"><canvas id="parkCanvas" width="0" height="0"></canvas><div class="empty" id="parkPlaceholder">Capture a frame to start drawing.</div></div>
+        <div class="toolbar-group" id="parkControls" style="margin-top:12px" hidden>
+          <button class="btn btn-secondary btn-md" id="parkUndo">Undo last point</button>
+          <button class="btn btn-secondary btn-md" id="parkClear">Clear all</button>
+          <button class="btn btn-primary btn-md" id="parkSave">Save spots</button>
+        </div>
       </div>`;
   },
   mount(ctx, showToast) {
     const $ = (id) => document.getElementById(id);
-    adminCanvas = new CameraCanvas($('adminCameraCanvas'), { onPlotSelected: (plot) => updateInspector(plot), onPlotsChanged: () => {} });
-    const camUrl = $('adminCameraUrl');
-    let loaded = [];
-    fetchLots().then((lots) => {
-      loaded = lots;
-      if (lots.length) { adminCanvas?.setLot(lots[0]); camUrl.value = lots[0].camera_url || ''; }
-      $('adminLotSelect')?.addEventListener('change', (e) => {
-        const l = lots.find((x) => x.id === e.target.value);
-        if (l) { adminCanvas?.setLot(l); camUrl.value = l.camera_url || ''; }
-      });
+    let editor = null;
+    let lots = [];
+    let feed = null;
+    let alive = true;
+
+    const lot = () => lots.find((l) => l.id === $('parkLot').value);
+    const drawStats = () => {
+      const l = lot();
+      if (!l) return;
+      const occupied = Math.max(0, l.capacity - l.available_spots);
+      $('parkStats').innerHTML = `
+        <div><b style="color:var(--mint)">${esc(l.available_spots)}</b><span>Free</span></div>
+        <div><b style="color:var(--apricot)">${esc(occupied)}</b><span>Occupied</span></div>
+        <div><b>${esc(l.capacity)}</b><span>Spots</span></div>`;
+      $('parkCount').textContent = `${(l.slots_data || []).length} drawn`;
+    };
+    const drawFeed = () => {
+      const isFeedLot = !!feed?.running && feed.lotId === $('parkLot').value;
+      $('parkLive').hidden = !isFeedLot;
+      const feedLotName = lots.find((l) => l.id === feed?.lotId)?.name || 'another lot';
+      $('parkFeedBox').innerHTML = isFeedLot
+        ? `<img class="park-stream" src="${esc(feed.overlayUrl)}" alt="Live camera of ${esc(lot()?.name || 'the lot')}, with the parking spots marked free or occupied">`
+        : `<div class="empty">${feed?.running ? `The camera is connected to ${esc(feedLotName)}.` : 'The camera is not running. Start the API with PARKIE_VIDEO set.'}</div>`;
+      $('parkCapture').disabled = !isFeedLot;
+    };
+    const resetEditor = () => {
+      editor?.destroy();
+      editor = null;
+      $('parkControls').hidden = true;
+      $('parkPlaceholder').hidden = false;
+      $('parkCanvas').width = 0;
+      $('parkCaptureStatus').textContent = '';
+    };
+    const refresh = async () => {
+      const next = await fetchLots();
+      if (!alive) return;
+      lots = next;
+      drawStats();
+    };
+
+    Promise.all([fetchLots(), hubGet('/v1/m/parkie/feed').catch(() => null)]).then(([l, f]) => {
+      if (!alive) return;
+      lots = l;
+      feed = f;
+      drawStats();
+      drawFeed();
     });
-    const status = $('adminCaptureStatus');
-    $('adminCaptureFrameBtn').addEventListener('click', async (e) => {
-      const btn = e.currentTarget;
+    $('parkLot').addEventListener('change', () => { resetEditor(); drawStats(); drawFeed(); });
+    const timer = setInterval(refresh, 5000);
+
+    $('parkCapture').addEventListener('click', async () => {
+      const btn = $('parkCapture');
       btn.disabled = true;
-      status.textContent = 'Capturing a frame from the camera…';
+      $('parkCaptureStatus').textContent = 'Capturing…';
       try {
-        const res = await captureCameraFrame(camUrl.value.trim() || 'rtsp://cam.timisoara-hub.ro/live');
-        if (res?.image) { adminCanvas.setBackgroundImage(res.image); status.textContent = 'Frame captured. You can mark the spots now.'; }
-        else status.textContent = 'The camera did not return a picture.';
+        editor?.destroy();
+        const l = lot();
+        editor = createLotEditor({
+          canvas: $('parkCanvas'),
+          slots: l?.slots_data || [],
+          onSave: (slots) => saveLotPlots(l.id, { camera_url: l.camera_url || feed?.video || 'demo3.MOV', slots_data: slots, capacity: slots.length }),
+        });
+        await editor.setFrame(`${feed.snapshotUrl}?t=${Date.now()}`);
+        $('parkCaptureStatus').textContent = 'Frame captured.';
+        $('parkControls').hidden = false;
+        $('parkPlaceholder').hidden = true;
       } catch (err) {
-        status.textContent = `Could not capture: ${err.message}`;
+        $('parkCaptureStatus').textContent = `Could not capture: ${err.message}`;
       } finally {
         btn.disabled = false;
       }
     });
-    const setMode = (m) => {
-      adminCanvas.setMode(m);
-      $('adminSelectModeBtn').classList.toggle('btn-active', m === 'select');
-      $('adminDrawModeBtn').classList.toggle('btn-active', m === 'draw');
-    };
-    $('adminSelectModeBtn').addEventListener('click', () => setMode('select'));
-    $('adminDrawModeBtn').addEventListener('click', () => setMode('draw'));
-    $('adminAddGridBtn').addEventListener('click', () => adminCanvas.addGridSlots(5));
-    $('adminSavePlotsBtn').addEventListener('click', async () => {
-      const plots = adminCanvas.getPlots();
+    $('parkUndo').addEventListener('click', () => editor?.undo());
+    $('parkClear').addEventListener('click', () => editor?.clear());
+    $('parkSave').addEventListener('click', async () => {
+      const btn = $('parkSave');
+      btn.disabled = true;
       try {
-        await saveLotPlots($('adminLotSelect').value, { slots_data: plots, camera_url: $('adminCameraUrl').value.trim() || null, capacity: plots.length || undefined });
-        showToast?.(`Saved ${plots.length} spots for ${loaded.find((l) => l.id === $('adminLotSelect').value)?.name || 'this lot'}. The vision agent will scan this camera.`);
+        const n = await editor.save();
+        showToast?.(`Saved ${n} ${n === 1 ? 'spot' : 'spots'}. The camera picks them up within 15 seconds.`);
+        await refresh();
       } catch (err) {
-        showToast?.(`Could not save: ${err.message}`);
+        showToast?.(err.message);
+      } finally {
+        btn.disabled = false;
       }
     });
-    $('adminPlotId').addEventListener('input', (e) => adminCanvas.updateSelectedPlot({ id: e.target.value }));
-    $('adminPlotType').addEventListener('change', (e) => adminCanvas.updateSelectedPlot({ type: e.target.value }));
-    $('adminPlotStatus').addEventListener('change', (e) => adminCanvas.updateSelectedPlot({ status: e.target.value }));
-    $('adminToggleOccupancyBtn').addEventListener('click', () => {
-      const plot = adminCanvas.getSelectedPlot();
-      if (!plot) return;
-      const next = plot.status === 'occupied' ? 'available' : 'occupied';
-      adminCanvas.updateSelectedPlot({ status: next });
-      $('adminPlotStatus').value = next;
-    });
-    $('adminDeletePlotBtn').addEventListener('click', () => adminCanvas.deleteSelectedPlot());
+
+    return () => {
+      alive = false;
+      clearInterval(timer);
+      editor?.destroy();
+    };
   },
 };
-
-function updateInspector(plot) {
-  const $ = (id) => document.getElementById(id);
-  const on = !!plot;
-  $('adminInspectorTitle').textContent = on ? `Editing ${plot.id}` : 'No spot selected';
-  $('adminPlotId').value = on ? plot.id : '';
-  $('adminPlotType').value = on ? plot.type || 'standard' : 'standard';
-  $('adminPlotStatus').value = on ? plot.status || 'available' : 'available';
-  for (const id of ['adminPlotId', 'adminPlotType', 'adminPlotStatus', 'adminToggleOccupancyBtn', 'adminDeletePlotBtn']) $(id).disabled = !on;
-}
 
 /* -------------------------------------------------------------- Moderation */
 const moderation = {

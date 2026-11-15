@@ -19,6 +19,7 @@ import honoApp from './index.ts';
 import { DEMO_AUTH, HttpError, isStaffEmail } from './core/config.ts';
 import { areaAlertsService } from './core/area-alerts.ts';
 import { avatarSvg } from './core/avatars.ts';
+import { PARKIE_FEED_PORT, parkieAgentStatus, startParkieAgent } from './core/parkie-agent.ts';
 import { 
   resolveAuthUser, 
   enforceSecurityPolicy, 
@@ -751,6 +752,15 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
       return sendJson(res, 200, result);
     }
 
+    // where the staff dashboard finds the live parking camera (Parkie's vision agent, see core/parkie-agent.ts)
+    if (pathname === '/v1/m/parkie/feed' && method === 'GET') {
+      const staffCheck = enforceSecurityPolicy(currentUser, 'parkie.feed', { requiredRoles: ['admin'], ip: req.socket.remoteAddress });
+      if (!staffCheck.authorized) return sendJson(res, staffCheck.status, staffCheck.body);
+      const host = (req.headers.host || 'localhost').split(':')[0];
+      const base = `http://${host}:${PARKIE_FEED_PORT}`;
+      return sendJson(res, 200, { ...parkieAgentStatus(), streamUrl: `${base}/stream`, overlayUrl: `${base}/stream?overlay=1`, snapshotUrl: `${base}/snapshot.jpg` });
+    }
+
     if ((pathname.startsWith('/v1/m/parkie/lots/') || pathname.startsWith('/lots/')) && pathname.endsWith('/config') && method === 'GET') {
       const id = pathname.replace('/v1/m/parkie/lots/', '').replace('/lots/', '').replace('/config', '');
       const config = parkieService.getLotConfig(id);
@@ -1084,6 +1094,7 @@ export function startServer(port: number) {
 
   server.listen(port, '0.0.0.0', () => {
     console.log(`🚀 Timișoara City Hub API running on http://localhost:${port}`);
+    void bootParkie(port);
     console.log(`   Health: http://localhost:${port}/health`);
     console.log(`   Auth0 Profile: http://localhost:${port}/v1/core/auth/me`);
     console.log(`   Auth0 Dev Tokens: http://localhost:${port}/v1/core/auth/dev-tokens`);
@@ -1100,6 +1111,14 @@ export function startServer(port: number) {
     console.log(`   Open Data: http://localhost:${port}/v1/core/open-data/export`);
     console.log(`   Solana Status: http://localhost:${port}/v1/m/solana/status`);
   });
+}
+
+// Parking: lots drawn by staff come back from the database, then Parkie's agent starts on the demo camera
+async function bootParkie(port: number) {
+  for (let i = 0; i < 30 && !db.isTigerConnected(); i++) await new Promise((r) => setTimeout(r, 500));
+  const n = await parkieService.loadLotsFromDb();
+  if (n) console.log(`[PARKIE] ${n} lots loaded from the database`);
+  startParkieAgent(port);
 }
 
 if (!process.env.TEST_IN_MEMORY) {

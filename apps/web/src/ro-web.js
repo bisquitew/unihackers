@@ -59,5 +59,11 @@ export const RO_WEB = {
   'Tap a star first.': 'Atinge mai întâi o stea.', 'Log in to send feedback': 'Autentifică-te ca să trimiți o părere', 'It helps us know who to thank, and keeps spam out.': 'Ne ajută să știm cui să mulțumim și ține spamul departe.',
   'You have a ticket. See it in Profile, under Wallet.': 'Ai un bilet. Îl găsești în Profil, la Portofel.', 'A ticket you get here is in your wallet, on the website and in the app. Show its code at the door.': 'Un bilet luat aici este în portofelul tău, pe site și în aplicație. Arată codul la intrare.',
   'Ticket code': 'Codul biletului', 'Check before you travel': 'Verifică înainte de drum', 'Nothing yet.': 'Încă nimic.', 'Could not load the list.': 'Lista nu s-a putut încărca.', 'Loading…': 'Se încarcă…',
+  'The camera feed of a lot, read by the vision model. Draw each parking spot on a frame; the model counts the cars in them.': 'Camera unei parcări, citită de modelul de viziune. Desenează fiecare loc pe un cadru; modelul numără mașinile din ele.',
+  'Live feed': 'Transmisie live', 'Live': 'Live', 'Parking spots': 'Locuri de parcare', '{} drawn': '{} desenate', 'Capture frame': 'Capturează cadrul', 'Capturing…': 'Se capturează…', 'Frame captured.': 'Cadru capturat.',
+  'Step 1: capture a frame from the camera. Step 2: click the 4 corners of each parking spot on it. Drag a corner to move it.': 'Pasul 1: capturează un cadru de la cameră. Pasul 2: dă clic pe cele 4 colțuri ale fiecărui loc. Trage un colț ca să-l muți.',
+  'Capture a frame to start drawing.': 'Capturează un cadru ca să începi să desenezi.', 'Undo last point': 'Anulează ultimul punct', 'Clear all': 'Șterge tot', 'Save spots': 'Salvează locurile',
+  'Occupied': 'Ocupate', 'Spots': 'Locuri', 'The camera is not running. Start the API with PARKIE_VIDEO set.': 'Camera nu rulează. Pornește API-ul cu PARKIE_VIDEO setat.',
+  'Please define at least one complete slot (4 points per slot).': 'Definește cel puțin un loc complet (4 puncte pe loc).',
   'Switch language': 'Schimbă limba',
 };

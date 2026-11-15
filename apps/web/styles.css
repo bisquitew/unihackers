@@ -401,3 +401,19 @@ a.row { color: inherit; text-decoration: none; }
 .stars button.on { color: var(--apricot); }
 .info-entry summary::-webkit-details-marker { display: none; }
 @media (max-width: 720px) { .ticket-card { flex-direction: column; align-items: flex-start; } }
+
+/* staff dashboard: parking camera (Parkie) */
+.park-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; margin-top: 24px; }
+.park-stats { display: flex; gap: 28px; }
+.park-stats div { display: grid; }
+.park-stats b { font-family: var(--display); font-weight: 800; font-size: 32px; line-height: 36px; }
+.park-stats span { color: var(--muted); font-size: 13px; font-weight: 600; }
+.park-stream, .park-canvas canvas { display: block; width: 100%; height: auto; border-radius: 20px; background: #000; }
+.park-canvas canvas { cursor: crosshair; user-select: none; }
+.park-canvas canvas[width="0"] { display: none; }
+.park-canvas .empty { border-radius: 20px; background: var(--tint); }
+.park-canvas .empty[hidden] { display: none; }
+.live-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--apricot); }
+.live-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--apricot); animation: live-pulse 1.6s ease-in-out infinite; }
+.live-tag[hidden] { display: none; }
+@keyframes live-pulse { 50% { opacity: 0.3; } }
