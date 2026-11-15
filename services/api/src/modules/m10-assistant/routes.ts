@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { enforceSecurityPolicy, GUEST_USER, hubClientOf, resolveAuthUser } from '../../core/auth.ts';
 import { clientKey, rateLimit } from '../../core/rate-limit.ts';
 import { utilitiesService } from '../m04-utilities/service.ts';
+import { ANALYST_MAX_QUESTION, askAnalyst } from './analyst.ts';
 import { NOTICE_IMAGE_TYPES, NOTICE_MAX_BYTES, NoticeUnavailableError, parseConfirmedDraft, parseNoticePhoto } from './notice.ts';
 import { assistantService, AssistantUnavailableError } from './service.ts';
 import { loadTour } from './tour.ts';
@@ -174,4 +175,33 @@ assistantRoutes.post('/notice/confirm', async (c) => {
   if (parsed.ok === false) return c.json({ error: parsed.error }, 400);
   const outage = await utilitiesService.createOutage(parsed.value);
   return c.json({ outage }, 201);
+});
+
+// "Ask the data" for city staff: Gemini fetches real data with our tools, runs Python (code execution) and can draw a chart.
+// Read-only, but it shows city-wide analysis, so staff only (staff roles always need the second check).
+const analystLimit = rateLimit({ windowMs: 10 * 60_000, max: 10, message: 'Too many analysis questions in a short time. Please wait a few minutes.' });
+
+assistantRoutes.post('/analyst', async (c, next) => {
+  const user = await resolveAuthUser(c.req.header('Authorization'));
+  const auth = enforceSecurityPolicy(user, 'dashboard.analyst_query', { requiredRoles: ['admin', 'moderator'], ip: clientKey(c) });
+  if (auth.authorized === false) return c.json(auth.body, auth.status as 401 | 403);
+  return next();
+}, analystLimit, async (c) => {
+  let body: { question?: unknown; lang?: unknown };
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'Invalid request body' }, 400);
+  }
+  const question = typeof body?.question === 'string' ? body.question.trim() : '';
+  if (!question) return c.json({ error: 'question is required' }, 400);
+  if (question.length > ANALYST_MAX_QUESTION) return c.json({ error: `question must be at most ${ANALYST_MAX_QUESTION} characters` }, 400);
+  const lang = body.lang === 'ro' || body.lang === 'en' ? body.lang : null;
+  try {
+    return c.json(await askAnalyst(question, lang));
+  } catch (err) {
+    if (err instanceof AssistantUnavailableError) return c.json({ error: err.message }, 503);
+    console.error('[m10-analyst] Unexpected error:', err instanceof Error ? err.name : 'unknown');
+    return c.json({ error: 'The analysis failed unexpectedly. Please try again.' }, 500);
+  }
 });

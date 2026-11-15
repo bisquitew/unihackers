@@ -17,16 +17,20 @@ import type { ChatInput, ChatResult, ToolContext, ToolUse } from './types.ts';
 
 /** Stable, fast model (see Gemini models page). Override with GEMINI_MODEL if needed. */
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+/** Used when the main model stays busy (503) after a retry; slower but usually free. */
+export const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL?.trim() || 'gemini-3.5-flash';
 /** Rounds in which the model may call tools; one extra round then forces a text answer. */
 const MAX_TOOL_ROUNDS = 5;
 
 /** Thrown when the assistant can't answer because Gemini is missing or failing (maps to 503). */
 export class AssistantUnavailableError extends Error {}
+/** Gemini answered 503 "high demand" even after the retry (the analyst then starts over with the fallback model). */
+export class GeminiBusyError extends AssistantUnavailableError {}
 
 let client: GoogleGenAI | null = null;
 let clientKey = '';
 
-function getClient(): GoogleGenAI {
+export function getClient(): GoogleGenAI {
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!key) throw new AssistantUnavailableError('The assistant is not configured: GEMINI_API_KEY is missing.');
   if (!client || key !== clientKey) {
@@ -43,15 +47,35 @@ function safeMessage(err: unknown): string {
   return (key ? raw.split(key).join('[redacted]') : raw).slice(0, 300);
 }
 
-async function callModel(ai: GoogleGenAI, contents: Content[], config: GenerateContentConfig): Promise<GenerateContentResponse> {
+/** Also used by the staff analyst (analyst.ts), which passes its own model. */
+export async function callModel(ai: GoogleGenAI, contents: Content[], config: GenerateContentConfig, model?: string): Promise<GenerateContentResponse> {
+  const request = { model: model || process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL, contents, config };
   try {
-    return await ai.models.generateContent({ model: process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL, contents, config });
+    try {
+      return await ai.models.generateContent(request);
+    } catch (first) {
+      // 503 "high demand" from Google is usually gone a moment later: try once more before giving up
+      if ((first as { status?: number }).status !== 503) throw first;
+      console.warn('[m10-assistant] Gemini is busy (HTTP 503), retrying once');
+      await new Promise((r) => setTimeout(r, 2000));
+      try {
+        return await ai.models.generateContent(request);
+      } catch (second) {
+        // Still busy: answer with the fallback model, but only before any model turn with thought signatures
+        // is in the conversation (those belong to the first model and can't be continued by another one).
+        const startOfTurn = !contents.some((c) => (c?.parts ?? []).some((p: Part) => p?.thoughtSignature));
+        if ((second as { status?: number }).status !== 503 || !startOfTurn || request.model === FALLBACK_MODEL) throw second;
+        console.warn(`[m10-assistant] Gemini still busy, answering with ${FALLBACK_MODEL}`);
+        return await ai.models.generateContent({ ...request, model: FALLBACK_MODEL });
+      }
+    }
   } catch (err) {
     const status = (err as { status?: number }).status;
     console.error(`[m10-assistant] Gemini request failed${status ? ` (HTTP ${status})` : ''}: ${safeMessage(err)}`);
     if (status === 429) {
       throw new AssistantUnavailableError('The assistant is getting too many questions right now. Please wait a few seconds and try again.');
     }
+    if (status === 503) throw new GeminiBusyError('Gemini is very busy right now. Please try again in a moment.');
     throw new AssistantUnavailableError('The AI service is unavailable right now. Please try again in a moment.');
   }
 }

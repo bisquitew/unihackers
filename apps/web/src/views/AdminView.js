@@ -2,14 +2,15 @@ import { getCurrentToken, hasMfa, switchToken } from '../auth.js';
 import {
   approveReportedPost, createAreaAlert, createOutage, fetchAreaAlerts, fetchAuditLogs, fetchDashboardOverview, fetchLots,
   fetchOutages, fetchReportedPosts, fetchTigerStatus, removeReportedPost, saveLotPlots,
-  parseNoticePhoto, confirmNotice, hubGet,
+  parseNoticePhoto, confirmNotice, hubGet, askAnalyst,
 } from '../api.js';
+import { getLang } from '../i18n.js';
 import { createLotEditor } from '../components/ParkieLotEditor.js';
 import { art, cap, esc, row, statusText } from '../ui.js';
 
 // The staff dashboard is one page with a side menu. Each entry is a section; only the open one is on screen.
 const SECTIONS = [
-  { group: 'City', items: [['overview', 'Overview'], ['alerts', 'Alerts'], ['notice', 'Scan a notice']] },
+  { group: 'City', items: [['overview', 'Overview'], ['alerts', 'Alerts'], ['notice', 'Scan a notice'], ['analyst', 'Ask the data']] },
   { group: 'Services', items: [['parking', 'Parking cameras']] },
   { group: 'Community', items: [['moderation', 'Moderation']] },
   { group: 'System', items: [['security', 'Security log'], ['database', 'Database']] },
@@ -55,7 +56,7 @@ export function mount(ctx, { showToast } = {}) {
     sectionCleanup = () => {};
     nav.forEach((b) => b.classList.toggle('active', b.dataset.section === open));
     body.innerHTML = '<p class="muted">Loading…</p>';
-    const section = { overview, alerts, notice, parking, moderation, security, database }[open];
+    const section = { overview, alerts, notice, analyst, parking, moderation, security, database }[open];
     let html;
     try {
       html = await section.render(ctx);
@@ -365,6 +366,116 @@ const notice = {
         btn.disabled = false;
       }
     });
+  },
+};
+
+/* ------------------------------------------------------------ Ask the data (P4) */
+// A staff question becomes one Gemini request that mixes our data tools (Tiger Cloud history, residents' reports,
+// Open-Meteo wind) with Gemini's own code execution: it runs Python on the real numbers and can draw a chart.
+const ANALYST_EXAMPLES = [
+  'At what hour of the day is parking in the city most full? Last 7 days.',
+  'When were the most smell reports in the last 24 hours, and does it line up with the wind?',
+  'Compare PM2.5 across areas over the last 3 days. Which area is worst?',
+  'At what time of day do residents report feeling unsafe, and where?',
+];
+const ANALYST_SOURCES = {
+  get_parking_occupancy: 'Parking history', get_city_metrics: 'Air, noise and smell sensors', get_smell_reports: 'Residents\' smell reports',
+  get_safety_reports: 'Residents\' safety reports', get_wind_history: 'Measured wind',
+};
+const SOURCE_LABEL = { tiger: 'Tiger Cloud', postgres: 'Tiger Cloud', memory: 'in memory', 'open-meteo': 'Open-Meteo', unavailable: 'unavailable' };
+const ANALYST_PHASES = ['Fetching the data…', 'Gemini is writing and running Python…', 'Checking the numbers and drawing the chart…'];
+
+/** Gemini's short markdown (bold, bullet lists) as safe HTML. */
+function analystMarkdown(text) {
+  const inline = (s) => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/`([^`]+)`/g, '<code>$1</code>');
+  let html = '';
+  let inList = false;
+  for (const raw of String(text).split('\n')) {
+    const line = raw.trimEnd();
+    const item = line.match(/^\s*[*-]\s+(.*)$/);
+    if (item) {
+      if (!inList) { html += '<ul class="analyst-list">'; inList = true; }
+      html += `<li${/^\s{2,}/.test(line) ? ' class="sub"' : ''}>${inline(item[1])}</li>`;
+      continue;
+    }
+    if (inList) { html += '</ul>'; inList = false; }
+    if (line.trim()) html += `<p>${inline(line.trim())}</p>`;
+  }
+  return html + (inList ? '</ul>' : '');
+}
+
+const analyst = {
+  async render() {
+    const mfa = hasMfa();
+    return `
+      <h1 class="page-title">Ask the data</h1>
+      <p class="page-sub">Ask about parking, air, noise, smells or safety reports. Gemini fetches the real numbers from Tiger Cloud and the city's modules, runs its own Python on them and draws a chart.</p>
+      <form class="stack section" id="anForm" style="max-width:760px">
+        <label class="field"><span>Your question</span><textarea id="anQ" rows="3" maxlength="500" required placeholder="${esc(ANALYST_EXAMPLES[0])}"></textarea></label>
+        <div class="chips" id="anExamples">${ANALYST_EXAMPLES.map((q, i) => `<button type="button" class="chip" data-q="${i}">${esc(q)}</button>`).join('')}</div>
+        ${mfa ? '' : '<div class="mfa warn"><span>Staff tools need a second check first.</span><button class="btn btn-secondary btn-sm" type="button" id="anMfa">Verify with passkey</button></div>'}
+        <div><button class="btn btn-primary" type="submit" id="anAsk">Ask</button></div>
+      </form>
+      <div class="result" id="anStatus" hidden aria-live="polite"></div>
+      <div id="anOut" class="section" hidden></div>`;
+  },
+  mount(ctx, showToast, redraw) {
+    const $ = (id) => document.getElementById(id);
+    let timer = null;
+    let alive = true;
+    $('anMfa')?.addEventListener('click', async () => { await switchToken('dev_admin_mfa'); redraw(); });
+    document.querySelectorAll('#anExamples [data-q]').forEach((b) => b.addEventListener('click', () => {
+      $('anQ').value = ANALYST_EXAMPLES[Number(b.dataset.q)];
+      $('anQ').focus();
+    }));
+
+    const say = (html) => { $('anStatus').hidden = false; $('anStatus').innerHTML = html; };
+    $('anForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const question = $('anQ').value.trim();
+      if (!question) return;
+      $('anAsk').disabled = true;
+      $('anOut').hidden = true;
+      let phase = 0;
+      const started = Date.now();
+      // phase text and seconds in separate spans so the website's translator still recognises the phase text
+      const tick = () => say(`<span class="muted"><span>${esc(ANALYST_PHASES[Math.min(phase, ANALYST_PHASES.length - 1)])}</span> <span>${Math.round((Date.now() - started) / 1000)} s</span></span>`);
+      tick();
+      timer = setInterval(() => { if (Date.now() - started > 4000 * (phase + 1)) phase++; tick(); }, 1000);
+      try {
+        const r = await askAnalyst(getCurrentToken(), question, getLang());
+        if (!alive) return;
+        $('anStatus').hidden = true;
+        const tools = r.steps.filter((s) => s.kind === 'tool');
+        const code = r.steps.filter((s) => s.kind === 'code' && s.code);
+        const failed = code.filter((s) => s.outcome && s.outcome !== 'OUTCOME_OK').length;
+        $('anOut').innerHTML = `
+          <div class="analyst-grid">
+            <div class="analyst-answer">${analystMarkdown(r.answer)}</div>
+            <div>${r.charts.map((c, i) => `<img class="analyst-chart" alt="Chart ${i + 1} drawn by Gemini" src="data:${esc(c.mimeType)};base64,${c.data}">`).join('') || '<div class="empty">No chart for this question.</div>'}</div>
+          </div>
+          <div class="section-head" style="margin-top:20px"><h2>How Gemini got this</h2></div>
+          <div class="list">
+            ${tools.map((s) => row({ title: esc(ANALYST_SOURCES[s.name] || s.name), detail: `${esc(SOURCE_LABEL[s.source] || s.source || '')} · ${esc(Object.entries(s.args || {}).map(([k, v]) => `${k} ${v}`).join(', ') || 'default range')}` })).join('')
+              || row({ title: 'No data was fetched', detail: 'Gemini answered without the city data.' })}
+            ${row({ title: `Ran Python ${code.length} ${code.length === 1 ? 'time' : 'times'}`, detail: failed ? `It fixed its own code ${failed} ${failed === 1 ? 'time' : 'times'} along the way` : 'Every run worked first time' })}
+          </div>
+          <details class="analyst-code"><summary>Show the Python Gemini ran</summary>
+            ${code.map((s, i) => `<p class="muted">Run ${i + 1}${s.outcome && s.outcome !== 'OUTCOME_OK' ? ' (failed, then fixed)' : ''}</p><pre><code>${esc(s.code)}</code></pre>${s.output ? `<pre class="out">${esc(s.output)}</pre>` : ''}`).join('')}
+          </details>
+          <p class="muted" style="margin-top:12px;font-size:13px">${esc(r.model)} · ${(r.ms / 1000).toFixed(1)} s · Residents' reports are unverified. A pattern in the data is not proof of a cause.</p>`;
+        $('anOut').hidden = false;
+      } catch (err) {
+        if (!alive) return;
+        say(err.status === 403 && /mfa/i.test(`${err.message} ${err.data?.error || ''}`)
+          ? '<b class="bad">A second check is needed.</b><p style="margin-top:4px">Verify with your passkey, then ask again.</p>'
+          : `<b class="bad">Could not answer.</b><p style="margin-top:4px">${esc(err.status === 503 || err.status === 429 ? 'Gemini is busy right now. Wait a few seconds and try again.' : err.message)}</p>`);
+      } finally {
+        clearInterval(timer);
+        if (alive) $('anAsk').disabled = false;
+      }
+    });
+    return () => { alive = false; clearInterval(timer); };
   },
 };
 
