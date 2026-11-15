@@ -10,6 +10,7 @@ import type {
 } from './types.ts';
 import { seedChangelog, seedFeedback } from './seed.ts';
 import { db } from '../../core/db.ts';
+import { storeSurveyAnswer } from './survey-sync.ts';
 
 const newId = () => `fb-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 7)}`;
 
@@ -95,7 +96,35 @@ export class FeedbackService {
       surveyComments: { confusing: p.text.confusing, missing: p.text.missing },
     };
     this.entries.push(entry);
+    // kept in Tiger Cloud so a restart does not forget it (no-op without a database)
+    await storeSurveyAnswer(p).catch((err) => console.warn('[m11-feedback] could not store a survey answer:', err?.message));
     return { entry, duplicate: false };
+  }
+
+  /** Puts back an in-app feedback row saved in m11_feedback (by addInApp) after a restart. */
+  restoreInApp(row: { id: string; rating: number | null; text: string | null; app_version: string | null; module_id: string | null; created_at: Date | string }): void {
+    if (this.entries.some((e) => e.id === row.id)) return;
+    const at = typeof row.created_at === 'string' ? row.created_at : row.created_at.toISOString();
+    this.entries.push({
+      id: row.id,
+      source: 'in-app',
+      externalId: null,
+      submittedAt: at,
+      receivedAt: at,
+      appVersion: row.app_version ?? 'unknown',
+      appRating: row.rating === null ? null : Number(row.rating),
+      installLikelihood: null,
+      moduleId: row.module_id,
+      text: row.text ?? '',
+      role: null,
+      ageRange: null,
+      topFeature: null,
+      wantedFeatures: [],
+      triedApp: null,
+      triedParts: [],
+      problemScores: {},
+      surveyComments: null,
+    });
   }
 
   async getSummary(): Promise<FeedbackSummary> {

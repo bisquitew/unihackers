@@ -18,6 +18,11 @@
  *   API_URL          e.g. https://<api-host>/v1/m/feedback/ingest
  *   API_TOKEN        same value as FEEDBACK_INGEST_TOKEN in the API's .env (sent as "X-Ingest-Token")
  *
+ * Pull instead of push (works when the API runs on a laptop that Google cannot reach):
+ *   Deploy → New deployment → Web app (Execute as: Me, Who has access: Anyone) and put the /exec URL in the API's
+ *   .env as SURVEY_SYNC_URL. The API then calls doGet() every few minutes with ?token=<FEEDBACK_INGEST_TOKEN> and
+ *   gets the cleaned answers (the same payload as forward_). Without the right token it answers "unauthorized".
+ *
  * The email answer (Q12) is never copied or sent anywhere; only has_email = true/false.
  */
 
@@ -88,6 +93,23 @@ function onFormSubmit(e) {
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Read-only web endpoint for the API's survey sync (see the header). Returns every cleaned answer as the same
+ * payload forward_() sends; never the email. Needs ?token= equal to the API_TOKEN script property.
+ */
+function doGet(e) {
+  const out = (obj) => ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+  const expected = prop_('API_TOKEN');
+  const given = e && e.parameter ? String(e.parameter.token || '') : '';
+  if (!expected || given !== expected) return out({ error: 'unauthorized' });
+  processAll(); // catch up on answers the form trigger missed
+  const data = getCleanSheet_().getDataRange().getValues();
+  if (data.length < 2) return out({ responses: [], count: 0 });
+  const headers = data[0];
+  const responses = data.slice(1).filter((row) => row[0] !== '').map((row) => toPayload_(rowToObject_(headers, row)));
+  return out({ responses: responses, count: responses.length, generatedAt: new Date().toISOString() });
 }
 
 /** Processes every response not yet in the clean tab (safe to run any time). */
