@@ -1,9 +1,16 @@
 import { timingSafeEqual } from 'node:crypto';
 import { Hono } from 'hono';
 import { feedbackService } from './service.ts';
+import { startSurveySync, surveySyncStatus, syncSurveyOnce } from './survey-sync.ts';
 import { parseInAppInput, parseSurveyPayload } from './validation.ts';
 
 export const feedbackRoutes = new Hono();
+
+// Load saved feedback from Tiger Cloud, then keep the survey answers in sync with the Google Sheet (every 5 min).
+startSurveySync(feedbackService);
+
+// Is the survey sync set up, when did it last run, how many answers came in (no secrets)
+feedbackRoutes.get('/sync-status', (c) => c.json({ sync: surveySyncStatus() }));
 
 /**
  * Accepts the token as "Authorization: Bearer <token>" or "X-Ingest-Token: <token>".
@@ -49,10 +56,23 @@ feedbackRoutes.post('/ingest', async (c) => {
   return c.json({ feedback: entry, duplicate }, duplicate ? 200 : 201);
 });
 
+// Pull from the Sheet now (e.g. right before a demo). Same token as /ingest.
+feedbackRoutes.post('/sync', async (c) => {
+  if (!ingestAuthorized(c.req.header('Authorization'), c.req.header('X-Ingest-Token'))) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
+  return c.json({ sync: await syncSurveyOnce(feedbackService) });
+});
+
 // Living Labs numbers
 feedbackRoutes.get('/summary', async (c) => {
   const summary = await feedbackService.getSummary();
   return c.json({ summary });
+});
+
+// The feedback summed up for the staff dashboard (the staff-only rule is in index.ts)
+feedbackRoutes.get('/analytics', async (c) => {
+  return c.json({ analytics: await feedbackService.getAnalytics() });
 });
 
 // Versions and the feedback that caused them

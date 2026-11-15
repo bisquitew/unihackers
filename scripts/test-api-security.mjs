@@ -140,6 +140,14 @@ check('a resident cannot check in tickets at the door', r.status === 403, r.stat
 r = await call('POST', '/v1/m/solana/poap/mint', { token: residentToken, body: { eventId: 'evt-no-ticket', eventTitle: 'x' } });
 check('a badge without a ticket is refused', r.status === 403, r.status);
 
+// --- feedback analytics: for staff only ---
+r = await call('GET', '/v1/m/feedback/analytics');
+check('a guest cannot read the feedback analytics', r.status === 403, r.status);
+r = await call('GET', '/v1/m/feedback/analytics', { token: residentToken });
+check('a resident cannot read the feedback analytics', r.status === 403, r.status);
+r = await call('GET', '/v1/m/feedback/analytics', { token: 'dev_admin_mfa', client: 'web' });
+check('an admin on the website can, and it never states how many people answered', r.status === 200 && !/responses|"count"|"total"/i.test(JSON.stringify(r.json)), r.status);
+
 // --- bad input ---
 r = await call('POST', '/v1/core/auth/google-login', { raw: '{not json' });
 check('invalid JSON is a 400, not a silent empty body', r.status === 400, r.status);

@@ -40,6 +40,10 @@ app.use('/v1/m/*', async (c, next) => {
   if (/^\/v1\/m\/(forum|m08-forum)\/moderation(\/|$)/.test(path) && !(signedIn && ['admin', 'moderator'].includes(user.role))) {
     return c.json({ error: 'insufficient_role', error_description: 'Moderating needs a staff account.' }, 403);
   }
+  // the feedback analytics are for staff
+  if (/^\/v1\/m\/(feedback|m11-feedback)\/analytics(\/|$)/.test(path) && !(signedIn && ['admin', 'moderator'].includes(user.role))) {
+    return c.json({ error: 'insufficient_role', error_description: 'Analytics are for city staff.' }, 403);
+  }
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return next();
   if (/^\/v1\/m\/(events|m01-events|buddy|m07-buddy|forum|m08-forum|wallet|m09-wallet)(\/|$)/.test(path) && !signedIn) {
     return c.json({ error: 'login_required', error_description: 'Sign in to do this.' }, 401);
