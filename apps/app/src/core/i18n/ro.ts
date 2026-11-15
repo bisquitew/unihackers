@@ -30,7 +30,7 @@ registerDictionary('ro', {
   // ---- tabs, titles, sections
   Home: 'Acasă', Map: 'Hartă', Community: 'Comunitate', Profile: 'Profil', Alerts: 'Alerte', Assistant: 'Asistent',
   Overview: 'Prezentare', Settings: 'Setări', 'Profile sections': 'Secțiunile profilului', 'Community sections': 'Secțiunile comunității',
-  Events: 'Evenimente', Forum: 'Forum', Buddies: 'Parteneri', Wallet: 'Portofel', Buddy: 'Partener', Chats: 'Conversații',
+  Events: 'Evenimente', Forum: 'Forum', Buddies: 'Cu cine?', Wallet: 'Portofel', Buddy: 'Companie', Chats: 'Conversații',
   'Right now': 'Chiar acum', 'This week': 'Săptămâna aceasta', Explore: 'Explorează',
   'Your things': 'Ale tale', Help: 'Ajutor', Account: 'Cont', Language: 'Limbă', Appearance: 'Aspect', 'Map look': 'Aspectul hărții',
   Light: 'Luminos', Dark: 'Întunecat', System: 'Sistem', Auto: 'Automat', Day: 'Zi', Golden: 'Apus', Night: 'Noapte',
@@ -42,7 +42,7 @@ registerDictionary('ro', {
   'Good night,': 'Noapte bună,', 'Good morning,': 'Bună dimineața,', 'Good afternoon,': 'Bună ziua,', 'Good evening,': 'Bună seara,', there: 'tu',
   'Ask hop about {}': 'Întreabă hop despre {}', 'All quiet': 'Liniște', 'No outages or transit changes right now.': 'Nicio avarie sau schimbare de transport acum.',
   'Nothing else planned yet': 'Nimic altceva planificat încă', 'Host an event in the Community tab.': 'Organizează un eveniment din fila Comunitate.',
-  '{} free spots, {}': '{} locuri libere, {}', '{} people are going': '{} persoane merg', '{} going': '{} merg', 'Find a buddy': 'Găsește un partener',
+  '{} free spots, {}': '{} locuri libere, {}', '{} people are going': '{} persoane merg', '{} going': '{} merg', 'Find a buddy': 'Găsește companie',
   'Alerts, {} new': 'Alerte, {} noi', 'Alert not found': 'Alerta nu a fost găsită', 'It may have been resolved. Go back to your alerts.': 'Poate a fost rezolvată. Înapoi la alerte.',
   'Alert settings': 'Setările alertelor', 'For your places': 'Pentru locurile tale', 'Around the city': 'În oraș',
   'Tonight at 19:30, Faber. Free. Bring a blanket.': 'Diseară la 19:30, Faber. Gratuit. Adu o pătură.',
@@ -100,11 +100,11 @@ registerDictionary('ro', {
   'Find company': 'Găsește companie', 'Find someone to go with': 'Găsește pe cineva cu care să mergi', 'People to go with': 'Oameni cu care să mergi', 'Go together': 'Mergeți împreună',
   'People going to events who would like company': 'Oameni care merg la evenimente și vor companie', 'People going to': 'Oameni care merg la', 'who would like company.': 'care vor companie.',
   'No one yet': 'Nimeni încă', 'No one has asked yet. Be the first.': 'Nimeni nu a cerut încă. Fii primul.', 'Be the first to ask for company at an event.': 'Fii primul care cere companie la un eveniment.',
-  'Buddy profile': 'Profil partener', 'A good way to start': 'O idee de început', 'Back to the list': 'Înapoi la listă', 'Back to chats': 'Înapoi la conversații', 'Post request': 'Postează cererea',
+  'Buddy profile': 'Profil', 'A good way to start': 'O idee de început', 'Back to the list': 'Înapoi la listă', 'Back to chats': 'Înapoi la conversații', 'Post request': 'Postează cererea',
   'About you': 'Despre tine', 'What do you study or like to talk about?': 'Ce studiezi sau despre ce îți place să vorbești?', 'Interests, separated by commas': 'Interese, separate prin virgulă',
   'cinema, jazz, photography': 'cinema, jazz, fotografie', 'Tell others who you are and which event you are going to. They can start a chat with you.': 'Spune-le celorlalți cine ești și la ce eveniment mergi. Pot începe o conversație cu tine.',
   Message: 'Mesaj', 'Send message': 'Trimite mesajul', 'Write a message': 'Scrie un mesaj', 'No chats yet': 'Nicio conversație încă', 'Open a profile and tap Message. Your conversations live here.': 'Deschide un profil și apasă Mesaj. Conversațiile tale apar aici.',
-  'Buddies sections': 'Secțiunile partenerilor', 'You:': 'Tu:', 'Hey! Glad you reached out about {}.': 'Bună! Mă bucur că ai scris despre {}.', '% match': '% potrivire',
+  'Buddies sections': 'Secțiunile „Cu cine?”', 'You:': 'Tu:', 'Hey! Glad you reached out about {}.': 'Bună! Mă bucur că ai scris despre {}.', '% match': '% potrivire',
 
   // ---- profile
   'Your name': 'Numele tău', 'Edit your name': 'Editează-ți numele', 'This is how you appear to other people. It does not change your account.': 'Așa apari pentru ceilalți. Nu schimbă contul tău.',
