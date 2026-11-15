@@ -10,6 +10,7 @@ export type Type = (typeof Type)[keyof typeof Type];
 export type FunctionDeclaration = any;
 export type Schema = any;
 import type { ApiModule } from '../../types.ts';
+import type { ToolContext } from './types.ts';
 
 const SELF_ID = 'm10-assistant';
 
@@ -17,7 +18,7 @@ export interface RegisteredTool {
   name: string;
   moduleId: string;
   declaration: FunctionDeclaration;
-  handler: (args: Record<string, unknown>) => Promise<unknown>;
+  handler: (args: Record<string, unknown>, ctx?: ToolContext) => Promise<unknown>;
 }
 
 const TYPE_MAP: Record<string, Type> = {
