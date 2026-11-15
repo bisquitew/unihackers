@@ -83,6 +83,18 @@ export const utilitiesService = {
     return outage;
   },
 
+  /** Staff: the service is back. Returns the outage, or undefined when there is none with this id. */
+  resolveOutage(id: string): Outage | undefined {
+    const outage = inMemoryOutages.find((o) => o.id === id);
+    if (!outage) return undefined;
+    outage.status = 'resolved' as Outage['status'];
+    outage.resolved_at = new Date().toISOString();
+    if (db.isTigerConnected()) {
+      db.query(`UPDATE m04_utilities_outages SET status = 'resolved', resolved_at = NOW(), updated_at = NOW() WHERE id = $1;`, [id]).catch(() => {});
+    }
+    return outage;
+  },
+
   getOutageById(id: string): Outage | undefined {
     return inMemoryOutages.find((o) => o.id === id);
   },

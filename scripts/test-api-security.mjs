@@ -203,6 +203,16 @@ check('giving a ticket back needs a sign-in', r.status === 401, r.status);
 r = await call('DELETE', '/v1/m/solana/tickets/tkt-not-mine', { token: 'dev_resident' });
 check('giving back a ticket that is not in your wallet is a 404', r.status === 404, r.status);
 
+// --- following an alert and "this affects me too": a sign-in, a real alert, staff-only closing ---
+r = await call('POST', '/v1/core/alerts/alert-danger-traian/follow');
+check('following an alert needs a sign-in', r.status === 401, r.status);
+r = await call('POST', '/v1/core/alerts/alert-danger-traian/affects');
+check('saying an alert affects you needs a sign-in', r.status === 401, r.status);
+r = await call('POST', '/v1/core/alerts/not-an-alert/follow', { token: 'dev_resident' });
+check('following an alert that does not exist is a 404', r.status === 404, r.status);
+r = await call('POST', '/v1/core/alerts/alert-danger-traian/resolve', { token: 'dev_resident' });
+check('a resident cannot close an alert', r.status === 403, r.status);
+
 // --- bad input ---
 r = await call('POST', '/v1/core/auth/google-login', { raw: '{not json' });
 check('invalid JSON is a 400, not a silent empty body', r.status === 400, r.status);

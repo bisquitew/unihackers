@@ -5,6 +5,8 @@ export interface BuddyListing {
   id: string;
   /** the account of the person who posted the request, used to start a chat with them */
   userId?: string;
+  /** made on this phone by the person using it: never shown in their own list */
+  mine?: boolean;
   eventId: string;
   eventTitle: string;
   userName: string;
@@ -87,8 +89,9 @@ class BuddyStore {
   async refresh(): Promise<void> {
     try {
       const { buddyRequests } = await api.get<{ buddyRequests: any[] }>('/v1/m/buddy');
-      if (Array.isArray(buddyRequests) && buddyRequests.length) {
-        this.items = buddyRequests.map(fromApi);
+      if (Array.isArray(buddyRequests)) {
+        // the server leaves out your own request; with nobody else listed, the sample people stay
+        this.items = buddyRequests.length ? buddyRequests.map(fromApi) : SEED;
         this.listeners.forEach((fn) => fn());
       }
     } catch {
@@ -101,10 +104,10 @@ class BuddyStore {
     return () => this.listeners.delete(listener);
   }
   list(): BuddyListing[] {
-    return [...this.items];
+    return this.items.filter((b) => !b.mine);
   }
   forEvent(eventId: string): BuddyListing[] {
-    return this.items.filter((b) => b.eventId === eventId);
+    return this.items.filter((b) => b.eventId === eventId && !b.mine);
   }
   add(input: { eventId: string; eventTitle: string; userName: string; bio: string; interests: string[] }): BuddyListing {
     const created: BuddyListing = {
@@ -117,6 +120,7 @@ class BuddyStore {
       interests: input.interests.length ? input.interests : ['culture', 'events'],
       icebreakerPrompt: 'Shall we meet at the entrance?',
       matchScore: 90,
+      mine: true,
     };
     this.items = [created, ...this.items];
     this.listeners.forEach((fn) => fn());
