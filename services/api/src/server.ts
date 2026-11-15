@@ -342,11 +342,15 @@ export const requestListener = async (req: http.IncomingMessage, res: http.Serve
     }
 
     if (pathname === '/v1/core/auth/auth0-info' && method === 'GET') {
+      const domain = process.env.AUTH0_DOMAIN || 'dev-77qb7o5o5lzcrtxa.us.auth0.com';
+      const audience = process.env.AUTH0_AUDIENCE || 'https://api.timisoara-hub.ro';
+      const clientId = process.env.AUTH0_CLIENT_ID || process.env.AUTH0_WEB_CLIENT_ID || 'nX2Hf4pmmdetK73ydXFmg2S632Bh966D';
       return sendJson(res, 200, {
-        auth0_domain: process.env.AUTH0_DOMAIN || 'timisoara-hub.eu.auth0.com',
-        auth0_audience: process.env.AUTH0_AUDIENCE || 'https://api.timisoara-hub.ro',
-        jwks_uri: `https://${process.env.AUTH0_DOMAIN || 'timisoara-hub.eu.auth0.com'}/.well-known/jwks.json`,
-        issuer: `https://${process.env.AUTH0_DOMAIN || 'timisoara-hub.eu.auth0.com'}/`,
+        auth0_domain: domain,
+        auth0_audience: audience,
+        client_id: clientId,
+        jwks_uri: `https://${domain}/.well-known/jwks.json`,
+        issuer: `https://${domain}/`,
         algorithms: ['RS256'],
         mfa_supported: ['totp_authenticator', 'fido2_webauthn_passkey', 'sms'],
         adaptive_anomaly_detection: true,
