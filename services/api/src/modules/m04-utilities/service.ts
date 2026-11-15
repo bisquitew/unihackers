@@ -5,12 +5,22 @@ import { eventBus } from '../../core/events.ts';
 import { placeMatches } from '../../core/text.ts';
 import { db } from '../../core/db.ts';
 
+// Rows seeded straight into m04_utilities_outages use display names ("Colterm", "active", "water_cold"); the app and the
+// assistant expect the contract's ids. Unknown values pass through unchanged.
+const plainKey = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const PROVIDER_IDS: Record<string, Outage['provider']> = { colterm: 'colterm', aquatim: 'aquatim', 'retele electrice banat': 'retele_electrice_banat', 'delgaz grid': 'delgaz_grid' };
+const TYPE_IDS: Record<string, Outage['type']> = { heating: 'heating_and_hot_water', water_cold: 'cold_water', water_hot: 'hot_water_only', power: 'electricity' };
+const STATUS_IDS: Record<string, Outage['status']> = { active: 'unplanned_breakdown', scheduled: 'scheduled_maintenance' };
+const toProvider = (v: unknown) => PROVIDER_IDS[plainKey(v).replace(/_/g, ' ')] ?? (v as Outage['provider']);
+const toType = (v: unknown) => TYPE_IDS[plainKey(v)] ?? (v as Outage['type']);
+const toStatus = (v: unknown) => STATUS_IDS[plainKey(v)] ?? (v as Outage['status']);
+
 function rowToOutage(row: any): Outage {
   return {
     id: row.id,
-    provider: row.provider,
-    type: row.type,
-    status: row.status,
+    provider: toProvider(row.provider),
+    type: toType(row.type),
+    status: toStatus(row.status),
     severity: row.severity,
     title: row.title,
     description: row.description,
