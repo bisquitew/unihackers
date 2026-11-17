@@ -322,18 +322,6 @@ We worked together as a team across design, mobile architecture, platform engine
 
 ---
 
-## 🤝 Team UniHackers & Contributing
-
-**hop** was built together by **Team UniHackers** at the **UNIHACK 2026 Hackathon** in **Timișoara, Romania 🇷🇴**.
-
-We worked together as a team across design, mobile architecture, platform engineering, AI agents, and computer vision:
-- [@bisquitew](https://github.com/bisquitew)
-- [@zaqq15](https://github.com/zaqq15) (zaqq15)
-- [@SZ-16](https://github.com/SZ-16) (SZ-16)
-- [@Pricher23](https://github.com/Pricher23) (Pricher23)
-
----
-
 ## 📚 Documentation & Reference
 
 - [System Requirements & Architecture Specification](REQUIREMENTS.md)
