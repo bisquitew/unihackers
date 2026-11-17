@@ -1,4 +1,4 @@
-# Living Labs: setup (P4)
+# Living Labs: Setup
 
 Files in this folder:
 

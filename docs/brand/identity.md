@@ -1,4 +1,4 @@
-# Visual identity (v1.7, P1)
+# Visual identity (v1.7)
 
 Direction: **friendly, calm, text-first**. Small shapes, real information, soft colour. It should feel like a helpful neighbour, not a template and not a city-hall portal. Light theme first; dark is a later "should". See `brand-board.html` for the rendered version.
 

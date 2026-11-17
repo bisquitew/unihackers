@@ -14,7 +14,7 @@
  * Script properties (Project Settings → Script properties):
  *   APP_VERSION      current app version, e.g. v0.3. Stamped on every response so we can
  *                    show before/after numbers per version. Also settable from the menu.
- *   FORWARD_ENABLED  "true" to send to the API. Leave unset until P2's API is live.
+ *   FORWARD_ENABLED  "true" to send to the API. Leave unset until the API is live.
  *   API_URL          e.g. https://<api-host>/v1/m/feedback/ingest
  *   API_TOKEN        same value as FEEDBACK_INGEST_TOKEN in the API's .env (sent as "X-Ingest-Token")
  *

@@ -1,10 +1,10 @@
-# 🏛️ UNIHACK 2026 — Timișoara City Hub (UniHackers)
+# 🏛️ Timișoara City Hub (hop)
 ## Full Project Specification & System Requirements
 
-> **Status:** Active Hackathon Monorepo  
-> **Target Event:** UNIHACK 2026 (Timișoara, Romania)  
-> **Team:** UniHackers (4 Members: P1, P2, P3, P4)  
-> **Last Updated:** November 13, 2026
+> **Status:** Production Architecture Specification  
+> **Location:** Timișoara, Romania  
+> **Platform:** Cross-platform (iOS, Android, Web)  
+> **Last Updated:** November 2026
 
 ---
 
@@ -25,33 +25,33 @@ Timișoara residents face recurring, fragmented urban challenges:
 ```
 unihackers/
 ├── apps/
-│   └── app/                 # Cross-platform Expo / React Native App (P1, P3, P4)
+│   └── app/                 # Cross-platform Expo / React Native App
 ├── packages/
-│   ├── contracts/           # Zero-dependency TypeScript schemas & Zod validators (P2)
-│   ├── ui/                  # Shared UI Design System & Component Library (P1)
-│   ├── solana/              # Solana devnet ticket & POAP minting SDK (P3)
+│   ├── contracts/           # Zero-dependency TypeScript schemas & Zod validators
+│   ├── ui/                  # Shared UI Design System & Component Library
+│   ├── solana/              # Solana devnet ticket & POAP minting SDK
 │   ├── api-client/          # Typed API client for frontend consumption
 │   └── config/              # Shared linting & build configs
 ├── services/
-│   ├── api/                 # City Hub Core API (HTTP / Hono / Node 26) (P2)
-│   └── workers/             # Netrom Glue Ingestion Engine + Gemini AI (P2)
+│   ├── api/                 # City Hub Core API (HTTP / Hono / Node 22+)
+│   └── workers/             # Ingestion Engine + Gemini AI
 ├── db/
 │   ├── core/migrations/     # Core schema migrations (Users, Areas, Places, Flags)
 │   └── modules/             # Per-module database migrations (M01-M12, Parkie)
-├── scripts/                 # Dev launchers, Tiger Cloud migrators, test harnesses
+├── scripts/                 # Dev launchers, TimescaleDB migrators, test harnesses
 └── docs/                    # Design tokens, branding, documentation
 ```
 
 ---
 
-## 3. Team Ownership Matrix
+## 3. Subsystem & Domain Architecture Matrix
 
-| Role | Lead | Focus Areas | Key Codebase Locations |
-| :--- | :--- | :--- | :--- |
-| **Person 1 (P1)** | UI & Parkie Mobile Lead | Design tokens, Mobile App shell, Porting Parkie UI | `apps/app`, `packages/ui`, Parkie Screens |
-| **Person 2 (P2)** | Platform, Data & City Alerts | Monorepo architecture, `@hub/contracts`, Core API, Utilities [M04], Transit [M05], Parkie Backend, Tiger Cloud DB, Ingestion Workers, Photo Storage | `packages/contracts`, `services/api`, `services/workers`, `db/`, `scripts/` |
-| **Person 3 (P3)** | Community & Social Lead | Events [M01], Buddy Matcher [M07], Forum [M08], Solana Civic Wallet [M09] | `apps/app/src/modules/m01,m07,m08,m09`, `packages/solana` |
-| **Person 4 (P4)** | AI, Voice & Civic Reports Lead | Urban Safety [M03], Smell Tracker [M06], AI Assistant [M10], Living Labs Feedback [M11] | `apps/app/src/modules/m03,m06,m10,m11` |
+| Subsystem Domain | Focus Areas | Key Codebase Locations |
+| :--- | :--- | :--- |
+| **UI & Mobile App** | Design tokens, Mobile App shell, Shared maps, Parkie UI | `apps/app`, `packages/ui`, `packages/map` |
+| **Platform, Data & City Alerts** | Monorepo architecture, `@hub/contracts`, Core API, Utilities [M04], Transit [M05], Parkie Backend, TimescaleDB, Ingestion Workers | `packages/contracts`, `services/api`, `services/workers`, `db/`, `scripts/` |
+| **Community, Events & Web3** | Events [M01], Buddy Matcher [M07], Forum [M08], Solana Civic Wallet [M09] | `apps/app/src/modules/m01,m07,m08,m09`, `packages/solana` |
+| **AI, Voice & Civic Reports** | Urban Safety [M03], Smell Tracker [M06], Gemini AI Assistant [M10], Living Labs Feedback [M11] | `apps/app/src/modules/m03,m06,m10,m11`, `services/api/src/modules` |
 
 ---
 

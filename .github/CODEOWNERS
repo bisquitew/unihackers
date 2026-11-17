@@ -1,29 +1,30 @@
 # ==============================================================================
-# UNIHACK 2026: Timișoara City Hub - CODEOWNERS
+# Timișoara City Hub (hop) - CODEOWNERS
+# Team UniHackers: @bisquitew, @zaqq15, @SZ-16, @Pricher23
 # ==============================================================================
 
 # Global fallback
-* @bisquitew
+* @bisquitew @zaqq15 @SZ-16 @Pricher23
 
-# Person 1 (P1) — UI, Design & Parkie Lead
-/apps/app/              @bisquitew
-/packages/ui/           @bisquitew
+# UI & Frontend
+/apps/app/              @bisquitew @zaqq15
+/packages/ui/           @bisquitew @zaqq15
 
-# Person 2 (P2) — Platform, Data & City Alerts Lead
-/packages/contracts/    @bisquitew
-/services/api/          @bisquitew
-/services/workers/      @bisquitew
-/db/                    @bisquitew
-/scripts/               @bisquitew
-docker-compose.yml      @bisquitew
+# Platform, Contracts, Core API & Services
+/packages/contracts/    @bisquitew @SZ-16
+/services/api/          @bisquitew @SZ-16
+/services/workers/      @bisquitew @SZ-16
+/db/                    @bisquitew @SZ-16
+/scripts/               @bisquitew @SZ-16
+docker-compose.yml      @bisquitew @SZ-16
 
-# Person 3 (P3) — Community & Social Lead
-/apps/app/src/modules/m01-events/  @bisquitew
-/apps/app/src/modules/m07-buddy/   @bisquitew
-/apps/app/src/modules/m08-forum/   @bisquitew
-/packages/solana/                  @bisquitew
+# Community & Web3
+/apps/app/src/modules/m01-events/  @bisquitew @Pricher23
+/apps/app/src/modules/m07-buddy/   @bisquitew @Pricher23
+/apps/app/src/modules/m08-forum/   @bisquitew @Pricher23
+/packages/solana/                  @bisquitew @Pricher23
 
-# Person 4 (P4) — AI, Voice & Civic Reports Lead
+# AI, Voice & Civic Reports
 /apps/app/src/modules/m03-safety/    @bisquitew
 /apps/app/src/modules/m06-smell/     @bisquitew
 /apps/app/src/modules/m10-assistant/ @bisquitew

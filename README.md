@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/UNIHACK-2026-FF3D7F?style=for-the-badge&labelColor=1A1033" alt="UNIHACK 2026" />
-  <img src="https://img.shields.io/badge/Team-UniHackers-12C99B?style=for-the-badge&labelColor=1A1033" alt="UniHackers" />
+  <img src="https://img.shields.io/badge/Team-UniHackers-12C99B?style=for-the-badge&labelColor=1A1033" alt="Team UniHackers" />
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
 <h3 align="center">One App for Timișoara · Live City Alerts · Ask It Out Loud</h3>
 
 <p align="center">
-  <strong>🏛️ Built in 48 hours at UNIHACK 2026 · 13 modules · iOS · Android · Web</strong><br>
+  <strong>🏛️ Built at UNIHACK 2026 Hackathon · Timișoara, Romania 🇷🇴 · 13 modules · iOS · Android · Web</strong><br>
   <em>Everything in Timișoara, one tap away. · Tot Timișoara-ul, la un tap distanță.</em>
 </p>
 
@@ -98,7 +98,7 @@ Every module is an **independent vertical slice** (screens, API routes, DB schem
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
-│                           hop · UNIHACK 2026                         │
+│                  hop · Timișoara City Hub Architecture               │
 ├───────────────┬───────────────────┬──────────────────────────────────┤
 │  📱 App        │  🖥️ Staff Website  │  🤖 AI Services                  │
 │  Expo SDK 58  │  Vanilla ES SPA   │  Gemini 3.5 Flash-Lite (+Flash)  │
@@ -207,12 +207,12 @@ Never commit `.env`. It is git-ignored.
 ### Test & verify
 
 ```bash
-npm test                  # boots-and-checks the core API suite (scripts/test_p2.py)
+npm test                  # boots-and-checks the core API test suite
 npm run test:modules      # all modules
 npm run test:auth         # Auth0 / roles end to end
 npm run test:solana       # live Solana devnet mint check
 npm run test:workers      # ingestion workers
-npm run demo:auth0        # interactive Auth0 judge demo
+npm run demo:auth0        # interactive Auth0 demonstration script
 npm run verify:all        # full master verification
 ```
 
@@ -310,41 +310,40 @@ Typography: **Nunito** (headlines) and **Figtree** (interface). Squircle corners
 
 ---
 
-## 🏆 Sponsor Challenges
+## 🤝 Team UniHackers & Contributing
 
-| Challenge | How hop answers it |
-|-----------|--------------------|
-| **Netrom: Glue It Together** | Ingestion workers glue Gemini, utility press releases, transit notices, sensors, Auth0 M2M and Tiger Cloud; plus the photo → Gemini → MFA → publish → spoken-answer chain |
-| **Solana** | Devnet tickets with SPL Memo, QR door check-in, on-chain POAP, MCP-verified by the assistant |
-| **Vest Ventures: Living Labs** | In-app feedback, live survey, changelog, analytics by version |
-| **ElevenLabs** | Spoken Romanian assistant, speech-to-text, narrated tour |
-| **Google Gemini** | Function calling, vision, embeddings, code execution, structured output |
-| **Auth0** | Universal Login, RBAC, step-up MFA, AI-agent M2M, audit trail |
-| **Tiger Data** | 5 hypertables, 4 continuous aggregates, compression, retention, open-data export |
+**hop** was built together by **Team UniHackers** at the **UNIHACK 2026 Hackathon** in **Timișoara, Romania 🇷🇴**.
+
+We worked together as a team across design, mobile architecture, platform engineering, AI agents, and computer vision:
+- [@bisquitew](https://github.com/bisquitew)
+- [@zaqq15](https://github.com/zaqq15) (zaqq15)
+- [@SZ-16](https://github.com/SZ-16) (SZ-16)
+- [@Pricher23](https://github.com/Pricher23) (Pricher23)
 
 ---
 
-## 🤝 Contributing & Conventions
+## 🤝 Team UniHackers & Contributing
 
-- All PRs merge into `main`; `.github/CODEOWNERS` maps each folder to its owner; CI runs the API test suite.
-- Modules never import each other; they talk through core events, public read endpoints or deep links.
-- Strip-types rule for any file the API loads: `.ts` on relative imports, `import type` for types, no `enum`s or constructor parameter properties.
-- Every commit that adds routes, contracts or architecture updates [REQUIREMENTS.md](REQUIREMENTS.md).
-- Commit messages are short and end with `:3`.
+**hop** was built together by **Team UniHackers** at the **UNIHACK 2026 Hackathon** in **Timișoara, Romania 🇷🇴**.
 
-More docs: [REQUIREMENTS.md](REQUIREMENTS.md) · [docs/p4-progress.md](docs/p4-progress.md) · [infra/auth0/README.md](infra/auth0/README.md) · [services/parkie-vision/README.md](services/parkie-vision/README.md).
+We worked together as a team across design, mobile architecture, platform engineering, AI agents, and computer vision:
+- [@bisquitew](https://github.com/bisquitew)
+- [@zaqq15](https://github.com/zaqq15) (zaqq15)
+- [@SZ-16](https://github.com/SZ-16) (SZ-16)
+- [@Pricher23](https://github.com/Pricher23) (Pricher23)
 
 ---
 
-## 👥 Team UniHackers
+## 📚 Documentation & Reference
 
-Four builders, four lanes: **P1** design and app shell (plus the Parkie port), **P2** platform, data and city alerts, **P3** community and Solana, **P4** AI, voice and civic reports.
-
-Built with ☕ and 🍜 at **UNIHACK 2026**.
-:3
+- [System Requirements & Architecture Specification](REQUIREMENTS.md)
+- [Auth0 Security & Post-Login Action](infra/auth0/README.md)
+- [Parkie Computer Vision Service](services/parkie-vision/README.md)
+- [Brand Identity & Design Tokens](docs/brand/identity.md)
+- [Living Labs Feedback Pipeline](docs/living-labs/README.md)
 
 ---
 
 <p align="center">
-  <sub>Made for UNIHACK 2026 · Timișoara, Romania 🇷🇴</sub>
+  <sub>hop · Team UniHackers · UNIHACK 2026 Hackathon · Timișoara, Romania 🇷🇴</sub>
 </p>
